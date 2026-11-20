@@ -1,0 +1,501 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Profil privat pengguna terautentikasi untuk menyimpan metadata akun dan ruang kerja aktif.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 200
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 150
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "activeOfficeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "displayName", "activeOfficeId", "createdAt", "updatedAt"]
+    },
+    "OfficeWorkspace": {
+      "title": "OfficeWorkspace",
+      "description": "Dokumen induk ruang kerja bersama kantor PPATS yang menjadi Master Gate akses tim.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerEmail": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 200
+        },
+        "allowedEmails": {
+          "type": "array",
+          "description": "Daftar terbatas email Google terverifikasi anggota aktif kantor (maksimal 30 anggota) yang dikelola admin."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "ownerUid", "ownerEmail", "allowedEmails", "createdAt", "updatedAt"]
+    },
+    "OfficeMember": {
+      "title": "OfficeMember",
+      "description": "Keanggotaan aktif petugas atau admin pada ruang kerja kantor PPATS.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "officeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "officeOwnerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 200
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 150
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "petugas"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "officeId", "officeOwnerUid", "email", "displayName", "role", "createdAt", "updatedAt"]
+    },
+    "OfficeInvite": {
+      "title": "OfficeInvite",
+      "description": "Undangan akses tim kantor PPATS berdasarkan alamat email Google terverifikasi.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "officeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "emailLower": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 200
+        },
+        "displayLabel": {
+          "type": "string",
+          "maxLength": 150
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "petugas"]
+        },
+        "createdByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "officeId", "emailLower", "displayLabel", "role", "createdByUid", "createdAt", "updatedAt"]
+    },
+    "OfficeConfig": {
+      "title": "OfficeConfig",
+      "description": "Pengaturan profil kantor PPATS, daftar saksi tetap, kuasa BPN, dan tarif NPOPTKP bersama.",
+      "type": "object",
+      "properties": {
+        "officeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "nama_kecamatan": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "nama_kabupaten": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "nama_provinsi": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "nama_ppats": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "jabatan_ppats": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "nip_ppats": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "sk_ppats_nomor": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "sk_ppats_tanggal": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "sk_ppats_penerbit": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "alamat_kantor": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "telepon_kantor": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "daftar_saksi": {
+          "type": "array"
+        },
+        "daftar_kuasa_bpn": {
+          "type": "array"
+        },
+        "profil_saksi": {
+          "type": "array"
+        },
+        "profil_kuasa": {
+          "type": "array"
+        },
+        "npoptkp_umum": {
+          "type": "number"
+        },
+        "npoptkp_waris": {
+          "type": "number"
+        },
+        "updatedByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "officeId",
+        "nama_kecamatan",
+        "nama_kabupaten",
+        "nama_ppats",
+        "jabatan_ppats",
+        "nip_ppats",
+        "alamat_kantor",
+        "telepon_kantor",
+        "daftar_saksi",
+        "daftar_kuasa_bpn",
+        "npoptkp_umum",
+        "npoptkp_waris",
+        "updatedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BerkasCloudRecord": {
+      "title": "BerkasCloudRecord",
+      "description": "Berkas layanan akta PPATS dan non-akta yang disinkronkan bersama antar perangkat kantor.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "officeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "no_urut": {
+          "type": "number"
+        },
+        "kode_berkas": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "tanggal_masuk": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "layanan": {
+          "type": "string",
+          "enum": [
+            "AJB",
+            "APHB",
+            "Akta Hibah",
+            "Turun Waris",
+            "Pemecahan",
+            "Ukur Ulang",
+            "Ralat Data",
+            "Pemecahan/Ukur Ulang"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "1. Pemberkasan",
+            "2. Validasi Pajak",
+            "3. TTD Akta",
+            "4. Proses BPN",
+            "5. Selesai"
+          ]
+        },
+        "para_pihak": {
+          "type": "array"
+        },
+        "tanah": {
+          "type": "object"
+        },
+        "pbb": {
+          "type": "object"
+        },
+        "audit_warnings": {
+          "type": "array"
+        },
+        "akta": {
+          "type": "object"
+        },
+        "pajak": {
+          "type": "object"
+        },
+        "non_akta": {
+          "type": "object"
+        },
+        "updated_at": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "allowedEmails": {
+          "type": "array"
+        },
+        "createdByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "updatedByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "officeId",
+        "no_urut",
+        "kode_berkas",
+        "tanggal_masuk",
+        "layanan",
+        "status",
+        "para_pihak",
+        "tanah",
+        "pbb",
+        "audit_warnings",
+        "akta",
+        "pajak",
+        "updated_at",
+        "allowedEmails",
+        "createdByUid",
+        "updatedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CustomTemplateCloud": {
+      "title": "CustomTemplateCloud",
+      "description": "Template Word (.docx) kustom kantor PPATS yang dibagikan ke seluruh perangkat tim.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "officeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fileName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "updatedAtIso": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "dataBase64": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 800000
+        },
+        "allowedEmails": {
+          "type": "array"
+        },
+        "updatedByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "key",
+        "officeId",
+        "fileName",
+        "updatedAtIso",
+        "dataBase64",
+        "allowedEmails",
+        "updatedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Profil akun privat milik pengguna yang sedang login."
+    },
+    "/offices/{officeId}": {
+      "schema": { "$ref": "#/entities/OfficeWorkspace" },
+      "description": "Dokumen induk ruang kerja bersama kantor PPATS."
+    },
+    "/offices/{officeId}/members/{memberUid}": {
+      "schema": { "$ref": "#/entities/OfficeMember" },
+      "description": "Daftar anggota aktif kantor PPATS beserta peran (admin atau petugas)."
+    },
+    "/offices/{officeId}/invites/{inviteId}": {
+      "schema": { "$ref": "#/entities/OfficeInvite" },
+      "description": "Daftar email tim yang diundang admin untuk bergabung ke ruang kerja kantor."
+    },
+    "/offices/{officeId}/config/office_settings": {
+      "schema": { "$ref": "#/entities/OfficeConfig" },
+      "description": "Konfigurasi profil kantor PPATS, daftar saksi, kuasa BPN, dan NPOPTKP."
+    },
+    "/offices/{officeId}/berkas/{berkasId}": {
+      "schema": { "$ref": "#/entities/BerkasCloudRecord" },
+      "description": "Koleksi berkas register akta dan rekap non-akta yang disinkronkan real-time."
+    },
+    "/offices/{officeId}/templates/{templateKey}": {
+      "schema": { "$ref": "#/entities/CustomTemplateCloud" },
+      "description": "Template Word .docx kustom milik kantor PPATS."
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix SIM-PPATS",
+  "description": "Sistem Informasi Manajemen Kantor PPATS \u0026 Pertanahan — operasional end-to-end dari loket masuk, ekstraksi dokumen AI, bundel akta Word, buku register akta, hingga laporan bulanan BPN \u0026 Bapenda.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

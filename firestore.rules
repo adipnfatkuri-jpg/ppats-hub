@@ -1,0 +1,524 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 4.1: Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ==================== GLOBAL PRIMITIVES ====================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function authEmailLower() {
+      return request.auth.token.email.lower();
+    }
+
+    function authInviteKey() {
+      return request.auth.token.email.lower().replace('[^a-z0-9]', '_');
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser()
+        && request.auth.token.email is string
+        && authEmailLower() == 'adipnfatkuri@gmail.com';
+    }
+
+    function officePath(officeId) {
+      return /databases/$(database)/documents/offices/$(officeId);
+    }
+
+    function memberDocPath(officeId, uid) {
+      return /databases/$(database)/documents/offices/$(officeId)/members/$(uid);
+    }
+
+    function inviteDocPath(officeId, inviteId) {
+      return /databases/$(database)/documents/offices/$(officeId)/invites/$(inviteId);
+    }
+
+    function isOfficeMember(officeId) {
+      return isVerifiedUser() && (
+        isBootstrappedAdmin() ||
+        exists(memberDocPath(officeId, request.auth.uid))
+      );
+    }
+
+    function isOfficeAdmin(officeId) {
+      return isVerifiedUser() && (
+        isBootstrappedAdmin() ||
+        (
+          exists(memberDocPath(officeId, request.auth.uid)) &&
+          get(memberDocPath(officeId, request.auth.uid)).data.role == 'admin'
+        )
+      );
+    }
+
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isValidOptionalString(data, key, maxLen) {
+      return !(key in data) || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    function isValidBoundedStringList(arr, maxLen) {
+      return arr is list && arr.size() <= maxLen && (arr.size() == 0 || arr[0] is string);
+    }
+
+    function isValidBoundedMapList(arr, maxLen) {
+      return arr is list && arr.size() <= maxLen && (arr.size() == 0 || arr[0] is map);
+    }
+
+    // ==================== ENTITY VALIDATION BLUEPRINTS ====================
+
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'activeOfficeId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'activeOfficeId', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && isValidString(data.email, 3, 200)
+        && isValidString(data.displayName, 0, 150)
+        && isValidOptionalString(data, 'photoURL', 500)
+        && isValidId(data.activeOfficeId)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidOfficeWorkspace(data, officeId) {
+      return data.keys().hasAll(['id', 'name', 'ownerUid', 'ownerEmail', 'allowedEmails', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'ownerUid', 'ownerEmail', 'allowedEmails', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == officeId
+        && isValidString(data.name, 1, 160)
+        && isValidId(data.ownerUid)
+        && isValidString(data.ownerEmail, 3, 200)
+        && isValidBoundedStringList(data.allowedEmails, 30)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidOfficeMember(data, officeId, memberUid) {
+      return data.keys().hasAll(['uid', 'officeId', 'officeOwnerUid', 'email', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'officeId', 'officeOwnerUid', 'email', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == memberUid
+        && isValidId(data.officeId)
+        && data.officeId == officeId
+        && isValidId(data.officeOwnerUid)
+        && isValidString(data.email, 3, 200)
+        && isValidString(data.displayName, 0, 150)
+        && data.role in ['admin', 'petugas']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidOfficeInvite(data, officeId, inviteId) {
+      return data.keys().hasAll(['id', 'officeId', 'emailLower', 'displayLabel', 'role', 'createdByUid', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'officeId', 'emailLower', 'displayLabel', 'role', 'createdByUid', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == inviteId
+        && isValidId(data.officeId)
+        && data.officeId == officeId
+        && isValidString(data.emailLower, 3, 200)
+        && isValidString(data.displayLabel, 0, 150)
+        && data.role in ['admin', 'petugas']
+        && isValidId(data.createdByUid)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidOfficeConfig(data, officeId) {
+      return data.keys().hasAll([
+          'officeId', 'nama_kecamatan', 'nama_kabupaten', 'nama_ppats',
+          'jabatan_ppats', 'nip_ppats', 'alamat_kantor', 'telepon_kantor',
+          'daftar_saksi', 'daftar_kuasa_bpn', 'npoptkp_umum', 'npoptkp_waris',
+          'updatedByUid', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'officeId', 'nama_kecamatan', 'nama_kabupaten', 'nama_provinsi',
+          'nama_ppats', 'jabatan_ppats', 'nip_ppats',
+          'sk_ppats_nomor', 'sk_ppats_tanggal', 'sk_ppats_penerbit',
+          'alamat_kantor', 'telepon_kantor',
+          'daftar_saksi', 'daftar_kuasa_bpn', 'profil_saksi', 'profil_kuasa',
+          'npoptkp_umum', 'npoptkp_waris',
+          'updatedByUid', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.officeId)
+        && data.officeId == officeId
+        && isValidString(data.nama_kecamatan, 0, 160)
+        && isValidString(data.nama_kabupaten, 0, 160)
+        && isValidOptionalString(data, 'nama_provinsi', 120)
+        && isValidString(data.nama_ppats, 0, 160)
+        && isValidString(data.jabatan_ppats, 0, 160)
+        && isValidString(data.nip_ppats, 0, 80)
+        && isValidOptionalString(data, 'sk_ppats_nomor', 160)
+        && isValidOptionalString(data, 'sk_ppats_tanggal', 60)
+        && isValidOptionalString(data, 'sk_ppats_penerbit', 200)
+        && isValidString(data.alamat_kantor, 0, 400)
+        && isValidString(data.telepon_kantor, 0, 80)
+        && isValidBoundedStringList(data.daftar_saksi, 50)
+        && isValidBoundedStringList(data.daftar_kuasa_bpn, 50)
+        && (!('profil_saksi' in data) || isValidBoundedMapList(data.profil_saksi, 50))
+        && (!('profil_kuasa' in data) || isValidBoundedMapList(data.profil_kuasa, 50))
+        && data.npoptkp_umum is number && data.npoptkp_umum >= 0 && data.npoptkp_umum <= 10000000000
+        && data.npoptkp_waris is number && data.npoptkp_waris >= 0 && data.npoptkp_waris <= 10000000000
+        && isValidId(data.updatedByUid)
+        && data.updatedByUid == request.auth.uid
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBerkas(data, officeId, berkasId) {
+      return data.keys().hasAll([
+          'id', 'officeId', 'no_urut', 'kode_berkas', 'tanggal_masuk',
+          'layanan', 'status', 'para_pihak', 'tanah', 'pbb',
+          'audit_warnings', 'akta', 'pajak', 'updated_at',
+          'allowedEmails', 'createdByUid', 'updatedByUid', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'officeId', 'no_urut', 'kode_berkas', 'tanggal_masuk',
+          'layanan', 'status', 'para_pihak', 'tanah', 'pbb',
+          'audit_warnings', 'akta', 'pajak', 'non_akta', 'updated_at',
+          'allowedEmails', 'createdByUid', 'updatedByUid', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.id == berkasId
+        && isValidId(data.officeId)
+        && data.officeId == officeId
+        && data.no_urut is number && data.no_urut >= 0 && data.no_urut <= 1000000
+        && isValidString(data.kode_berkas, 1, 80)
+        && isValidString(data.tanggal_masuk, 0, 40)
+        && data.layanan in [
+          'AJB', 'APHB', 'Akta Hibah', 'Turun Waris',
+          'Pemecahan', 'Ukur Ulang', 'Ralat Data', 'Pemecahan/Ukur Ulang'
+        ]
+        && data.status in [
+          '1. Pemberkasan', '2. Validasi Pajak', '3. TTD Akta',
+          '4. Proses BPN', '5. Selesai'
+        ]
+        && isValidBoundedMapList(data.para_pihak, 50)
+        && data.tanah is map
+        && data.pbb is map
+        && isValidBoundedMapList(data.audit_warnings, 50)
+        && data.akta is map
+        && data.pajak is map
+        && (!('non_akta' in data) || data.non_akta is map)
+        && isValidString(data.updated_at, 0, 60)
+        && isValidBoundedStringList(data.allowedEmails, 30)
+        && isValidId(data.createdByUid)
+        && isValidId(data.updatedByUid)
+        && data.updatedByUid == request.auth.uid
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTemplate(data, officeId, templateKey) {
+      return data.keys().hasAll([
+          'key', 'officeId', 'fileName', 'updatedAtIso', 'dataBase64',
+          'allowedEmails', 'updatedByUid', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'key', 'officeId', 'fileName', 'updatedAtIso', 'dataBase64',
+          'allowedEmails', 'updatedByUid', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.key)
+        && data.key == templateKey
+        && isValidId(data.officeId)
+        && data.officeId == officeId
+        && isValidString(data.fileName, 1, 200)
+        && isValidString(data.updatedAtIso, 0, 60)
+        && isValidString(data.dataBase64, 1, 800000)
+        && isValidBoundedStringList(data.allowedEmails, 30)
+        && isValidId(data.updatedByUid)
+        && data.updatedByUid == request.auth.uid
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // ==================== COLLECTION RULES ====================
+
+    // 1. Private User Profiles (PII isolated to owner or bootstrapped admin)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isBootstrappedAdmin());
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'displayName', 'photoURL', 'activeOfficeId', 'updatedAt']);
+      allow delete: if isValidId(userId) && isOwner(userId);
+    }
+
+    // 2. Office Workspace Master Document
+    match /offices/{officeId} {
+      allow get: if isValidId(officeId) && isVerifiedUser() && (
+        isOfficeMember(officeId) ||
+        (request.auth.token.email is string && exists(inviteDocPath(officeId, authInviteKey())))
+      );
+      allow list: if isVerifiedUser() && (
+        isBootstrappedAdmin() ||
+        (
+          request.auth.token.email is string &&
+          resource.data.allowedEmails is list &&
+          authEmailLower() in resource.data.allowedEmails
+        )
+      );
+      allow create: if isValidId(officeId)
+        && isBootstrappedAdmin()
+        && isValidOfficeWorkspace(incoming(), officeId)
+        && incoming().ownerUid == request.auth.uid
+        && authEmailLower() in incoming().allowedEmails
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(officeId)
+        && isValidOfficeWorkspace(incoming(), officeId)
+        && incoming().id == existing().id
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isOfficeAdmin(officeId)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'ownerEmail', 'allowedEmails', 'updatedAt']);
+      allow delete: if isValidId(officeId) && isBootstrappedAdmin();
+
+      // 2a. Office Members (PII restricted to self or office admin)
+      match /members/{memberUid} {
+        allow get: if isValidId(officeId) && isValidId(memberUid) && (
+          isOwner(memberUid) || isOfficeAdmin(officeId)
+        );
+        allow list: if isVerifiedUser() && (
+          isBootstrappedAdmin() ||
+          resource.data.officeOwnerUid == request.auth.uid ||
+          resource.data.uid == request.auth.uid
+        );
+        allow create: if isValidId(officeId)
+          && isValidId(memberUid)
+          && isValidOfficeMember(incoming(), officeId, memberUid)
+          && exists(officePath(officeId))
+          && incoming().officeOwnerUid == get(officePath(officeId)).data.ownerUid
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && (
+            // Bootstrapped admin creating own admin membership
+            (
+              isBootstrappedAdmin() && memberUid == request.auth.uid && incoming().role == 'admin'
+            ) ||
+            // Existing office admin adding member
+            isOfficeAdmin(officeId) ||
+            // Invited staff accepting a verified invite with exact role match
+            (
+              isOwner(memberUid)
+              && request.auth.token.email is string
+              && incoming().email.lower() == authEmailLower()
+              && exists(inviteDocPath(officeId, authInviteKey()))
+              && get(inviteDocPath(officeId, authInviteKey())).data.emailLower == authEmailLower()
+              && get(inviteDocPath(officeId, authInviteKey())).data.role == incoming().role
+            )
+          );
+        allow update: if isValidId(officeId)
+          && isValidId(memberUid)
+          && isValidOfficeMember(incoming(), officeId, memberUid)
+          && incoming().uid == existing().uid
+          && incoming().officeId == existing().officeId
+          && incoming().officeOwnerUid == existing().officeOwnerUid
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && (
+            // Admin role/display update
+            (
+              isOfficeAdmin(officeId)
+              && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'displayName', 'email', 'updatedAt'])
+            ) ||
+            // Member updating own displayName/email only (cannot change role)
+            (
+              isOwner(memberUid)
+              && incoming().role == existing().role
+              && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'updatedAt'])
+            )
+          );
+        allow delete: if isValidId(officeId) && isValidId(memberUid) && isOfficeAdmin(officeId);
+      }
+
+      // 2b. Office Staff Invites (keyed by sanitized email ID)
+      match /invites/{inviteId} {
+        allow get: if isValidId(officeId) && isValidId(inviteId) && isVerifiedUser() && (
+          isOfficeAdmin(officeId) ||
+          (request.auth.token.email is string && inviteId == authInviteKey())
+        );
+        allow list: if isVerifiedUser() && (
+          isBootstrappedAdmin() ||
+          resource.data.createdByUid == request.auth.uid ||
+          (request.auth.token.email is string && resource.data.emailLower == authEmailLower())
+        );
+        allow create: if isValidId(officeId)
+          && isValidId(inviteId)
+          && isValidOfficeInvite(incoming(), officeId, inviteId)
+          && incoming().createdByUid == request.auth.uid
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(officePath(officeId))
+          && isOfficeAdmin(officeId);
+        allow update: if isValidId(officeId)
+          && isValidId(inviteId)
+          && isValidOfficeInvite(incoming(), officeId, inviteId)
+          && incoming().id == existing().id
+          && incoming().officeId == existing().officeId
+          && incoming().createdByUid == existing().createdByUid
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && isOfficeAdmin(officeId)
+          && incoming().diff(existing()).affectedKeys().hasOnly(['displayLabel', 'role', 'updatedAt']);
+        allow delete: if isValidId(officeId) && isValidId(inviteId) && isOfficeAdmin(officeId);
+      }
+
+      // 2c. Shared Office Settings (single document: office_settings)
+      match /config/{configId} {
+        allow get: if isValidId(officeId) && configId == 'office_settings' && isOfficeMember(officeId);
+        allow list: if false;
+        allow create: if isValidId(officeId)
+          && configId == 'office_settings'
+          && isValidOfficeConfig(incoming(), officeId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(officePath(officeId))
+          && isOfficeAdmin(officeId);
+        allow update: if isValidId(officeId)
+          && configId == 'office_settings'
+          && isValidOfficeConfig(incoming(), officeId)
+          && incoming().officeId == existing().officeId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && isOfficeAdmin(officeId)
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'nama_kecamatan', 'nama_kabupaten', 'nama_provinsi',
+            'nama_ppats', 'jabatan_ppats', 'nip_ppats',
+            'sk_ppats_nomor', 'sk_ppats_tanggal', 'sk_ppats_penerbit',
+            'alamat_kantor', 'telepon_kantor',
+            'daftar_saksi', 'daftar_kuasa_bpn', 'profil_saksi', 'profil_kuasa',
+            'npoptkp_umum', 'npoptkp_waris', 'updatedByUid', 'updatedAt'
+          ]);
+        allow delete: if false;
+      }
+
+      // 2d. Shared Berkas Register & Non-Akta Records
+      match /berkas/{berkasId} {
+        allow get: if isValidId(officeId) && isValidId(berkasId) && isOfficeMember(officeId);
+        allow list: if isVerifiedUser() && (
+          isBootstrappedAdmin() ||
+          (
+            request.auth.token.email is string &&
+            resource.data.allowedEmails is list &&
+            authEmailLower() in resource.data.allowedEmails
+          )
+        );
+        allow create: if isValidId(officeId)
+          && isValidId(berkasId)
+          && isValidBerkas(incoming(), officeId, berkasId)
+          && incoming().createdByUid == request.auth.uid
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(officePath(officeId))
+          && isOfficeMember(officeId)
+          && incoming().allowedEmails == get(officePath(officeId)).data.allowedEmails;
+        allow update: if isValidId(officeId)
+          && isValidId(berkasId)
+          && isValidBerkas(incoming(), officeId, berkasId)
+          && incoming().id == existing().id
+          && incoming().officeId == existing().officeId
+          && incoming().createdByUid == existing().createdByUid
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && (
+            // Tier 1: Office Admin can update any mutable field (including reopening terminal status or syncing allowedEmails)
+            (
+              isOfficeAdmin(officeId)
+              && incoming().diff(existing()).affectedKeys().hasOnly([
+                'no_urut', 'kode_berkas', 'tanggal_masuk', 'layanan', 'status',
+                'para_pihak', 'tanah', 'pbb', 'audit_warnings', 'akta',
+                'pajak', 'non_akta', 'updated_at', 'allowedEmails', 'updatedByUid', 'updatedAt'
+              ])
+            ) ||
+            // Tier 2: Office Staff can edit active (non-terminal) berkas fields without altering allowedEmails
+            (
+              isOfficeMember(officeId)
+              && existing().status != '5. Selesai'
+              && incoming().allowedEmails == existing().allowedEmails
+              && incoming().diff(existing()).affectedKeys().hasOnly([
+                'no_urut', 'kode_berkas', 'tanggal_masuk', 'layanan', 'status',
+                'para_pihak', 'tanah', 'pbb', 'audit_warnings', 'akta',
+                'pajak', 'non_akta', 'updated_at', 'updatedByUid', 'updatedAt'
+              ])
+            )
+          );
+        allow delete: if isValidId(officeId)
+          && isValidId(berkasId)
+          && (
+            isOfficeAdmin(officeId) ||
+            (isOfficeMember(officeId) && existing().status != '5. Selesai' && existing().createdByUid == request.auth.uid)
+          );
+      }
+
+      // 2e. Shared Custom Word Templates (.docx)
+      match /templates/{templateKey} {
+        allow get: if isValidId(officeId) && isValidId(templateKey) && isOfficeMember(officeId);
+        allow list: if isVerifiedUser() && (
+          isBootstrappedAdmin() ||
+          (
+            request.auth.token.email is string &&
+            resource.data.allowedEmails is list &&
+            authEmailLower() in resource.data.allowedEmails
+          )
+        );
+        allow create: if isValidId(officeId)
+          && isValidId(templateKey)
+          && isValidTemplate(incoming(), officeId, templateKey)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(officePath(officeId))
+          && isOfficeAdmin(officeId)
+          && incoming().allowedEmails == get(officePath(officeId)).data.allowedEmails;
+        allow update: if isValidId(officeId)
+          && isValidId(templateKey)
+          && isValidTemplate(incoming(), officeId, templateKey)
+          && incoming().key == existing().key
+          && incoming().officeId == existing().officeId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && isOfficeAdmin(officeId)
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'fileName', 'updatedAtIso', 'dataBase64', 'allowedEmails', 'updatedByUid', 'updatedAt'
+          ]);
+        allow delete: if isValidId(officeId) && isValidId(templateKey) && isOfficeAdmin(officeId);
+      }
+    }
+  }
+}
