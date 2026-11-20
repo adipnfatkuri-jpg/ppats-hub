@@ -333,6 +333,21 @@ function createGeminiClient(apiKey: string): GoogleGenAI {
   });
 }
 
+function isAbortOrTimeoutError(err: unknown): boolean {
+  if (typeof err === 'object' && err !== null) {
+    const obj = err as { name?: unknown; isTimeout?: unknown; message?: unknown };
+    if (obj.isTimeout === true) return true;
+    if (typeof obj.name === 'string' && obj.name === 'AbortError') return true;
+    if (
+      typeof obj.message === 'string' &&
+      /AbortError|aborted|ETIMEDOUT|timed out|timeout/i.test(obj.message)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function generateJsonWithFallback(
   ai: GoogleGenAI,
   parts: Array<{ inlineData: { mimeType: string; data: string } } | { text: string }>,
@@ -346,7 +361,11 @@ async function generateJsonWithFallback(
     timeoutMs: number
   ): Promise<GenerateContentResponse> => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let didTimeout = false;
+    const timer = setTimeout(() => {
+      didTimeout = true;
+      controller.abort();
+    }, timeoutMs);
     try {
       return await ai.models.generateContent({
         model,
@@ -358,6 +377,16 @@ async function generateJsonWithFallback(
           responseSchema,
         },
       });
+    } catch (err) {
+      if (didTimeout || isAbortOrTimeoutError(err)) {
+        const timeoutErr = new Error(
+          `Permintaan model ${model} melebihi batas waktu (${Math.round(timeoutMs / 1000)} detik).`
+        ) as Error & { status?: number; isTimeout?: boolean };
+        timeoutErr.status = 504;
+        timeoutErr.isTimeout = true;
+        throw timeoutErr;
+      }
+      throw err;
     } finally {
       clearTimeout(timer);
     }
@@ -371,7 +400,7 @@ async function generateJsonWithFallback(
   for (let i = 0; i < attempts.length; i++) {
     const attempt = attempts[i];
     if (i > 0) {
-      const backoffMs = Math.min(2500, 700 * Math.pow(2, i - 1));
+      const backoffMs = Math.min(2000, 600 * Math.pow(2, i - 1));
       await new Promise((resolve) => setTimeout(resolve, backoffMs));
     }
     try {
@@ -396,13 +425,12 @@ async function generateJsonWithFallback(
           : 0;
       const msg = callErr instanceof Error ? callErr.message : '';
       const isAbortOrTransient =
+        isAbortOrTimeoutError(callErr) ||
         status === 503 ||
         status === 502 ||
         status === 504 ||
         status === 429 ||
-        /AbortError|aborted|UNAVAILABLE|high demand|try again later|ECONNRESET|ETIMEDOUT/i.test(
-          msg
-        );
+        /UNAVAILABLE|high demand|try again later|ECONNRESET/i.test(msg);
       if (!isAbortOrTransient || i === attempts.length - 1) {
         throw callErr;
       }
@@ -443,21 +471,24 @@ export function mapGeminiError(err: unknown, fallbackLabel: string): ApiHttpErro
     /UNAUTHENTICATED|PERMISSION_DENIED|API_KEY_INVALID|API key not valid|ACCESS_TOKEN_TYPE_UNSUPPORTED/i.test(
       rawMessage
     );
-  const isTimeout = /AbortError|aborted|ETIMEDOUT/i.test(rawMessage);
+  const isTimeout = statusFromErr === 504 || isAbortOrTimeoutError(err);
+  const isUnavailable = statusFromErr === 503 || /UNAVAILABLE|high demand/i.test(rawMessage);
   const httpStatus = isTimeout
     ? 504
     : isAuthError
       ? statusFromErr === 403
         ? 403
         : 401
-      : statusFromErr >= 400 && statusFromErr < 600
-        ? statusFromErr
-        : 500;
+      : isUnavailable
+        ? 503
+        : statusFromErr >= 400 && statusFromErr < 600
+          ? statusFromErr
+          : 500;
 
-  if (httpStatus >= 500) {
+  if (httpStatus >= 500 && httpStatus !== 503 && httpStatus !== 504) {
     console.error('Gemini extraction error:', err);
   } else {
-    console.warn(`Gemini extraction rejected (${httpStatus}):`, rawMessage);
+    console.warn(`Gemini extraction notice (${httpStatus}):`, rawMessage);
   }
 
   let clientMessage = rawMessage;
@@ -470,7 +501,7 @@ export function mapGeminiError(err: unknown, fallbackLabel: string): ApiHttpErro
   } else if (httpStatus === 504 || isTimeout) {
     clientMessage =
       'Waktu pemindaian dokumen melebihi batas (timeout). Coba unggah 1–2 gambar lebih kecil atau gunakan Mode Cepat.';
-  } else if (httpStatus === 503 || /UNAVAILABLE|high demand/i.test(rawMessage)) {
+  } else if (httpStatus === 503 || isUnavailable) {
     clientMessage =
       'Layanan Gemini AI sedang mengalami lonjakan permintaan sementara (503). Silakan coba pindai ulang beberapa saat lagi.';
   } else if (
@@ -537,12 +568,12 @@ Jawab ringkas, padat, dan langsung dalam JSON valid sesuai skema.`,
   const attempts =
     scanMode === 'accurate'
       ? [
-          { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 22000 },
-          { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 16000 },
+          { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 36000 },
+          { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 20000 },
         ]
       : [
-          { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 15000 },
-          { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 18000 },
+          { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 32000 },
+          { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 24000 },
         ];
 
   const { parsed } = await generateJsonWithFallback(
@@ -590,9 +621,8 @@ Jawab langsung dalam JSON sesuai skema.`,
   ];
 
   const attempts = [
-    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 15000 },
-    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 18000 },
-    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 14000 },
+    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 28000 },
+    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 24000 },
   ];
 
   const { parsed, model, elapsedMs } = await generateJsonWithFallback(

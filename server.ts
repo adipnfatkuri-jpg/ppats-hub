@@ -39,8 +39,10 @@ async function startServer() {
 
       const body = (req.body ?? {}) as ExtractDocumentsRequestBody;
       const parsed = await extractDocumentsWithGemini(apiKey, body);
+      if (res.headersSent) return;
       return res.json(parsed);
     } catch (err: unknown) {
+      if (res.headersSent) return;
       const mapped = mapGeminiError(err, 'Gagal mengekstrak dokumen menggunakan Gemini API.');
       return res.status(mapped.status).json({ error: mapped.error });
     }
@@ -58,8 +60,10 @@ async function startServer() {
 
       const body = (req.body ?? {}) as ExtractPersonRequestBody;
       const result = await extractPersonWithGemini(apiKey, body);
+      if (res.headersSent) return;
       return res.json(result);
     } catch (err: unknown) {
+      if (res.headersSent) return;
       const mapped = mapGeminiError(err, 'Gagal memindai KTP saksi/kuasa menggunakan Gemini API.');
       return res.status(mapped.status).json({ error: mapped.error });
     }

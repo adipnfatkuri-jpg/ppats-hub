@@ -93,7 +93,10 @@ export async function postScanJson<T>(
       body: JSON.stringify(payload),
     });
   } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
+    const isAbort =
+      (err instanceof DOMException && err.name === 'AbortError') ||
+      (err instanceof Error && err.name === 'AbortError');
+    if (isAbort) {
       throw err;
     }
     throw new Error(

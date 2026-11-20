@@ -588,7 +588,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     const timeoutId = window.setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, 55000);
+    }, 75000);
 
     setExtracting(true);
     setExtractError(null);
@@ -701,12 +701,14 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       onNotify('Ekstraksi dokumen AI selesai. Silakan verifikasi hasil pada Langkah 2.', 'success');
       setStep(2);
     } catch (err) {
-      const isAbort = err instanceof DOMException && err.name === 'AbortError';
+      const isAbort =
+        (err instanceof DOMException && err.name === 'AbortError') ||
+        (err instanceof Error && err.name === 'AbortError');
       if (isAbort && !timedOut) {
         return;
       }
       const msg = isAbort
-        ? 'Pemindaian dokumen melebihi batas waktu 55 detik. Perkecil jumlah halaman atau gunakan Mode Cepat.'
+        ? 'Pemindaian dokumen melebihi batas waktu 75 detik. Perkecil jumlah halaman atau gunakan Mode Cepat.'
         : err instanceof Error
         ? err.message
         : 'Terjadi kesalahan saat mengekstrak dokumen.';
