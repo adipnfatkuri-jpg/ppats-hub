@@ -54,6 +54,7 @@ import {
   formatTanggalLengkapHuruf,
   todayDdMmYyyy,
 } from '../utils/indonesianFormatter';
+import { resolveAccurateLuasBumiM2 } from '../utils/bphtbObjectScan';
 import {
   estimateScanPayloadBytes,
   formatCompactFileSize,
@@ -662,10 +663,15 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             detectedCertType === 'analog' ? parsed.tanah.nomor_hak_lama || '' : '',
           surat_ukur_tanggal: parsed.tanah.surat_ukur_tanggal || '',
           surat_ukur_nomor: parsed.tanah.surat_ukur_nomor || '',
-          luas_m2: Number(parsed.tanah.luas_m2) || 0,
-          desa: parsed.tanah.desa || '',
-          kecamatan: parsed.tanah.kecamatan || '',
-          kabupaten: parsed.tanah.kabupaten || settings.nama_kabupaten,
+          luas_m2:
+            resolveAccurateLuasBumiM2(parsed.tanah.luas_m2, parsed.pbb) ??
+            (Number(parsed.tanah.luas_m2) || 0),
+          desa: parsed.tanah.desa || parsed.pbb?.letak_objek_desa || '',
+          kecamatan: parsed.tanah.kecamatan || parsed.pbb?.letak_objek_kecamatan || '',
+          kabupaten:
+            parsed.tanah.kabupaten ||
+            parsed.pbb?.letak_objek_kabupaten ||
+            settings.nama_kabupaten,
           provinsi: parsed.tanah.provinsi || settings.nama_provinsi || 'Jawa Tengah',
           batas_utara: parsed.tanah.batas_utara || '',
           batas_timur: parsed.tanah.batas_timur || '',

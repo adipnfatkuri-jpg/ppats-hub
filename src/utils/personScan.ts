@@ -49,7 +49,7 @@ export function normalizeScannedPersonInfo(
  */
 export async function scanPersonFromFiles(
   files: File[],
-  roleLabel: 'Saksi' | 'Kuasa BPN',
+  roleLabel: string,
   options?: { signal?: AbortSignal }
 ): Promise<ExtractPersonApiResponse> {
   if (!files || files.length === 0) {

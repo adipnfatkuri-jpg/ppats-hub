@@ -309,8 +309,17 @@ export interface ExtractionApiResponse {
   pbb: {
     nop: string;
     tahun_pajak: string;
+    letak_objek_lokasi?: string;
+    letak_objek_rt_rw?: string;
+    letak_objek_desa?: string;
+    letak_objek_kecamatan?: string;
+    letak_objek_kabupaten?: string;
+    luas_bumi_m2?: number;
+    luas_bangunan_m2?: number;
     njop_bumi_m2: number;
+    njop_bumi_total?: number;
     njop_bangunan: number;
+    nama_wp_pbb?: string;
   };
   audit_warnings: Array<{
     tingkat: 'tinggi' | 'sedang' | 'info';

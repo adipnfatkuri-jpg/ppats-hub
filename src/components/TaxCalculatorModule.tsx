@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Calculator,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
   FilePlus2,
   FolderCheck,
+  Landmark,
   Pencil,
   Printer,
   RotateCcw,
@@ -29,6 +34,18 @@ import {
   getDefaultNpoptkp,
   summarizeTaxBreakdown,
 } from '../utils/taxAndAudit';
+import {
+  BphtbSubmissionFormData,
+  SIPAD_BOYOLALI_URL,
+  buildInitialBphtbFormData,
+  getBphtbDocumentList,
+  isAjbService,
+  isHibahService,
+} from '../utils/bphtbSubmissionGenerator';
+import {
+  BphtbGeneratedState,
+  BphtbSubmissionSection,
+} from './BphtbSubmissionSection';
 
 interface TaxCalculatorModuleProps {
   records: BerkasRecord[];
@@ -100,6 +117,11 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
   );
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showBphtbPanel, setShowBphtbPanel] = useState(false);
+  const [bphtbForm, setBphtbForm] = useState<BphtbSubmissionFormData>(() =>
+    buildInitialBphtbFormData(settings, initialRecord)
+  );
+  const [bphtbGenerated, setBphtbGenerated] = useState<BphtbGeneratedState | null>(null);
 
   useEffect(() => {
     if (initialRecordId) {
@@ -108,6 +130,8 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
         setMode('linked');
         setSelectedRecordId(target.id);
         setForm(buildDraftFromRecord(target, settings));
+        setBphtbForm(buildInitialBphtbFormData(settings, target));
+        setBphtbGenerated(null);
       }
     }
   }, [initialRecordId, records, settings]);
@@ -136,14 +160,23 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
     [taxResult]
   );
 
+  const bphtbDocs = useMemo(
+    () => getBphtbDocumentList(form.layanan),
+    [form.layanan]
+  );
+
   const handleModeChange = (nextMode: TaxMode) => {
     setMode(nextMode);
+    setBphtbGenerated(null);
     if (nextMode === 'linked') {
       const target = selectedRecord ?? records[0] ?? null;
       if (target) {
         setSelectedRecordId(target.id);
         setForm(buildDraftFromRecord(target, settings));
+        setBphtbForm(buildInitialBphtbFormData(settings, target));
       }
+    } else {
+      setBphtbForm(buildInitialBphtbFormData(settings, null));
     }
   };
 
@@ -153,6 +186,8 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
     if (target) {
       setMode('linked');
       setForm(buildDraftFromRecord(target, settings));
+      setBphtbForm(buildInitialBphtbFormData(settings, target));
+      setBphtbGenerated(null);
     }
   };
 
@@ -160,6 +195,8 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
     setMode('linked');
     setSelectedRecordId(record.id);
     setForm(buildDraftFromRecord(record, settings));
+    setBphtbForm(buildInitialBphtbFormData(settings, record));
+    setBphtbGenerated(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -169,11 +206,28 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
       layanan: nextLayanan,
       npoptkp: getDefaultNpoptkp(nextLayanan, settings),
     }));
+    setBphtbGenerated(null);
   };
 
   const handleResetStandalone = () => {
     setMode('standalone');
     setForm(buildEmptyDraft(settings));
+    setBphtbForm(buildInitialBphtbFormData(settings, null));
+    setBphtbGenerated(null);
+  };
+
+  const handleToggleBphtbPanel = () => {
+    setShowBphtbPanel((prev) => {
+      const next = !prev;
+      if (next) {
+        window.setTimeout(() => {
+          document
+            .getElementById('bphtb-submission-panel')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 60);
+      }
+      return next;
+    });
   };
 
   const handleSaveTaxToRecord = async () => {
@@ -621,6 +675,76 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                 {formatRupiah(taxSummary.total_pajak)}
               </span>
             </div>
+
+            {/* Menu Pengajuan BPHTB (SIPAD Boyolali) tepat di bawah Total Estimasi Pajak */}
+            <div className="p-4 rounded-xl border border-sky-200 bg-sky-50/50 space-y-3 text-xs">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2.5">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-sky-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                    <Landmark className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="font-semibold text-slate-900">
+                        Pengajuan BPHTB (SIPAD Boyolali)
+                      </p>
+                      {isAjbService(form.layanan) && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                          + Bukti Transaksi
+                        </span>
+                      )}
+                      {isHibahService(form.layanan) && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          + Surat Pernyataan Hibah
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
+                      Buat formulir pengajuan:{' '}
+                      <span className="font-medium text-slate-800">
+                        {bphtbDocs.map((d) => d.shortLabel).join(', ')}
+                      </span>
+                      .
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleToggleBphtbPanel}
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-semibold transition-colors whitespace-nowrap shrink-0"
+                >
+                  <span>
+                    {showBphtbPanel ? 'Tutup Formulir BPHTB' : 'Buat Formulir Pengajuan BPHTB'}
+                  </span>
+                  {showBphtbPanel ? (
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+
+              {bphtbGenerated && (
+                <div className="pt-2.5 border-t border-sky-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>
+                      Berkas selesai dibuat ({bphtbGenerated.docCount} formulir · {bphtbGenerated.generatedAt})
+                    </span>
+                  </div>
+                  <a
+                    href={SIPAD_BOYOLALI_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors whitespace-nowrap"
+                  >
+                    <span>Ajukan Sekarang</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Workflow Bridge Actions */}
@@ -667,6 +791,49 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Expandable Formulir Pengajuan BPHTB Workspace */}
+      {showBphtbPanel && (
+        <BphtbSubmissionSection
+          taxForm={form}
+          taxResult={taxResult}
+          settings={settings}
+          linkedRecord={mode === 'linked' ? selectedRecord : null}
+          form={bphtbForm}
+          onChangeForm={setBphtbForm}
+          onSyncTaxFromObjectScan={(patch) => {
+            setForm((prev) => ({
+              ...prev,
+              luas_m2:
+                patch.luas_m2 !== undefined && patch.luas_m2 > 0
+                  ? patch.luas_m2
+                  : prev.luas_m2,
+              njop_bumi_m2:
+                patch.njop_bumi_m2 !== undefined && patch.njop_bumi_m2 > 0
+                  ? patch.njop_bumi_m2
+                  : prev.njop_bumi_m2,
+              njop_bangunan:
+                patch.njop_bangunan !== undefined && patch.njop_bangunan > 0
+                  ? patch.njop_bangunan
+                  : prev.njop_bangunan,
+            }));
+          }}
+          onResetFromSource={() => {
+            setBphtbForm(
+              buildInitialBphtbFormData(
+                settings,
+                mode === 'linked' ? selectedRecord : null
+              )
+            );
+            setBphtbGenerated(null);
+            onNotify('Data formulir pengajuan BPHTB dimuat ulang dari sumber aktif.', 'success');
+          }}
+          generatedState={bphtbGenerated}
+          onGenerated={setBphtbGenerated}
+          onClose={() => setShowBphtbPanel(false)}
+          onNotify={onNotify}
+        />
+      )}
 
       {/* Bottom Registered Records Quick Tax Table */}
       <div className="no-print bg-white border border-slate-200 rounded-xl overflow-hidden">

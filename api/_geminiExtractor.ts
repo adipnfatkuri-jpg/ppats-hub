@@ -158,14 +158,67 @@ export const extractionResponseSchema = {
     },
     pbb: {
       type: Type.OBJECT,
-      description: 'Data SPPT PBB-P2.',
+      description: 'Data SPPT PBB-P2 lengkap termasuk kolom kiri LETAK OBJEK PAJAK.',
       properties: {
         nop: { type: Type.STRING, description: 'Nomor Objek Pajak (NOP) 18 digit.' },
         tahun_pajak: { type: Type.STRING },
+        letak_objek_lokasi: {
+          type: Type.STRING,
+          description:
+            'Nama dukuh/dusun/kampung/jalan pada baris pertama kolom kiri LETAK OBJEK PAJAK (contoh: GORONGAN), TANPA RT/RW dan BUKAN alamat Wajib Pajak di kolom kanan.',
+        },
+        letak_objek_rt_rw: {
+          type: Type.STRING,
+          description:
+            'RT dan RW dari kolom kiri LETAK OBJEK PAJAK dalam format "002/003" (dari "RT. 002 RW. 003"). BUKAN RT/RW Wajib Pajak di kolom kanan.',
+        },
+        letak_objek_desa: {
+          type: Type.STRING,
+          description: 'Nama Desa/Kelurahan pada kolom kiri LETAK OBJEK PAJAK (contoh: DONOHUDAN).',
+        },
+        letak_objek_kecamatan: {
+          type: Type.STRING,
+          description: 'Nama Kecamatan pada kolom kiri LETAK OBJEK PAJAK (contoh: NGEMPLAK).',
+        },
+        letak_objek_kabupaten: {
+          type: Type.STRING,
+          description: 'Nama Kabupaten/Kota pada kolom kiri LETAK OBJEK PAJAK (contoh: BOYOLALI).',
+        },
+        luas_bumi_m2: {
+          type: Type.NUMBER,
+          description:
+            'Luas BUMI (m2) dari tabel OBJEK PAJAK SPPT PBB. Jika cetakan angka terpotong 2 baris (misal "16" dan "0" di bawahnya), gabungkan menjadi angka utuh (160) dan verifikasi dengan TOTAL NJOP BUMI / NJOP PER m2.',
+        },
+        luas_bangunan_m2: {
+          type: Type.NUMBER,
+          description: 'Luas BANGUNAN (m2) dari tabel OBJEK PAJAK SPPT PBB (isi 0 bila tidak ada bangunan).',
+        },
         njop_bumi_m2: { type: Type.NUMBER, description: 'NJOP Bumi per m2 dalam rupiah.' },
+        njop_bumi_total: {
+          type: Type.NUMBER,
+          description: 'TOTAL NJOP BUMI dalam rupiah pada tabel OBJEK PAJAK SPPT PBB.',
+        },
         njop_bangunan: { type: Type.NUMBER, description: 'Total NJOP Bangunan dalam rupiah.' },
+        nama_wp_pbb: {
+          type: Type.STRING,
+          description: 'Nama Wajib Pajak pada kolom kanan NAMA DAN ALAMAT WAJIB PAJAK di SPPT PBB.',
+        },
       },
-      required: ['nop', 'tahun_pajak', 'njop_bumi_m2', 'njop_bangunan'],
+      required: [
+        'nop',
+        'tahun_pajak',
+        'letak_objek_lokasi',
+        'letak_objek_rt_rw',
+        'letak_objek_desa',
+        'letak_objek_kecamatan',
+        'letak_objek_kabupaten',
+        'luas_bumi_m2',
+        'luas_bangunan_m2',
+        'njop_bumi_m2',
+        'njop_bumi_total',
+        'njop_bangunan',
+        'nama_wp_pbb',
+      ],
     },
     audit_warnings: {
       type: Type.ARRAY,
@@ -554,7 +607,14 @@ Instruksi ekstraksi ketat:
    - Pasangan sah dari Pihak I yang satu KK atau tercatat kawin -> "Persetujuan Pasangan"
    - Saksi atau anggota keluarga lain yang tidak ikut dalam peralihan -> "Lampiran Lain"
 3. Ekstrak detail objek tanah dari Sertipikat Tanah / Sertipikat Elektronik ke "tanah": tentukan "jenis_sertipikat" ("digital" bila Sertipikat Elektronik yang hanya memakai NIBel, atau "analog" bila sertipikat buku tanah fisik), serta isi NIB/NIBel, nomor_hak_lama, surat_ukur_tanggal, surat_ukur_nomor (untuk analog), luas m2 sebagai angka, provinsi, batas utara/timur/selatan/barat bila tercantum, dan daftar nama pemegang hak di sertipikat.
-4. Ekstrak data SPPT PBB ke "pbb" (NOP, tahun pajak, NJOP bumi per m2, dan NJOP bangunan).
+4. Ekstrak data SPPT PBB ke "pbb" secara sangat teliti:
+   - Ambil NOP, tahun pajak, NJOP bumi per m2, TOTAL NJOP bumi, NJOP bangunan, luas bumi m2, dan luas bangunan m2.
+   - Hati-hati jika cetakan angka LUAS BUMI di SPPT PBB terpotong dua baris (misal baris atas "16" dan baris bawah "0" berarti 160 m2): selalu cocokkan agar luas_bumi_m2 × njop_bumi_m2 ≈ njop_bumi_total.
+   - WAJIB pisahkan kolom kiri "LETAK OBJEK PAJAK" dari kolom kanan "NAMA DAN ALAMAT WAJIB PAJAK":
+     * letak_objek_lokasi = nama dukuh/dusun/jalan baris pertama di bawah LETAK OBJEK PAJAK (contoh: "GORONGAN"), JANGAN isi dengan nama desa dan JANGAN ambil dari alamat wajib pajak di kolom kanan.
+     * letak_objek_rt_rw = nomor RT/RW dari kolom kiri LETAK OBJEK PAJAK dalam format "002/003" (contoh dari "RT. 002 RW. 003" -> "002/003"), JANGAN ambil RT/RW wajib pajak di kolom kanan.
+     * letak_objek_desa, letak_objek_kecamatan, letak_objek_kabupaten = desa, kecamatan, kabupaten dari kolom kiri LETAK OBJEK PAJAK.
+     * nama_wp_pbb = nama wajib pajak pada kolom kanan NAMA DAN ALAMAT WAJIB PAJAK.
 5. Lakukan audit silang antar dokumen dan laporkan ke "audit_warnings" jika ditemukan:
    - Selisih RT/RW, desa, atau alamat antar KTP/KK/Sertipikat
    - NIK ganda
@@ -583,7 +643,67 @@ Jawab ringkas, padat, dan langsung dalam JSON valid sesuai skema.`,
     attempts,
     'extraction'
   );
-  return parsed;
+  return normalizeExtractionOutput(parsed);
+}
+
+function normalizeSpptRtRwServer(raw?: unknown): string {
+  const text = typeof raw === 'string' ? raw.replace(/\s+/g, ' ').trim() : '';
+  if (!text || text === '-' || text === '/') return '';
+  const explicit = /\bRT\.?\s*[:.]?\s*(\d{1,3})\s*[/,-]?\s*RW\.?\s*[:.]?\s*(\d{1,3})\b/i.exec(text);
+  if (explicit) return `${explicit[1]}/${explicit[2]}`;
+  const slash = /\b(\d{1,3})\s*[/\-]\s*(\d{1,3})\b/.exec(text);
+  if (slash) return `${slash[1]}/${slash[2]}`;
+  return '';
+}
+
+function normalizeExtractionOutput(parsed: unknown): unknown {
+  if (!parsed || typeof parsed !== 'object') return parsed;
+  const obj = parsed as Record<string, unknown>;
+  const pbb = obj.pbb && typeof obj.pbb === 'object' ? (obj.pbb as Record<string, unknown>) : null;
+  const tanah =
+    obj.tanah && typeof obj.tanah === 'object' ? (obj.tanah as Record<string, unknown>) : null;
+
+  if (pbb) {
+    const rawLokasi =
+      typeof pbb.letak_objek_lokasi === 'string' ? pbb.letak_objek_lokasi.replace(/\s+/g, ' ').trim() : '';
+    const directRtRw = normalizeSpptRtRwServer(pbb.letak_objek_rt_rw);
+    const embeddedRtRw = normalizeSpptRtRwServer(rawLokasi);
+    const cleanedLokasi = rawLokasi
+      .replace(/,?\s*\bRT\.?\s*[:.]?\s*\d{1,3}\s*[/,-]?\s*RW\.?\s*[:.]?\s*\d{1,3}\b/gi, '')
+      .replace(/,?\s*\bRT\.?\s*[:.]?\s*\d{1,3}\b/gi, '')
+      .replace(/,?\s*\bRW\.?\s*[:.]?\s*\d{1,3}\b/gi, '')
+      .replace(/^[,.\s-]+|[,.\s-]+$/g, '')
+      .trim();
+
+    pbb.letak_objek_lokasi = cleanedLokasi;
+    pbb.letak_objek_rt_rw = directRtRw || embeddedRtRw;
+
+    const origPbbLuas = Number(pbb.luas_bumi_m2) || 0;
+    const njopPerM2 = Number(pbb.njop_bumi_m2) || 0;
+    const njopTotal = Number(pbb.njop_bumi_total) || 0;
+
+    if (njopPerM2 > 0 && njopTotal > 0) {
+      const derived = njopTotal / njopPerM2;
+      const isCleanInteger = Math.abs(derived - Math.round(derived)) < 0.01;
+      const repairedLuas = isCleanInteger ? Math.round(derived) : Math.round(derived * 100) / 100;
+
+      const pbbDisagrees =
+        origPbbLuas <= 0 ||
+        (isCleanInteger && Math.abs(origPbbLuas * njopPerM2 - njopTotal) > njopPerM2 * 0.5);
+
+      if (pbbDisagrees && repairedLuas > 0) {
+        pbb.luas_bumi_m2 = repairedLuas;
+        if (tanah) {
+          const origTanahLuas = Number(tanah.luas_m2) || 0;
+          if (origTanahLuas <= 0 || origTanahLuas === origPbbLuas) {
+            tanah.luas_m2 = repairedLuas;
+          }
+        }
+      }
+    }
+  }
+
+  return obj;
 }
 
 export async function extractPersonWithGemini(
