@@ -168,11 +168,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const chunk = 0x2000;
   for (let i = 0; i < bytes.length; i += chunk) {
     const slice = bytes.subarray(i, i + chunk);
-    let str = '';
-    for (let j = 0; j < slice.length; j++) {
-      str += String.fromCharCode(slice[j]);
-    }
-    parts.push(str);
+    parts.push(String.fromCharCode.apply(null, slice as unknown as number[]));
   }
   return btoa(parts.join(''));
 }
@@ -236,18 +232,18 @@ async function canvasToJpegPayload(
 }
 
 /**
- * Mengompresi dan memperkecil gambar beresolusi besar (misal foto kamera HP 3-12 MB)
- * ke max sisi 1280px JPEG q=0.78 agar payload upload & waktu scan Gemini jauh lebih cepat
- * serta stabil di perangkat Android/iOS maupun server cloud.
+ * Mengompresi dan memperkecil gambar beresolusi besar (misal foto kamera HP 3-12 MB atau screenshot PNG lebar)
+ * ke max sisi 1080px JPEG q=0.74 agar payload upload & jumlah token visi Gemini jauh lebih cepat
+ * sambil menjaga keterbacaan angka NIK, NOP, dan NJOP tetap tajam.
  */
 export async function optimizeDocumentFile(
   file: File,
   options?: { maxEdge?: number; quality?: number; skipBelowBytes?: number }
 ): Promise<OptimizedFilePayload> {
   const originalSize = file.size;
-  const maxEdge = options?.maxEdge ?? 1280;
-  const quality = options?.quality ?? 0.78;
-  const skipBelowBytes = options?.skipBelowBytes ?? 180 * 1024;
+  const maxEdge = options?.maxEdge ?? 1080;
+  const quality = options?.quality ?? 0.74;
+  const skipBelowBytes = options?.skipBelowBytes ?? 90 * 1024;
 
   const rawBuf = await file.arrayBuffer();
   const headerBytes = new Uint8Array(rawBuf, 0, Math.min(16, rawBuf.byteLength));
@@ -263,9 +259,11 @@ export async function optimizeDocumentFile(
   const isImage = resolvedMime.startsWith('image/') && resolvedMime !== 'image/svg+xml';
   const mustTranscode = isImage && !NATIVELY_ACCEPTED_RAW_IMAGE_MIMES.has(resolvedMime);
 
+  // Hanya lewati decode jika sudah JPEG yang sangat kecil (<= skipBelowBytes);
+  // PNG/WebP tetap dicek dimensinya agar screenshot lebar tidak memicu banyak vision tile di Gemini.
   if (
     !isImage ||
-    (!mustTranscode && rawBuf.byteLength <= skipBelowBytes) ||
+    (!mustTranscode && resolvedMime === 'image/jpeg' && rawBuf.byteLength <= skipBelowBytes) ||
     typeof document === 'undefined'
   ) {
     return fallbackRaw();
@@ -280,6 +278,9 @@ export async function optimizeDocumentFile(
         const bitmap = await createImageBitmap(sourceBlob);
         try {
           const target = computeScaledDimensions(bitmap.width, bitmap.height, maxEdge);
+          if (!mustTranscode && !target.wasScaled && rawBuf.byteLength <= skipBelowBytes) {
+            return fallbackRaw();
+          }
           const canvas = document.createElement('canvas');
           canvas.width = target.width;
           canvas.height = target.height;
@@ -289,7 +290,7 @@ export async function optimizeDocumentFile(
             ctx.fillRect(0, 0, target.width, target.height);
             ctx.drawImage(bitmap, 0, 0, target.width, target.height);
             const encoded = await canvasToJpegPayload(canvas, quality, originalSize);
-            if (encoded && (mustTranscode || encoded.size < rawBuf.byteLength)) {
+            if (encoded && (mustTranscode || target.wasScaled || encoded.size < rawBuf.byteLength)) {
               return encoded;
             }
           }
@@ -312,6 +313,9 @@ export async function optimizeDocumentFile(
       });
 
       const target = computeScaledDimensions(img.naturalWidth, img.naturalHeight, maxEdge);
+      if (!mustTranscode && !target.wasScaled && rawBuf.byteLength <= skipBelowBytes) {
+        return fallbackRaw();
+      }
       const canvas = document.createElement('canvas');
       canvas.width = target.width;
       canvas.height = target.height;
@@ -324,7 +328,7 @@ export async function optimizeDocumentFile(
       ctx.drawImage(img, 0, 0, target.width, target.height);
 
       const encoded = await canvasToJpegPayload(canvas, quality, originalSize);
-      if (!encoded || (!mustTranscode && encoded.size >= rawBuf.byteLength)) {
+      if (!encoded || (!mustTranscode && !target.wasScaled && encoded.size >= rawBuf.byteLength)) {
         return fallbackRaw();
       }
       return encoded;

@@ -28,8 +28,17 @@ export function normalizeScannedPersonInfo(
     clean(val).replace(/^(RT|RW)\s*[:.]?\s*/i, '');
 
   const nama = clean(raw?.nama) || clean(fallbackName);
+  const rawGender = clean(raw?.jenis_kelamin);
+  const normalizedGender = rawGender
+    ? /perempuan|wanita|^p$/i.test(rawGender)
+      ? 'Perempuan'
+      : /laki|pria|^l$/i.test(rawGender)
+        ? 'Laki-laki'
+        : rawGender
+    : '';
+  const normalizedMarital = clean(raw?.status_perkawinan).toUpperCase();
 
-  return {
+  const result: PersonBasicInfo = {
     nama,
     nik: rawNik || clean(raw?.nik),
     pekerjaan: clean(raw?.pekerjaan),
@@ -42,6 +51,15 @@ export function normalizeScannedPersonInfo(
     kecamatan: clean(raw?.kecamatan),
     kabupaten: clean(raw?.kabupaten),
   };
+
+  if (normalizedGender) {
+    result.jenis_kelamin = normalizedGender;
+  }
+  if (normalizedMarital) {
+    result.status_perkawinan = normalizedMarital;
+  }
+
+  return result;
 }
 
 /**
@@ -58,7 +76,11 @@ export async function scanPersonFromFiles(
 
   const optimized = await Promise.all(
     files.map(async (f) => {
-      const payload = await optimizeDocumentFile(f);
+      const payload = await optimizeDocumentFile(f, {
+        maxEdge: 960,
+        quality: 0.72,
+        skipBelowBytes: 75 * 1024,
+      });
       return {
         name: f.name,
         mimeType: payload.mimeType,

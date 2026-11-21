@@ -2,7 +2,6 @@ import {
   GoogleGenAI,
   ThinkingLevel,
   Type,
-  type GenerateContentResponse,
 } from '@google/genai';
 
 export interface UploadedDocPayload {
@@ -14,6 +13,7 @@ export interface UploadedDocPayload {
 export interface ExtractDocumentsRequestBody {
   layanan?: string;
   scanMode?: 'fast' | 'accurate';
+  scope?: 'full' | 'object_only';
   files?: UploadedDocPayload[];
 }
 
@@ -27,42 +27,110 @@ export interface ApiHttpError {
   error: string;
 }
 
+const tanahSchemaProperties = {
+  jenis_sertipikat: {
+    type: Type.STRING,
+    description: '"digital" (NIBel) atau "analog" (No SHM + Surat Ukur).',
+  },
+  jenis_hak: { type: Type.STRING, description: 'Hak Milik / HGB / Hak Pakai.' },
+  nib: { type: Type.STRING, description: 'NIB atau NIBel.' },
+  nomor_hak_lama: { type: Type.STRING, description: 'No SHM/Hak (analog), kosongkan jika digital.' },
+  surat_ukur_tanggal: { type: Type.STRING, description: 'Tanggal SU (analog).' },
+  surat_ukur_nomor: { type: Type.STRING, description: 'Nomor SU (analog).' },
+  luas_m2: { type: Type.NUMBER, description: 'Luas bidang tanah (m2).' },
+  desa: { type: Type.STRING },
+  kecamatan: { type: Type.STRING },
+  kabupaten: { type: Type.STRING },
+  provinsi: { type: Type.STRING },
+  batas_utara: { type: Type.STRING },
+  batas_timur: { type: Type.STRING },
+  batas_selatan: { type: Type.STRING },
+  batas_barat: { type: Type.STRING },
+  dasar_perolehan: { type: Type.STRING },
+  pemegang_hak_sertipikat: { type: Type.ARRAY, items: { type: Type.STRING } },
+};
+
+const pbbSchemaProperties = {
+  nop: { type: Type.STRING, description: 'NOP 18 digit.' },
+  tahun_pajak: { type: Type.STRING },
+  letak_objek_lokasi: {
+    type: Type.STRING,
+    description:
+      'Dukuh/dusun/jalan baris 1 kolom kiri LETAK OBJEK PAJAK (mis. GORONGAN), tanpa RT/RW, BUKAN kolom kanan WP.',
+  },
+  letak_objek_rt_rw: {
+    type: Type.STRING,
+    description: 'RT/RW kolom kiri LETAK OBJEK PAJAK format "002/003", BUKAN RT/RW kolom kanan WP.',
+  },
+  letak_objek_desa: { type: Type.STRING, description: 'Desa kolom kiri LETAK OBJEK PAJAK.' },
+  letak_objek_kecamatan: { type: Type.STRING, description: 'Kecamatan kolom kiri LETAK OBJEK PAJAK.' },
+  letak_objek_kabupaten: { type: Type.STRING, description: 'Kabupaten kolom kiri LETAK OBJEK PAJAK.' },
+  luas_bumi_m2: {
+    type: Type.NUMBER,
+    description: 'Luas BUMI m2 (gabungkan jika angka terpotong 2 baris, cocokkan dgn njop_bumi_total/njop_bumi_m2).',
+  },
+  luas_bangunan_m2: { type: Type.NUMBER, description: 'Luas BANGUNAN m2 (0 bila kosong).' },
+  njop_bumi_m2: { type: Type.NUMBER, description: 'NJOP Bumi per m2 (Rp).' },
+  njop_bumi_total: { type: Type.NUMBER, description: 'TOTAL NJOP Bumi (Rp).' },
+  njop_bangunan: { type: Type.NUMBER, description: 'Total NJOP Bangunan (Rp).' },
+  nama_wp_pbb: { type: Type.STRING, description: 'Nama Wajib Pajak kolom kanan SPPT.' },
+};
+
+export const objectExtractionResponseSchema = {
+  type: Type.OBJECT,
+  properties: {
+    tanah: {
+      type: Type.OBJECT,
+      properties: tanahSchemaProperties,
+      required: ['jenis_hak', 'nib', 'nomor_hak_lama', 'luas_m2', 'desa', 'kecamatan', 'kabupaten'],
+    },
+    pbb: {
+      type: Type.OBJECT,
+      properties: pbbSchemaProperties,
+      required: [
+        'nop',
+        'tahun_pajak',
+        'letak_objek_lokasi',
+        'letak_objek_rt_rw',
+        'letak_objek_desa',
+        'letak_objek_kecamatan',
+        'letak_objek_kabupaten',
+        'luas_bumi_m2',
+        'luas_bangunan_m2',
+        'njop_bumi_m2',
+        'njop_bumi_total',
+        'njop_bangunan',
+        'nama_wp_pbb',
+      ],
+    },
+  },
+  required: ['tanah', 'pbb'],
+};
+
 export const extractionResponseSchema = {
   type: Type.OBJECT,
   properties: {
     para_pihak: {
       type: Type.ARRAY,
-      description:
-        'Daftar seluruh subjek hukum / orang yang ditemukan pada KTP, KK, Sertipikat, atau SKW.',
       items: {
         type: Type.OBJECT,
         properties: {
           peran_saran: {
             type: Type.STRING,
-            description:
-              'Saran peran: "Pihak I", "Pihak II", "Persetujuan Pasangan", atau "Lampiran Lain".',
+            description: '"Pihak I" | "Pihak II" | "Persetujuan Pasangan" | "Lampiran Lain".',
           },
-          nik: { type: Type.STRING, description: 'Nomor Induk Kependudukan (16 digit).' },
-          nama: {
-            type: Type.STRING,
-            description: 'Nama lengkap sesuai KTP/KK tanpa gelar jika tidak ada.',
-          },
+          nik: { type: Type.STRING },
+          nama: { type: Type.STRING },
           tempat_lahir: { type: Type.STRING },
-          tanggal_lahir: {
-            type: Type.STRING,
-            description: 'Format DD-MM-YYYY (hari-bulan-tahun, misal 28-09-1974).',
-          },
+          tanggal_lahir: { type: Type.STRING, description: 'DD-MM-YYYY.' },
           jenis_kelamin: { type: Type.STRING, description: 'Laki-laki atau Perempuan.' },
-          alamat_jalan: { type: Type.STRING, description: 'Nama jalan/dukuh/dusun/kampung.' },
+          alamat_jalan: { type: Type.STRING },
           rt_rw: { type: Type.STRING, description: 'Format 001/002.' },
           desa_kelurahan: { type: Type.STRING },
           kecamatan: { type: Type.STRING },
           kabupaten: { type: Type.STRING },
           pekerjaan: { type: Type.STRING },
-          status_perkawinan: {
-            type: Type.STRING,
-            description: 'Contoh: KAWIN, BELUM KAWIN, CERAI HIDUP, CERAI MATI.',
-          },
+          status_perkawinan: { type: Type.STRING },
         },
         required: [
           'peran_saran',
@@ -83,67 +151,7 @@ export const extractionResponseSchema = {
     },
     tanah: {
       type: Type.OBJECT,
-      description: 'Data objek bidang tanah dari Sertipikat Tanah / Sertipikat Elektronik.',
-      properties: {
-        jenis_sertipikat: {
-          type: Type.STRING,
-          description:
-            'Pilih "digital" untuk Sertipikat Elektronik (hanya NIBel tanpa Nomor SHM/Surat Ukur) atau "analog" untuk Sertipikat Fisik (terdapat Nomor SHM/Hak, NIB, dan Surat Ukur).',
-        },
-        jenis_hak: {
-          type: Type.STRING,
-          description: 'Contoh: Hak Milik, Hak Guna Bangunan, Hak Pakai.',
-        },
-        nib: {
-          type: Type.STRING,
-          description: 'Nomor Identifikasi Bidang (NIB) atau NIBel (Sertipikat Elektronik).',
-        },
-        nomor_hak_lama: {
-          type: Type.STRING,
-          description:
-            'Nomor Hak / SHM bila sertipikat analog (misal 01234 atau 3354). Kosongkan bila digital.',
-        },
-        surat_ukur_tanggal: {
-          type: Type.STRING,
-          description:
-            'Tanggal Surat Ukur (misal 19-10-2011 atau 19/10/2011) bila sertipikat analog.',
-        },
-        surat_ukur_nomor: {
-          type: Type.STRING,
-          description: 'Nomor Surat Ukur (misal 00143/Sindon/2011) bila sertipikat analog.',
-        },
-        luas_m2: { type: Type.NUMBER, description: 'Luas bidang tanah dalam meter persegi.' },
-        desa: { type: Type.STRING },
-        kecamatan: { type: Type.STRING },
-        kabupaten: { type: Type.STRING },
-        provinsi: { type: Type.STRING },
-        batas_utara: {
-          type: Type.STRING,
-          description: 'Batas bidang tanah sebelah Utara jika tertera di berkas/surat ukur.',
-        },
-        batas_timur: {
-          type: Type.STRING,
-          description: 'Batas bidang tanah sebelah Timur jika tertera di berkas/surat ukur.',
-        },
-        batas_selatan: {
-          type: Type.STRING,
-          description: 'Batas bidang tanah sebelah Selatan jika tertera di berkas/surat ukur.',
-        },
-        batas_barat: {
-          type: Type.STRING,
-          description: 'Batas bidang tanah sebelah Barat jika tertera di berkas/surat ukur.',
-        },
-        dasar_perolehan: {
-          type: Type.STRING,
-          description:
-            'Dasar perolehan hak pada sertipikat, misal Jual Beli, Waris, Pemberian Hak.',
-        },
-        pemegang_hak_sertipikat: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING },
-          description: 'Daftar nama pemegang hak yang tertulis pada sertipikat.',
-        },
-      },
+      properties: tanahSchemaProperties,
       required: [
         'jenis_hak',
         'nib',
@@ -158,52 +166,7 @@ export const extractionResponseSchema = {
     },
     pbb: {
       type: Type.OBJECT,
-      description: 'Data SPPT PBB-P2 lengkap termasuk kolom kiri LETAK OBJEK PAJAK.',
-      properties: {
-        nop: { type: Type.STRING, description: 'Nomor Objek Pajak (NOP) 18 digit.' },
-        tahun_pajak: { type: Type.STRING },
-        letak_objek_lokasi: {
-          type: Type.STRING,
-          description:
-            'Nama dukuh/dusun/kampung/jalan pada baris pertama kolom kiri LETAK OBJEK PAJAK (contoh: GORONGAN), TANPA RT/RW dan BUKAN alamat Wajib Pajak di kolom kanan.',
-        },
-        letak_objek_rt_rw: {
-          type: Type.STRING,
-          description:
-            'RT dan RW dari kolom kiri LETAK OBJEK PAJAK dalam format "002/003" (dari "RT. 002 RW. 003"). BUKAN RT/RW Wajib Pajak di kolom kanan.',
-        },
-        letak_objek_desa: {
-          type: Type.STRING,
-          description: 'Nama Desa/Kelurahan pada kolom kiri LETAK OBJEK PAJAK (contoh: DONOHUDAN).',
-        },
-        letak_objek_kecamatan: {
-          type: Type.STRING,
-          description: 'Nama Kecamatan pada kolom kiri LETAK OBJEK PAJAK (contoh: NGEMPLAK).',
-        },
-        letak_objek_kabupaten: {
-          type: Type.STRING,
-          description: 'Nama Kabupaten/Kota pada kolom kiri LETAK OBJEK PAJAK (contoh: BOYOLALI).',
-        },
-        luas_bumi_m2: {
-          type: Type.NUMBER,
-          description:
-            'Luas BUMI (m2) dari tabel OBJEK PAJAK SPPT PBB. Jika cetakan angka terpotong 2 baris (misal "16" dan "0" di bawahnya), gabungkan menjadi angka utuh (160) dan verifikasi dengan TOTAL NJOP BUMI / NJOP PER m2.',
-        },
-        luas_bangunan_m2: {
-          type: Type.NUMBER,
-          description: 'Luas BANGUNAN (m2) dari tabel OBJEK PAJAK SPPT PBB (isi 0 bila tidak ada bangunan).',
-        },
-        njop_bumi_m2: { type: Type.NUMBER, description: 'NJOP Bumi per m2 dalam rupiah.' },
-        njop_bumi_total: {
-          type: Type.NUMBER,
-          description: 'TOTAL NJOP BUMI dalam rupiah pada tabel OBJEK PAJAK SPPT PBB.',
-        },
-        njop_bangunan: { type: Type.NUMBER, description: 'Total NJOP Bangunan dalam rupiah.' },
-        nama_wp_pbb: {
-          type: Type.STRING,
-          description: 'Nama Wajib Pajak pada kolom kanan NAMA DAN ALAMAT WAJIB PAJAK di SPPT PBB.',
-        },
-      },
+      properties: pbbSchemaProperties,
       required: [
         'nop',
         'tahun_pajak',
@@ -222,15 +185,10 @@ export const extractionResponseSchema = {
     },
     audit_warnings: {
       type: Type.ARRAY,
-      description:
-        'Temuan audit otomatis atas kejanggalan atau hal yang wajib diverifikasi petugas PPATS.',
       items: {
         type: Type.OBJECT,
         properties: {
-          tingkat: {
-            type: Type.STRING,
-            description: 'Pilih salah satu: "tinggi", "sedang", atau "info".',
-          },
+          tingkat: { type: Type.STRING, description: '"tinggi" | "sedang" | "info".' },
           judul: { type: Type.STRING },
           deskripsi: { type: Type.STRING },
         },
@@ -243,27 +201,22 @@ export const extractionResponseSchema = {
 
 export const personExtractionResponseSchema = {
   type: Type.OBJECT,
-  description: 'Identitas lengkap 1 orang (Saksi atau Penerima Kuasa BPN) hasil pembacaan KTP/KK.',
   properties: {
-    nama: { type: Type.STRING, description: 'Nama lengkap sesuai KTP tanpa mengarang.' },
-    nik: { type: Type.STRING, description: 'Nomor Induk Kependudukan 16 digit (hanya angka).' },
-    pekerjaan: { type: Type.STRING, description: 'Pekerjaan sesuai KTP.' },
-    tempat_lahir: { type: Type.STRING, description: 'Kota/Kabupaten tempat lahir sesuai KTP.' },
-    tanggal_lahir: {
+    nama: { type: Type.STRING },
+    nik: { type: Type.STRING, description: '16 digit angka.' },
+    pekerjaan: { type: Type.STRING },
+    tempat_lahir: { type: Type.STRING },
+    tanggal_lahir: { type: Type.STRING, description: 'DD-MM-YYYY.' },
+    alamat_jalan: { type: Type.STRING, description: 'Dukuh/jalan tanpa RT/RW.' },
+    rt: { type: Type.STRING, description: 'Nomor RT saja.' },
+    rw: { type: Type.STRING, description: 'Nomor RW saja.' },
+    desa_kelurahan: { type: Type.STRING },
+    kecamatan: { type: Type.STRING },
+    kabupaten: { type: Type.STRING, description: 'Kabupaten/Kota dari header KTP.' },
+    jenis_kelamin: { type: Type.STRING, description: 'Laki-laki atau Perempuan.' },
+    status_perkawinan: {
       type: Type.STRING,
-      description: 'Format DD-MM-YYYY (hari-bulan-tahun, misal 15-05-1980).',
-    },
-    alamat_jalan: {
-      type: Type.STRING,
-      description: 'Alamat jalan/dukuh/dusun tanpa kata RT/RW.',
-    },
-    rt: { type: Type.STRING, description: 'Nomor RT saja (misal 003).' },
-    rw: { type: Type.STRING, description: 'Nomor RW saja (misal 004).' },
-    desa_kelurahan: { type: Type.STRING, description: 'Nama Kelurahan atau Desa.' },
-    kecamatan: { type: Type.STRING, description: 'Nama Kecamatan.' },
-    kabupaten: {
-      type: Type.STRING,
-      description: 'Nama Kabupaten/Kota (misal Kabupaten Boyolali atau Kota Surakarta).',
+      description: 'KAWIN, BELUM KAWIN, CERAI HIDUP, atau CERAI MATI.',
     },
   },
   required: [
@@ -375,8 +328,12 @@ export function resolveGeminiApiKey(rawKey: string | undefined): string | null {
   return cleaned;
 }
 
+const geminiClientCache = new Map<string, GoogleGenAI>();
+
 function createGeminiClient(apiKey: string): GoogleGenAI {
-  return new GoogleGenAI({
+  const cached = geminiClientCache.get(apiKey);
+  if (cached) return cached;
+  const client = new GoogleGenAI({
     apiKey,
     httpOptions: {
       headers: {
@@ -384,6 +341,12 @@ function createGeminiClient(apiKey: string): GoogleGenAI {
       },
     },
   });
+  if (geminiClientCache.size >= 8) {
+    const firstKey = geminiClientCache.keys().next().value;
+    if (firstKey) geminiClientCache.delete(firstKey);
+  }
+  geminiClientCache.set(apiKey, client);
+  return client;
 }
 
 function isAbortOrTimeoutError(err: unknown): boolean {
@@ -401,39 +364,89 @@ function isAbortOrTimeoutError(err: unknown): boolean {
   return false;
 }
 
+function isTransientGeminiError(err: unknown): boolean {
+  const status =
+    typeof err === 'object' &&
+    err !== null &&
+    'status' in err &&
+    typeof (err as { status?: unknown }).status === 'number'
+      ? (err as { status: number }).status
+      : 0;
+  const msg = err instanceof Error ? err.message : '';
+  return (
+    isAbortOrTimeoutError(err) ||
+    status === 503 ||
+    status === 502 ||
+    status === 504 ||
+    status === 429 ||
+    /UNAVAILABLE|high demand|try again later|ECONNRESET/i.test(msg)
+  );
+}
+
+/**
+ * Menjalankan permintaan Gemini dengan pola hedged fallback:
+ * - Memanggil model utama terlebih dahulu (tanpa duplikasi kuota bila respons normal 2–5 dtk).
+ * - Bila model utama belum merespons setelah `hedgeDelayMs` atau gagal transient, model cadangan
+ *   dijalankan paralel dan respons valid pertama langsung dipakai sambil membatalkan yang lebih lambat.
+ */
 async function generateJsonWithFallback(
   ai: GoogleGenAI,
   parts: Array<{ inlineData: { mimeType: string; data: string } } | { text: string }>,
   responseSchema: object,
   attempts: Array<{ model: string; level: ThinkingLevel; timeoutMs: number }>,
-  label: string
+  label: string,
+  hedgeDelayMs = 6000
 ): Promise<{ parsed: unknown; model: string; elapsedMs: number }> {
-  const callModelWithTimeout = async (
-    model: string,
-    thinkingLevel: ThinkingLevel,
-    timeoutMs: number
-  ): Promise<GenerateContentResponse> => {
+  const startedAt = Date.now();
+  const controllers: AbortController[] = [];
+  const timers: Array<ReturnType<typeof setTimeout>> = [];
+
+  const cleanup = () => {
+    timers.forEach((t) => clearTimeout(t));
+    controllers.forEach((c) => {
+      try {
+        if (!c.signal.aborted) c.abort();
+      } catch {
+        // ignore
+      }
+    });
+  };
+
+  const runAttempt = async (attempt: {
+    model: string;
+    level: ThinkingLevel;
+    timeoutMs: number;
+  }): Promise<{ parsed: unknown; model: string }> => {
     const controller = new AbortController();
+    controllers.push(controller);
     let didTimeout = false;
     const timer = setTimeout(() => {
       didTimeout = true;
       controller.abort();
-    }, timeoutMs);
+    }, attempt.timeoutMs);
+    timers.push(timer);
+
     try {
-      return await ai.models.generateContent({
-        model,
+      const response = await ai.models.generateContent({
+        model: attempt.model,
         contents: { parts },
         config: {
           abortSignal: controller.signal,
-          thinkingConfig: { thinkingLevel },
+          thinkingConfig: { thinkingLevel: attempt.level },
           responseMimeType: 'application/json',
           responseSchema,
         },
       });
+      const rawText = (response.text ?? '{}')
+        .trim()
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/, '');
+      const parsed = JSON.parse(rawText);
+      return { parsed, model: attempt.model };
     } catch (err) {
-      if (didTimeout || isAbortOrTimeoutError(err)) {
+      if (didTimeout) {
         const timeoutErr = new Error(
-          `Permintaan model ${model} melebihi batas waktu (${Math.round(timeoutMs / 1000)} detik).`
+          `Permintaan model ${attempt.model} melebihi batas waktu (${Math.round(attempt.timeoutMs / 1000)} detik).`
         ) as Error & { status?: number; isTimeout?: boolean };
         timeoutErr.status = 504;
         timeoutErr.isTimeout = true;
@@ -445,67 +458,83 @@ async function generateJsonWithFallback(
     }
   };
 
-  const startedAt = Date.now();
-  let response: GenerateContentResponse | null = null;
-  let usedModel = attempts[0]?.model ?? 'gemini-3.1-flash-lite';
-  let lastErr: unknown = null;
+  if (attempts.length === 0) {
+    throw new Error('Tidak ada konfigurasi model Gemini yang tersedia.');
+  }
 
-  for (let i = 0; i < attempts.length; i++) {
-    const attempt = attempts[i];
-    if (i > 0) {
-      const backoffMs = Math.min(2000, 600 * Math.pow(2, i - 1));
-      await new Promise((resolve) => setTimeout(resolve, backoffMs));
-    }
-    try {
-      response = await callModelWithTimeout(
-        attempt.model,
-        attempt.level,
-        attempt.timeoutMs
-      );
-      usedModel = attempt.model;
-      console.log(
-        `Gemini ${label} succeeded with ${attempt.model} in ${Date.now() - startedAt}ms`
-      );
-      break;
-    } catch (callErr: unknown) {
-      lastErr = callErr;
-      const status =
-        typeof callErr === 'object' &&
-        callErr !== null &&
-        'status' in callErr &&
-        typeof (callErr as { status?: unknown }).status === 'number'
-          ? (callErr as { status: number }).status
-          : 0;
-      const msg = callErr instanceof Error ? callErr.message : '';
-      const isAbortOrTransient =
-        isAbortOrTimeoutError(callErr) ||
-        status === 503 ||
-        status === 502 ||
-        status === 504 ||
-        status === 429 ||
-        /UNAVAILABLE|high demand|try again later|ECONNRESET/i.test(msg);
-      if (!isAbortOrTransient || i === attempts.length - 1) {
-        throw callErr;
-      }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let backupStarted = false;
+    let remaining = 1;
+    let lastErr: unknown = null;
+    let hedgeTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const finishOk = (result: { parsed: unknown; model: string }) => {
+      if (settled) return;
+      settled = true;
+      if (hedgeTimer) clearTimeout(hedgeTimer);
+      cleanup();
+      const elapsedMs = Date.now() - startedAt;
+      console.log(`Gemini ${label} succeeded with ${result.model} in ${elapsedMs}ms`);
+      resolve({ ...result, elapsedMs });
+    };
+
+    const finishErr = (err: unknown) => {
+      if (settled) return;
+      settled = true;
+      if (hedgeTimer) clearTimeout(hedgeTimer);
+      cleanup();
+      reject(err);
+    };
+
+    const launchBackup = (reason: string) => {
+      if (settled || backupStarted || attempts.length < 2) return;
+      backupStarted = true;
+      remaining += 1;
       console.warn(
-        `Model ${attempt.model} slow/unavailable (${status || msg}), retrying with ${attempts[i + 1].model}...`
+        `Gemini ${label}: ${reason} — launching hedged fallback ${attempts[1].model}...`
       );
+      runAttempt(attempts[1])
+        .then(finishOk)
+        .catch((err) => {
+          lastErr = err;
+          remaining -= 1;
+          if (!settled && remaining <= 0) {
+            finishErr(lastErr);
+          }
+        });
+    };
+
+    if (attempts.length >= 2 && hedgeDelayMs > 0) {
+      hedgeTimer = setTimeout(() => {
+        launchBackup(`primary ${attempts[0].model} >${hedgeDelayMs}ms`);
+      }, hedgeDelayMs);
+      timers.push(hedgeTimer);
     }
-  }
 
-  if (!response) {
-    throw lastErr ?? new Error('Gagal menerima respons dari Gemini API.');
-  }
+    runAttempt(attempts[0])
+      .then(finishOk)
+      .catch((err) => {
+        lastErr = err;
+        remaining -= 1;
+        if (settled) return;
 
-  const rawText = (response.text ?? '{}')
-    .trim()
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/, '');
-  return {
-    parsed: JSON.parse(rawText),
-    model: usedModel,
-    elapsedMs: Date.now() - startedAt,
-  };
+        if (!isTransientGeminiError(err)) {
+          finishErr(err);
+          return;
+        }
+
+        if (hedgeTimer) clearTimeout(hedgeTimer);
+        if (!backupStarted && attempts.length >= 2) {
+          launchBackup(`primary ${attempts[0].model} transient error`);
+          return;
+        }
+
+        if (remaining <= 0) {
+          finishErr(lastErr);
+        }
+      });
+  });
 }
 
 export function mapGeminiError(err: unknown, fallbackLabel: string): ApiHttpError {
@@ -587,6 +616,26 @@ export async function extractDocumentsWithGemini(
   const ai = createGeminiClient(apiKey);
   const layanan = body.layanan || 'AJB';
   const scanMode = body.scanMode === 'accurate' ? 'accurate' : 'fast';
+  const isObjectOnly = body.scope === 'object_only';
+
+  const fileNames = files.map((f) => f.name).join(', ');
+  const promptText = isObjectOnly
+    ? `Ekstrak data sertipikat tanah & SPPT PBB dari dokumen (${fileNames}) ke JSON sesuai skema.
+Aturan singkat:
+- Sertipikat -> "tanah": jenis_sertipikat ("digital" NIBel / "analog" No SHM+Surat Ukur), jenis_hak, nib, nomor_hak_lama, surat_ukur_tanggal, surat_ukur_nomor, luas_m2, desa, kecamatan, kabupaten, provinsi, batas_utara/timur/selatan/barat, dasar_perolehan, pemegang_hak_sertipikat.
+- SPPT PBB -> "pbb": NOP, tahun_pajak, njop_bumi_m2, njop_bumi_total, njop_bangunan, luas_bumi_m2 (gabung angka terpotong 2 baris; cocokkan luas_bumi_m2 * njop_bumi_m2 ≈ njop_bumi_total), luas_bangunan_m2.
+- Pisahkan kolom kiri LETAK OBJEK PAJAK vs kolom kanan WAJIB PAJAK:
+  * letak_objek_lokasi = dukuh/jalan baris 1 kolom kiri (mis. "GORONGAN"), BUKAN desa & BUKAN alamat WP.
+  * letak_objek_rt_rw = RT/RW kolom kiri format "002/003", BUKAN RT/RW WP.
+  * letak_objek_desa/kecamatan/kabupaten = dari kolom kiri; nama_wp_pbb = nama WP kolom kanan.
+- Field yang tidak ada isi "" atau 0.`
+    : `Ekstrak data berkas PPATS (${fileNames}) untuk layanan "${layanan}" ke JSON sesuai skema.
+Aturan:
+1. KTP/KK/SKW -> "para_pihak" (peran_saran: "Pihak I"=pemilik/penjual/pemberi, "Pihak II"=pembeli/penerima, "Persetujuan Pasangan"=pasangan Pihak I, "Lampiran Lain"=saksi/lainnya). Tanggal lahir DD-MM-YYYY. Field kosong isi "".
+2. Sertipikat -> "tanah": jenis_sertipikat ("digital" NIBel / "analog" No SHM+SU), jenis_hak, nib, nomor_hak_lama, surat_ukur_tanggal/nomor, luas_m2, desa, kecamatan, kabupaten, provinsi, batas, dasar_perolehan, pemegang_hak_sertipikat.
+3. SPPT PBB -> "pbb": NOP, tahun_pajak, njop_bumi_m2, njop_bumi_total, njop_bangunan, luas_bumi_m2 (gabung jika terpotong 2 baris; pastikan luas_bumi_m2 * njop_bumi_m2 ≈ njop_bumi_total), luas_bangunan_m2.
+   WAJIB pisahkan kolom kiri LETAK OBJEK PAJAK (letak_objek_lokasi=dukuh baris 1 mis. "GORONGAN" bukan desa, letak_objek_rt_rw="002/003", letak_objek_desa/kecamatan/kabupaten) vs kolom kanan WAJIB PAJAK (nama_wp_pbb).
+4. "audit_warnings": ${scanMode === 'fast' ? 'isi [] kecuali ada ketidakcocokan nama/NIK/sertipikat yang jelas (maks 2 butir singkat).' : 'laporkan selisih alamat/RT/RW, NIK ganda, beda nama KTP vs sertipikat, atau Pihak I kawin tanpa pasangan.'}`;
 
   const parts = [
     ...files.map((f) => ({
@@ -595,54 +644,37 @@ export async function extractDocumentsWithGemini(
         data: f.dataBase64,
       },
     })),
-    {
-      text: `Anda adalah asisten verifikator berkas pertanahan kantor PPATS Indonesia.
-Ekstrak seluruh informasi dari dokumen-dokumen terlampir (${files.map((f) => f.name).join(', ')}) untuk layanan akta "${layanan}".
-
-Instruksi ekstraksi ketat:
-1. Ekstrak seluruh individu yang tertera pada KTP, KK, atau SKW ke dalam array "para_pihak". Jika dokumen tidak mencantumkan suatu field, isi dengan string kosong "" (jangan mengarang).
-2. Tentukan "peran_saran" berdasarkan konteks dokumen dan pemegang hak sertipikat:
-   - Pemilik/penjual/pemberi/pewaris atau ahli waris yang melepas hak -> "Pihak I"
-   - Pembeli/penerima hak -> "Pihak II"
-   - Pasangan sah dari Pihak I yang satu KK atau tercatat kawin -> "Persetujuan Pasangan"
-   - Saksi atau anggota keluarga lain yang tidak ikut dalam peralihan -> "Lampiran Lain"
-3. Ekstrak detail objek tanah dari Sertipikat Tanah / Sertipikat Elektronik ke "tanah": tentukan "jenis_sertipikat" ("digital" bila Sertipikat Elektronik yang hanya memakai NIBel, atau "analog" bila sertipikat buku tanah fisik), serta isi NIB/NIBel, nomor_hak_lama, surat_ukur_tanggal, surat_ukur_nomor (untuk analog), luas m2 sebagai angka, provinsi, batas utara/timur/selatan/barat bila tercantum, dan daftar nama pemegang hak di sertipikat.
-4. Ekstrak data SPPT PBB ke "pbb" secara sangat teliti:
-   - Ambil NOP, tahun pajak, NJOP bumi per m2, TOTAL NJOP bumi, NJOP bangunan, luas bumi m2, dan luas bangunan m2.
-   - Hati-hati jika cetakan angka LUAS BUMI di SPPT PBB terpotong dua baris (misal baris atas "16" dan baris bawah "0" berarti 160 m2): selalu cocokkan agar luas_bumi_m2 × njop_bumi_m2 ≈ njop_bumi_total.
-   - WAJIB pisahkan kolom kiri "LETAK OBJEK PAJAK" dari kolom kanan "NAMA DAN ALAMAT WAJIB PAJAK":
-     * letak_objek_lokasi = nama dukuh/dusun/jalan baris pertama di bawah LETAK OBJEK PAJAK (contoh: "GORONGAN"), JANGAN isi dengan nama desa dan JANGAN ambil dari alamat wajib pajak di kolom kanan.
-     * letak_objek_rt_rw = nomor RT/RW dari kolom kiri LETAK OBJEK PAJAK dalam format "002/003" (contoh dari "RT. 002 RW. 003" -> "002/003"), JANGAN ambil RT/RW wajib pajak di kolom kanan.
-     * letak_objek_desa, letak_objek_kecamatan, letak_objek_kabupaten = desa, kecamatan, kabupaten dari kolom kiri LETAK OBJEK PAJAK.
-     * nama_wp_pbb = nama wajib pajak pada kolom kanan NAMA DAN ALAMAT WAJIB PAJAK.
-5. Lakukan audit silang antar dokumen dan laporkan ke "audit_warnings" jika ditemukan:
-   - Selisih RT/RW, desa, atau alamat antar KTP/KK/Sertipikat
-   - NIK ganda
-   - Nama Pihak I di KTP tidak sama atau tidak tercantum di Sertipikat
-   - Pihak I berstatus KAWIN yang membutuhkan persetujuan pasangan (suami/istri)
-   - Perbedaan ejaan nama antara KTP, KK, Sertipikat, atau SPPT PBB.
-Jawab ringkas, padat, dan langsung dalam JSON valid sesuai skema.`,
-    },
+    { text: promptText },
   ];
 
   const attempts =
-    scanMode === 'accurate'
+    scanMode === 'accurate' && !isObjectOnly
       ? [
-          { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 36000 },
-          { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 20000 },
+          { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 28000 },
+          { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 18000 },
         ]
       : [
-          { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 32000 },
-          { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 24000 },
+          { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 20000 },
+          { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 20000 },
         ];
+
+  const hedgeDelayMs = isObjectOnly ? 5500 : scanMode === 'accurate' ? 9000 : 7000;
 
   const { parsed } = await generateJsonWithFallback(
     ai,
     parts,
-    extractionResponseSchema,
+    isObjectOnly ? objectExtractionResponseSchema : extractionResponseSchema,
     attempts,
-    'extraction'
+    isObjectOnly ? 'object-extract' : `extraction(${scanMode})`,
+    hedgeDelayMs
   );
+
+  if (isObjectOnly && parsed && typeof parsed === 'object') {
+    const obj = parsed as Record<string, unknown>;
+    obj.para_pihak = [];
+    obj.audit_warnings = [];
+  }
+
   return normalizeExtractionOutput(parsed);
 }
 
@@ -731,18 +763,14 @@ export async function extractPersonWithGemini(
       },
     })),
     {
-      text: `Ekstrak data identitas lengkap 1 orang (${role}) dari KTP atau dokumen identitas terlampir (${files.map((f) => f.name).join(', ')}).
-Aturan ketat:
-- Ambil nama lengkap, NIK 16 digit (angka saja), tempat lahir, tanggal lahir format DD-MM-YYYY, pekerjaan, alamat jalan/dukuh/dusun, RT (pisah dari RW), RW (pisah dari RT), desa/kelurahan, kecamatan, dan kabupaten/kota.
-- Jika bagian paling atas KTP mencantumkan "KABUPATEN BOYOLALI" atau "KOTA SURAKARTA", masukkan ke field "kabupaten".
-- Jika ada field yang tidak terbaca di dokumen, isi string kosong "" (jangan mengarang).
-Jawab langsung dalam JSON sesuai skema.`,
+      text: `Ekstrak identitas 1 orang (${role}) dari KTP (${files.map((f) => f.name).join(', ')}) ke JSON.
+Ambil nama, NIK 16 digit, tempat_lahir, tanggal_lahir (DD-MM-YYYY), jenis_kelamin ("Laki-laki"/"Perempuan"), status_perkawinan, pekerjaan, alamat_jalan (tanpa RT/RW), rt, rw, desa_kelurahan, kecamatan, kabupaten (dari header KTP). Field tidak terbaca isi "".`,
     },
   ];
 
   const attempts = [
-    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 28000 },
-    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 24000 },
+    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 18000 },
+    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 18000 },
   ];
 
   const { parsed, model, elapsedMs } = await generateJsonWithFallback(
@@ -750,7 +778,8 @@ Jawab langsung dalam JSON sesuai skema.`,
     parts,
     personExtractionResponseSchema,
     attempts,
-    `person-extract(${role})`
+    `person-extract(${role})`,
+    5000
   );
 
   return {

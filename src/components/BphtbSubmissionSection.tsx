@@ -282,6 +282,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
     onResult: (person: PersonBasicInfo) => void
   ) => {
     if (!files || files.length === 0) return;
+    const startedAt = Date.now();
     setScanningSlot(slotKey);
     setScanNotice({
       type: 'info',
@@ -290,7 +291,8 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
     try {
       const res = await scanPersonFromFiles(files, roleLabel);
       onResult(res.person);
-      const msg = `Scan KTP ${roleLabel} selesai${res.person.nama ? ` (${res.person.nama})` : ''}. Periksa kembali hasil isian.`;
+      const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
+      const msg = `Scan KTP ${roleLabel} selesai (${elapsedSec} dtk)${res.person.nama ? ` · ${res.person.nama}` : ''}. Periksa kembali hasil isian.`;
       setScanNotice({ type: 'success', message: msg });
       onNotify(msg, 'success');
     } catch (err) {
@@ -305,6 +307,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
 
   const runObjectDocScan = async (files: File[]) => {
     if (!files || files.length === 0) return;
+    const startedAt = Date.now();
     setScanningSlot('objek_pajak');
     setScanNotice({
       type: 'info',
@@ -313,7 +316,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
     try {
       const optimized = await Promise.all(
         files.map(async (f) => {
-          const payload = await optimizeDocumentFile(f);
+          const payload = await optimizeDocumentFile(f, {
+            maxEdge: 1120,
+            quality: 0.75,
+            skipBelowBytes: 90 * 1024,
+          });
           return {
             name: f.name,
             mimeType: payload.mimeType,
@@ -327,6 +334,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
         {
           layanan: taxForm.layanan,
           scanMode: 'fast',
+          scope: 'object_only',
           files: optimized,
         }
       );
@@ -352,8 +360,9 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
         onSyncTaxFromObjectScan?.(effectiveTaxPatch);
       }
 
+      const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
       const infoDetail = effectiveSummary.join(' · ');
-      const msg = `Scan Objek Pajak selesai${infoDetail ? ` (${infoDetail})` : ''}. Periksa kembali hasil isian.`;
+      const msg = `Scan Objek Pajak selesai (${elapsedSec} dtk)${infoDetail ? ` · ${infoDetail}` : ''}. Periksa kembali hasil isian.`;
       setScanNotice({ type: 'success', message: msg });
       onNotify(msg, 'success');
     } catch (err) {

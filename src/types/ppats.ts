@@ -113,6 +113,8 @@ export interface PersonBasicInfo {
   desa_kelurahan?: string;
   kecamatan?: string;
   kabupaten?: string;
+  jenis_kelamin?: string;
+  status_perkawinan?: string;
 }
 
 export interface DataTanah {

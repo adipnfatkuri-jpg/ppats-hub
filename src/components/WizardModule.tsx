@@ -63,6 +63,11 @@ import {
 import { scanPersonFromFiles } from '../utils/personScan';
 import { postScanJson } from '../utils/scanApi';
 import {
+  isPartyEffectivelyEmpty,
+  mergeObjectScanIntoWizardTanahPbb,
+  mergeScannedPersonIntoParty,
+} from '../utils/wizardStep2Scan';
+import {
   AKTA_SERVICE_TYPES,
   NON_AKTA_SERVICE_TYPES,
   calculateLandTaxes,
@@ -359,6 +364,184 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     }
   };
 
+  const [step2ScanSlot, setStep2ScanSlot] = useState<string | null>(null);
+  const [step2ScanNotice, setStep2ScanNotice] = useState<{
+    type: 'info' | 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  const handleScanStep2PartyKtp = async (
+    partyId: string,
+    partyLabel: string,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = '';
+    if (files.length === 0) return;
+
+    const startedAt = Date.now();
+    const slotKey = `party:${partyId}`;
+    setStep2ScanSlot(slotKey);
+    setStep2ScanNotice({
+      type: 'info',
+      message: `Sedang memindai KTP ${partyLabel}...`,
+    });
+    try {
+      const result = await scanPersonFromFiles(files, partyLabel);
+      const scanned = result.person;
+      setParaPihak((prev) =>
+        prev.map((item) =>
+          item.id === partyId ? mergeScannedPersonIntoParty(item, scanned) : item
+        )
+      );
+      const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
+      const msg = `Scan KTP ${partyLabel} selesai (${elapsedSec} dtk)${
+        scanned.nama ? ` · ${scanned.nama}` : ''
+      }${scanned.nik ? ` · NIK ${scanned.nik}` : ''}.`;
+      setStep2ScanNotice({ type: 'success', message: msg });
+      onNotify(msg, 'success');
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : `Gagal memindai KTP ${partyLabel}.`;
+      setStep2ScanNotice({ type: 'error', message: msg });
+      onNotify(msg, 'error');
+    } finally {
+      setStep2ScanSlot(null);
+    }
+  };
+
+  const handleScanStep2AddParties = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = '';
+    if (files.length === 0) return;
+
+    const startedAt = Date.now();
+    const subjectLabel = isAktaService(layanan)
+      ? 'Pihak'
+      : layanan === 'Turun Waris'
+      ? 'Ahli Waris / Pemohon'
+      : 'Pemohon';
+    setStep2ScanSlot('party:add');
+    setStep2ScanNotice({
+      type: 'info',
+      message: `Sedang memindai ${files.length} KTP ${subjectLabel}...`,
+    });
+    try {
+      const scannedList = await Promise.all(
+        files.map((file, idx) =>
+          scanPersonFromFiles([file], `${subjectLabel} #${idx + 1}`).then((r) => r.person)
+        )
+      );
+
+      setParaPihak((prev) => {
+        const next = [...prev];
+        for (const scanned of scannedList) {
+          const emptyIdx = next.findIndex((item) => isPartyEffectivelyEmpty(item));
+          if (emptyIdx >= 0) {
+            next[emptyIdx] = mergeScannedPersonIntoParty(next[emptyIdx], scanned);
+          } else {
+            const nextRole = suggestNextPartyRole(next, layanan);
+            next.push(mergeScannedPersonIntoParty(createEmptyPihak(nextRole), scanned));
+          }
+        }
+        return next;
+      });
+
+      const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
+      const names = scannedList
+        .map((p) => p.nama)
+        .filter(Boolean)
+        .join(', ');
+      const msg = `Scan ${scannedList.length} KTP ${subjectLabel} selesai (${elapsedSec} dtk)${
+        names ? ` · ${names}` : ''
+      }.`;
+      setStep2ScanNotice({ type: 'success', message: msg });
+      onNotify(msg, 'success');
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : `Gagal memindai KTP ${subjectLabel}.`;
+      setStep2ScanNotice({ type: 'error', message: msg });
+      onNotify(msg, 'error');
+    } finally {
+      setStep2ScanSlot(null);
+    }
+  };
+
+  const handleScanStep2ObjectDocs = async (
+    slotKey: 'sertipikat' | 'pbb',
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = '';
+    if (files.length === 0) return;
+
+    const startedAt = Date.now();
+    const label = slotKey === 'sertipikat' ? 'Sertipikat / SPPT' : 'SPPT PBB';
+    setStep2ScanSlot(slotKey);
+    setStep2ScanNotice({
+      type: 'info',
+      message: `Sedang memindai ${files.length} dokumen ${label}...`,
+    });
+    try {
+      const optimized = await Promise.all(
+        files.map(async (file) => {
+          const payload = await optimizeDocumentFile(file, {
+            maxEdge: 1120,
+            quality: 0.75,
+            skipBelowBytes: 90 * 1024,
+          });
+          return {
+            name: file.name || `dokumen-${Date.now()}.jpg`,
+            mimeType: payload.mimeType,
+            dataBase64: payload.dataBase64,
+          };
+        })
+      );
+
+      const parsed = await postScanJson<ExtractionApiResponse>(
+        '/api/extract-documents',
+        {
+          layanan,
+          scanMode: 'fast',
+          scope: 'object_only',
+          files: optimized,
+        }
+      );
+
+      const merged = mergeObjectScanIntoWizardTanahPbb(
+        tanah,
+        pbb,
+        pemegangHakInput,
+        parsed,
+        {
+          kabupaten: settings.nama_kabupaten,
+          provinsi: settings.nama_provinsi || 'Jawa Tengah',
+        }
+      );
+
+      setTanah(merged.nextTanah);
+      setPbb(merged.nextPbb);
+      setPemegangHakInput(merged.nextPemegangHakInput);
+
+      const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
+      const detail = merged.summaryParts.join(' · ');
+      const msg = `Scan ${label} selesai (${elapsedSec} dtk)${
+        detail ? ` · ${detail}` : ''
+      }. Periksa kembali hasil isian.`;
+      setStep2ScanNotice({ type: 'success', message: msg });
+      onNotify(msg, 'success');
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : `Gagal memindai dokumen ${label}.`;
+      setStep2ScanNotice({ type: 'error', message: msg });
+      onNotify(msg, 'error');
+    } finally {
+      setStep2ScanSlot(null);
+    }
+  };
+
   useEffect(() => {
     if (!extracting) {
       setExtractElapsedSec(0);
@@ -538,8 +721,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       const projectedCount = uploadedFiles.length + incoming.length;
       const optimizeOpts =
         projectedCount >= 3
-          ? { maxEdge: 1120, quality: 0.72, skipBelowBytes: 140 * 1024 }
-          : { maxEdge: 1280, quality: 0.78, skipBelowBytes: 180 * 1024 };
+          ? { maxEdge: 960, quality: 0.70, skipBelowBytes: 75 * 1024 }
+          : { maxEdge: 1120, quality: 0.74, skipBelowBytes: 90 * 1024 };
 
       const added = await Promise.all(
         incoming.map(async (file) => {
@@ -589,7 +772,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     const timeoutId = window.setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, 75000);
+    }, 45000);
 
     setExtracting(true);
     setExtractError(null);
@@ -1302,6 +1485,40 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             )}
           </div>
 
+          {/* Step 2 Inline Scan Status Banner */}
+          {step2ScanNotice && (
+            <div
+              className={`rounded-xl border px-4 py-3 text-xs flex items-center justify-between gap-3 ${
+                step2ScanNotice.type === 'error'
+                  ? 'border-rose-200 bg-rose-50 text-rose-900'
+                  : step2ScanNotice.type === 'success'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                  : 'border-sky-200 bg-sky-50 text-sky-900'
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                {step2ScanNotice.type === 'info' ? (
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0 text-sky-600" />
+                ) : step2ScanNotice.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                )}
+                <span className="font-medium break-words">{step2ScanNotice.message}</span>
+              </div>
+              {step2ScanNotice.type !== 'info' && (
+                <button
+                  type="button"
+                  onClick={() => setStep2ScanNotice(null)}
+                  aria-label="Tutup notifikasi scan"
+                  className="p-1 rounded hover:bg-black/5 shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Para Pihak Editable List */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -1324,6 +1541,57 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {/* Scan KTP Tambah Pihak / Pemohon (multi-file & kamera) */}
+                <div className="inline-flex items-center gap-1">
+                  <label
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
+                      step2ScanSlot !== null
+                        ? 'opacity-60 pointer-events-none border-sky-200 bg-sky-50 text-sky-700'
+                        : 'cursor-pointer border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800'
+                    }`}
+                    title="Pilih 1 atau beberapa foto/PDF KTP untuk otomatis mengisi atau menambah Pihak / Pemohon"
+                  >
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf,.heic,.heif"
+                      multiple
+                      disabled={step2ScanSlot !== null}
+                      onChange={handleScanStep2AddParties}
+                      className="sr-only"
+                    />
+                    {step2ScanSlot === 'party:add' ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ScanLine className="w-3.5 h-3.5" />
+                    )}
+                    <span>
+                      {step2ScanSlot === 'party:add'
+                        ? 'Memindai KTP...'
+                        : isAkta
+                        ? 'Scan KTP Pihak'
+                        : 'Scan KTP Pemohon'}
+                    </span>
+                  </label>
+                  <label
+                    className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
+                      step2ScanSlot !== null
+                        ? 'opacity-60 pointer-events-none border-slate-200 bg-slate-50 text-slate-400'
+                        : 'cursor-pointer border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                    }`}
+                    title="Foto KTP langsung dari kamera"
+                  >
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      disabled={step2ScanSlot !== null}
+                      onChange={handleScanStep2AddParties}
+                      className="sr-only"
+                    />
+                    <Camera className="w-3.5 h-3.5" />
+                  </label>
+                </div>
+
                 {layanan === 'AJB' || layanan === 'Akta Hibah' ? (
                   <>
                     <button
@@ -1466,15 +1734,71 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         </span>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeParty(p.id)}
-                      aria-label={`Hapus pihak ${p.nama || idx + 1}`}
-                      className="inline-flex items-center gap-1 text-xs text-rose-600 hover:text-rose-800 font-medium"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Hapus</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <label
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md border text-[11px] font-medium whitespace-nowrap transition-colors ${
+                          step2ScanSlot !== null
+                            ? 'opacity-60 pointer-events-none border-sky-200 bg-sky-50 text-sky-700'
+                            : 'cursor-pointer border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800'
+                        }`}
+                        title={`Scan foto/PDF KTP untuk mengisi data ${p.peran} #${idx + 1}`}
+                      >
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf,.heic,.heif"
+                          disabled={step2ScanSlot !== null}
+                          onChange={(e) =>
+                            handleScanStep2PartyKtp(
+                              p.id,
+                              `${p.peran} (#${idx + 1})`,
+                              e
+                            )
+                          }
+                          className="sr-only"
+                        />
+                        {step2ScanSlot === `party:${p.id}` ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <ScanLine className="w-3 h-3" />
+                        )}
+                        <span>
+                          {step2ScanSlot === `party:${p.id}` ? 'Memindai...' : 'Scan KTP'}
+                        </span>
+                      </label>
+                      <label
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[11px] font-medium whitespace-nowrap transition-colors ${
+                          step2ScanSlot !== null
+                            ? 'opacity-60 pointer-events-none border-slate-200 bg-slate-50 text-slate-400'
+                            : 'cursor-pointer border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                        }`}
+                        title={`Foto KTP ${p.peran} #${idx + 1} dari kamera`}
+                      >
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          disabled={step2ScanSlot !== null}
+                          onChange={(e) =>
+                            handleScanStep2PartyKtp(
+                              p.id,
+                              `${p.peran} (#${idx + 1})`,
+                              e
+                            )
+                          }
+                          className="sr-only"
+                        />
+                        <Camera className="w-3 h-3" />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => removeParty(p.id)}
+                        aria-label={`Hapus pihak ${p.nama || idx + 1}`}
+                        className="inline-flex items-center gap-1 text-xs text-rose-600 hover:text-rose-800 font-medium pl-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Hapus</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
@@ -1721,14 +2045,63 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
           {/* Data Tanah & PBB */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-                <h2 className="font-display text-base font-semibold text-slate-900">
-                  Data Objek Tanah (Sertipikat)
-                </h2>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-display text-base font-semibold text-slate-900">
+                    Data Objek Tanah (Sertipikat)
+                  </h2>
+                  <div className="inline-flex items-center gap-1">
+                    <label
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
+                        step2ScanSlot !== null
+                          ? 'opacity-60 pointer-events-none border-sky-200 bg-sky-50 text-sky-700'
+                          : 'cursor-pointer border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800'
+                      }`}
+                      title="Scan foto/PDF Sertipikat Tanah (Digital/Analog) atau SPPT PBB"
+                    >
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf,.heic,.heif"
+                        multiple
+                        disabled={step2ScanSlot !== null}
+                        onChange={(e) => handleScanStep2ObjectDocs('sertipikat', e)}
+                        className="sr-only"
+                      />
+                      {step2ScanSlot === 'sertipikat' ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <ScanLine className="w-3.5 h-3.5" />
+                      )}
+                      <span>
+                        {step2ScanSlot === 'sertipikat'
+                          ? 'Memindai...'
+                          : 'Scan Sertipikat / SPPT'}
+                      </span>
+                    </label>
+                    <label
+                      className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
+                        step2ScanSlot !== null
+                          ? 'opacity-60 pointer-events-none border-slate-200 bg-slate-50 text-slate-400'
+                          : 'cursor-pointer border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                      }`}
+                      title="Foto Sertipikat langsung dari kamera"
+                    >
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        disabled={step2ScanSlot !== null}
+                        onChange={(e) => handleScanStep2ObjectDocs('sertipikat', e)}
+                        className="sr-only"
+                      />
+                      <Camera className="w-3.5 h-3.5" />
+                    </label>
+                  </div>
+                </div>
                 <div
                   role="radiogroup"
                   aria-label="Pilih Jenis Sertipikat"
-                  className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 self-start sm:self-auto"
+                  className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 self-start"
                 >
                   <button
                     type="button"
@@ -2073,9 +2446,53 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             </div>
 
             <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-              <h2 className="font-display text-base font-semibold text-slate-900">
-                Data SPPT PBB-P2
-              </h2>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-display text-base font-semibold text-slate-900">
+                  Data SPPT PBB-P2
+                </h2>
+                <div className="inline-flex items-center gap-1">
+                  <label
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
+                      step2ScanSlot !== null
+                        ? 'opacity-60 pointer-events-none border-sky-200 bg-sky-50 text-sky-700'
+                        : 'cursor-pointer border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800'
+                    }`}
+                    title="Scan foto/PDF SPPT PBB untuk mengisi NOP, Tahun Pajak, NJOP, dan luas"
+                  >
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf,.heic,.heif"
+                      disabled={step2ScanSlot !== null}
+                      onChange={(e) => handleScanStep2ObjectDocs('pbb', e)}
+                      className="sr-only"
+                    />
+                    {step2ScanSlot === 'pbb' ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ScanLine className="w-3.5 h-3.5" />
+                    )}
+                    <span>{step2ScanSlot === 'pbb' ? 'Memindai...' : 'Scan SPPT PBB'}</span>
+                  </label>
+                  <label
+                    className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
+                      step2ScanSlot !== null
+                        ? 'opacity-60 pointer-events-none border-slate-200 bg-slate-50 text-slate-400'
+                        : 'cursor-pointer border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                    }`}
+                    title="Foto SPPT PBB langsung dari kamera"
+                  >
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      disabled={step2ScanSlot !== null}
+                      onChange={(e) => handleScanStep2ObjectDocs('pbb', e)}
+                      className="sr-only"
+                    />
+                    <Camera className="w-3.5 h-3.5" />
+                  </label>
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="sm:col-span-2">
                   <label htmlFor="pbb-nop" className="block text-slate-600 mb-1">
