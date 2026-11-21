@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { OfficeSettings } from '../types/ppats';
 import type { CloudSessionInfo } from '../utils/cloudSync';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export type NavSection =
   | 'dashboard'
@@ -100,6 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-1.5">
+          <PWAInstallButton variant="mobile-header" />
           {!authUser ? (
             <button
               type="button"
@@ -203,6 +205,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Cloud Account & Backup Quick Actions */}
         <div className="p-4 border-t border-slate-800/80 space-y-3">
+          <PWAInstallButton variant="sidebar" />
           {!authUser ? (
             <button
               type="button"

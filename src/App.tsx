@@ -58,6 +58,7 @@ import { ReportModule } from './components/ReportModule';
 import { NonAktaRekapModule } from './components/NonAktaRekapModule';
 import { SettingsModule } from './components/SettingsModule';
 import { ReceiptModal } from './components/ReceiptModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 const SIGNED_OUT_SESSION: CloudSessionInfo = {
   status: 'signed_out',
@@ -866,6 +867,7 @@ export default function App() {
         settings={settings}
         onClose={() => setReceiptRecord(null)}
       />
+      <OfflineIndicator />
     </div>
   );
 }
