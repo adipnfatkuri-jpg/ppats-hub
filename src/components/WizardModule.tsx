@@ -19,6 +19,8 @@ import {
   Calculator,
   ScanLine,
   Camera,
+  LayoutDashboard,
+  FilePlus2,
 } from 'lucide-react';
 import { DocumentReviewPanel } from './DocumentReviewPanel';
 import { DateInputId } from './DateInputId';
@@ -97,6 +99,8 @@ interface WizardModuleProps {
   customTemplates: Partial<Record<TemplateDocKey, CustomTemplateEntry>>;
   onSaveRecord: (record: BerkasRecord) => Promise<void>;
   onCancelEdit: () => void;
+  onFinishToDashboard: (savedCode: string) => void;
+  onFinishAndCreateNew: (savedCode: string) => void;
   onPrintReceipt: (record: BerkasRecord) => void;
   onOpenTaxCalculator: (record: BerkasRecord) => Promise<void> | void;
   onNotify: (msg: string, type?: 'success' | 'error') => void;
@@ -265,6 +269,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
   customTemplates,
   onSaveRecord,
   onCancelEdit,
+  onFinishToDashboard,
+  onFinishAndCreateNew,
   onPrintReceipt,
   onOpenTaxCalculator,
   onNotify,
@@ -677,6 +683,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
   });
 
   const [generatingBundle, setGeneratingBundle] = useState(false);
+  const [bundleFinished, setBundleFinished] = useState(false);
+  const [finishingAction, setFinishingAction] = useState<'dashboard' | 'new' | null>(null);
   const [savedRecordId, setSavedRecordId] = useState<string | null>(
     editingRecord?.id ?? null
   );
@@ -1045,10 +1053,18 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
   ]);
 
   const handleSaveOnly = async () => {
-    const rec = buildCurrentRecord();
-    await onSaveRecord(rec);
-    setSavedRecordId(rec.id);
-    onNotify(`Berkas ${rec.kode_berkas} berhasil disimpan ke Buku Register Akta.`, 'success');
+    try {
+      const rec = buildCurrentRecord();
+      await onSaveRecord(rec);
+      setSavedRecordId(rec.id);
+      setBundleFinished(true);
+      onNotify(`Berkas ${rec.kode_berkas} berhasil disimpan ke Buku Register Akta.`, 'success');
+    } catch (err) {
+      onNotify(
+        err instanceof Error ? `Gagal menyimpan berkas: ${err.message}` : 'Gagal menyimpan berkas.',
+        'error'
+      );
+    }
   };
 
   const handleGenerateZipAndSave = async () => {
@@ -1058,6 +1074,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       await onSaveRecord(rec);
       setSavedRecordId(rec.id);
       const result = await generateAndDownloadBundleZip(rec, settings, customTemplates);
+      setBundleFinished(true);
       onNotify(
         isAktaService(rec.layanan)
           ? `Berhasil membuat ${result.fileCount} dokumen Word (Akta A4 & Lampiran F4) dalam ${result.zipFileName} dan memperbarui Buku Register.`
@@ -1083,6 +1100,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       await onSaveRecord(rec);
       setSavedRecordId(rec.id);
       const result = await generateAndDownloadSingleDocx(rec, settings, customTemplates, docKey);
+      setBundleFinished(true);
       onNotify(`Berhasil mengunduh ${result.fileName} dan menyimpan berkas ke Buku Register.`, 'success');
     } catch (err) {
       onNotify(
@@ -1091,6 +1109,30 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       );
     } finally {
       setGeneratingBundle(false);
+    }
+  };
+
+  const handleFinishWizard = async (mode: 'dashboard' | 'new') => {
+    if (finishingAction !== null || generatingBundle) return;
+    setFinishingAction(mode);
+    try {
+      const rec = buildCurrentRecord();
+      await onSaveRecord(rec);
+      setSavedRecordId(rec.id);
+      if (mode === 'dashboard') {
+        onFinishToDashboard(rec.kode_berkas);
+      } else {
+        onFinishAndCreateNew(rec.kode_berkas);
+      }
+    } catch (err) {
+      onNotify(
+        err instanceof Error
+          ? `Gagal menyimpan berkas sebelum selesai: ${err.message}`
+          : 'Gagal menyimpan berkas.',
+        'error'
+      );
+    } finally {
+      setFinishingAction(null);
     }
   };
 
@@ -4259,7 +4301,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               <button
                 type="button"
                 onClick={handleGenerateZipAndSave}
-                disabled={generatingBundle}
+                disabled={generatingBundle || finishingAction !== null}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-sm font-medium transition-colors disabled:opacity-60"
               >
                 {generatingBundle ? (
@@ -4273,6 +4315,72 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     <span>Generate Bundel .ZIP &amp; Simpan Register</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+
+          {/* Panel Penyelesaian Berkas */}
+          <div
+            className={`rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-colors ${
+              bundleFinished
+                ? 'bg-emerald-50 border-emerald-300'
+                : 'bg-slate-50 border-slate-200'
+            }`}
+          >
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2
+                className={`w-5 h-5 mt-0.5 shrink-0 ${
+                  bundleFinished ? 'text-emerald-600' : 'text-slate-500'
+                }`}
+              />
+              <div>
+                <p
+                  className={`text-sm font-semibold ${
+                    bundleFinished ? 'text-emerald-900' : 'text-slate-800'
+                  }`}
+                >
+                  {bundleFinished
+                    ? 'Semua berkas selesai dibuat dan tersimpan ke register.'
+                    : 'Selesaikan Pembuatan Berkas'}
+                </p>
+                <p
+                  className={`text-xs mt-0.5 ${
+                    bundleFinished ? 'text-emerald-800' : 'text-slate-600'
+                  }`}
+                >
+                  Pilih <strong>Selesai</strong> untuk kembali ke Dashboard, atau{' '}
+                  <strong>Selesai &amp; Buat Baru</strong> untuk membuka formulir berkas baru dengan data kosong.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => void handleFinishWizard('dashboard')}
+                disabled={generatingBundle || finishingAction !== null}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors disabled:opacity-60 whitespace-nowrap"
+              >
+                {finishingAction === 'dashboard' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <LayoutDashboard className="w-4 h-4" />
+                )}
+                <span>Selesai</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleFinishWizard('new')}
+                disabled={generatingBundle || finishingAction !== null}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-sky-600 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition-colors disabled:opacity-60 whitespace-nowrap"
+              >
+                {finishingAction === 'new' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FilePlus2 className="w-4 h-4" />
+                )}
+                <span>Selesai &amp; Buat Baru</span>
               </button>
             </div>
           </div>

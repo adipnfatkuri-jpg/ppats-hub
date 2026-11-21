@@ -11,6 +11,8 @@ import {
   Building2,
   FolderOpen,
   Calculator,
+  Copy,
+  Loader2,
 } from 'lucide-react';
 import { BerkasRecord, BerkasStatus } from '../types/ppats';
 import { STATUS_OPTIONS } from '../utils/seedData';
@@ -26,6 +28,7 @@ interface DashboardModuleProps {
   records: BerkasRecord[];
   onCreateNew: () => void;
   onEditRecord: (record: BerkasRecord) => void;
+  onDuplicateRecord: (record: BerkasRecord) => Promise<void> | void;
   onCalculateTax: (record: BerkasRecord) => void;
   onChangeStatus: (recordId: string, nextStatus: BerkasStatus) => void;
   onPrintReceipt: (record: BerkasRecord) => void;
@@ -81,6 +84,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
   records,
   onCreateNew,
   onEditRecord,
+  onDuplicateRecord,
   onCalculateTax,
   onChangeStatus,
   onPrintReceipt,
@@ -88,6 +92,17 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'SEMUA' | BerkasStatus>('SEMUA');
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+
+  const handleDuplicateClick = async (rec: BerkasRecord) => {
+    if (duplicatingId) return;
+    setDuplicatingId(rec.id);
+    try {
+      await onDuplicateRecord(rec);
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
 
   const kpis = useMemo(() => {
     const now = new Date();
@@ -403,6 +418,21 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
                           >
                             <Pencil className="w-3 h-3" />
                             <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDuplicateClick(rec)}
+                            disabled={duplicatingId !== null}
+                            title="Salin / Duplikasi Berkas sebagai Berkas Baru"
+                            aria-label={`Duplikasi berkas ${rec.kode_berkas}`}
+                            className="inline-flex items-center gap-1 px-1.5 py-1 rounded-md border border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 hover:text-sky-800 text-xs font-medium text-slate-700 transition-colors disabled:opacity-60"
+                          >
+                            {duplicatingId === rec.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                            <span>Salin</span>
                           </button>
                           <button
                             type="button"

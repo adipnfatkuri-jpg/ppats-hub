@@ -17,6 +17,7 @@ import {
   TemplateDocKey,
 } from './types/ppats';
 import { DEFAULT_OFFICE_SETTINGS } from './utils/seedData';
+import { duplicateBerkasRecord } from './utils/recordDuplicate';
 import {
   deleteCustomTemplate,
   deleteRecord,
@@ -440,7 +441,10 @@ export default function App() {
     );
   };
 
-  const handleSaveRecord = async (record: BerkasRecord) => {
+  const handleSaveRecord = async (
+    record: BerkasRecord,
+    options?: { setAsEditing?: boolean }
+  ) => {
     await saveRecord(record);
     if (isCloudConnected && authUser) {
       try {
@@ -463,7 +467,45 @@ export default function App() {
       }
       return [...prev, record].sort((a, b) => a.no_urut - b.no_urut);
     });
-    setEditingRecord(record);
+    if (options?.setAsEditing !== false) {
+      setEditingRecord(record);
+    }
+  };
+
+  const handleDuplicateRecord = async (source: BerkasRecord) => {
+    const duplicated = duplicateBerkasRecord(source, records);
+    try {
+      await handleSaveRecord(duplicated, { setAsEditing: false });
+      notify(
+        `Berkas ${source.kode_berkas} berhasil diduplikasi menjadi ${duplicated.kode_berkas}. Klik Edit untuk menyesuaikan data.`,
+        'success'
+      );
+    } catch {
+      // already notified inside handleSaveRecord
+    }
+  };
+
+  const handleFinishWizardToDashboard = (savedCode: string) => {
+    setEditingRecord(null);
+    setTaxPrefill(null);
+    setWizardDefaultLayanan(undefined);
+    setWizardKey((k) => k + 1);
+    setActiveSection('dashboard');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    notify(`Berkas ${savedCode} selesai dibuat dan tersimpan. Kembali ke Dashboard.`, 'success');
+  };
+
+  const handleFinishWizardAndCreateNew = (savedCode: string) => {
+    setEditingRecord(null);
+    setTaxPrefill(null);
+    setWizardDefaultLayanan(undefined);
+    setWizardKey((k) => k + 1);
+    setActiveSection('wizard');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    notify(
+      `Berkas ${savedCode} selesai disimpan. Formulir pembuatan berkas baru (data kosong) siap digunakan.`,
+      'success'
+    );
   };
 
   const handleChangeStatus = async (recordId: string, nextStatus: BerkasStatus) => {
@@ -486,7 +528,7 @@ export default function App() {
       updated_at: new Date().toISOString(),
     };
     try {
-      await handleSaveRecord(updated);
+      await handleSaveRecord(updated, { setAsEditing: false });
       notify(`Status berkas ${target.kode_berkas} diubah menjadi "${nextStatus}".`, 'success');
     } catch {
       // already notified inside handleSaveRecord
@@ -714,6 +756,7 @@ export default function App() {
                 records={records}
                 onCreateNew={handleCreateNew}
                 onEditRecord={handleEditRecord}
+                onDuplicateRecord={handleDuplicateRecord}
                 onCalculateTax={handleOpenTaxForRecord}
                 onChangeStatus={handleChangeStatus}
                 onPrintReceipt={(rec) => setReceiptRecord(rec)}
@@ -737,6 +780,8 @@ export default function App() {
                   setWizardDefaultLayanan(undefined);
                   setWizardKey((k) => k + 1);
                 }}
+                onFinishToDashboard={handleFinishWizardToDashboard}
+                onFinishAndCreateNew={handleFinishWizardAndCreateNew}
                 onPrintReceipt={(rec) => setReceiptRecord(rec)}
                 onOpenTaxCalculator={handleOpenTaxFromWizard}
                 onNotify={notify}
