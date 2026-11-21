@@ -70,6 +70,11 @@ import {
   mergeScannedPersonIntoParty,
 } from '../utils/wizardStep2Scan';
 import {
+  normalizeScanGender,
+  toScanTitleCase,
+  toScanUpperName,
+} from '../utils/scanTextCase';
+import {
   AKTA_SERVICE_TYPES,
   NON_AKTA_SERVICE_TYPES,
   calculateLandTaxes,
@@ -317,8 +322,9 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       const scanned = result.person;
 
       setAkta((prev) => {
+        const scannedUpperName = toScanUpperName(scanned.nama);
         if (target === 'kuasa') {
-          const nextName = scanned.nama || prev.nama_kuasa_bpn;
+          const nextName = scannedUpperName || prev.nama_kuasa_bpn;
           const nextDetail: PersonBasicInfo = {
             ...(prev.kuasa_bpn_detail ?? { nama: nextName }),
             ...scanned,
@@ -331,7 +337,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
           };
         }
         if (target === 'saksi1') {
-          const nextName = scanned.nama || prev.saksi_1;
+          const nextName = scannedUpperName || prev.saksi_1;
           const nextDetail: PersonBasicInfo = {
             ...(prev.saksi_1_detail ?? { nama: nextName }),
             ...scanned,
@@ -343,7 +349,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             saksi_1_detail: nextDetail,
           };
         }
-        const nextName = scanned.nama || prev.saksi_2;
+        const nextName = scannedUpperName || prev.saksi_2;
         const nextDetail: PersonBasicInfo = {
           ...(prev.saksi_2_detail ?? { nama: nextName }),
           ...scanned,
@@ -815,19 +821,19 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             id: `p-ai-${Date.now()}-${idx}`,
             peran: mapSuggestedRole(p.peran_saran),
             nik: p.nik || '',
-            nama: p.nama || '',
-            tempat_lahir: p.tempat_lahir || '',
+            nama: toScanUpperName(p.nama),
+            tempat_lahir: toScanTitleCase(p.tempat_lahir),
             tanggal_lahir: p.tanggal_lahir?.trim()
               ? formatTanggalDDMMYYYY(p.tanggal_lahir)
               : '',
-            jenis_kelamin: p.jenis_kelamin || 'Laki-laki',
-            alamat_jalan: p.alamat_jalan || '',
+            jenis_kelamin: normalizeScanGender(p.jenis_kelamin) || 'Laki-laki',
+            alamat_jalan: toScanTitleCase(p.alamat_jalan),
             rt_rw: p.rt_rw || '',
-            desa_kelurahan: p.desa_kelurahan || '',
-            kecamatan: p.kecamatan || '',
-            kabupaten: p.kabupaten || '',
-            pekerjaan: p.pekerjaan || '',
-            status_perkawinan: p.status_perkawinan || '',
+            desa_kelurahan: toScanTitleCase(p.desa_kelurahan),
+            kecamatan: toScanTitleCase(p.kecamatan),
+            kabupaten: toScanTitleCase(p.kabupaten),
+            pekerjaan: toScanTitleCase(p.pekerjaan),
+            status_perkawinan: toScanTitleCase(p.status_perkawinan),
           }))
         );
       }
@@ -835,6 +841,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       if (parsed.tanah) {
         const holders = Array.isArray(parsed.tanah.pemegang_hak_sertipikat)
           ? parsed.tanah.pemegang_hak_sertipikat
+              .map((h) => toScanUpperName(h))
+              .filter(Boolean)
           : [];
         const detectedCertType = resolveJenisSertipikat({
           jenis_sertipikat:
@@ -848,7 +856,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
         setTanah((prev) => ({
           ...prev,
           jenis_sertipikat: detectedCertType,
-          jenis_hak: parsed.tanah.jenis_hak || 'Hak Milik',
+          jenis_hak: toScanTitleCase(parsed.tanah.jenis_hak) || 'Hak Milik',
           nib: parsed.tanah.nib || '',
           nomor_hak_lama:
             detectedCertType === 'analog' ? parsed.tanah.nomor_hak_lama || '' : '',
@@ -857,18 +865,21 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
           luas_m2:
             resolveAccurateLuasBumiM2(parsed.tanah.luas_m2, parsed.pbb) ??
             (Number(parsed.tanah.luas_m2) || 0),
-          desa: parsed.tanah.desa || parsed.pbb?.letak_objek_desa || '',
-          kecamatan: parsed.tanah.kecamatan || parsed.pbb?.letak_objek_kecamatan || '',
+          desa: toScanTitleCase(parsed.tanah.desa || parsed.pbb?.letak_objek_desa || ''),
+          kecamatan: toScanTitleCase(
+            parsed.tanah.kecamatan || parsed.pbb?.letak_objek_kecamatan || ''
+          ),
           kabupaten:
-            parsed.tanah.kabupaten ||
-            parsed.pbb?.letak_objek_kabupaten ||
-            settings.nama_kabupaten,
-          provinsi: parsed.tanah.provinsi || settings.nama_provinsi || 'Jawa Tengah',
-          batas_utara: parsed.tanah.batas_utara || '',
-          batas_timur: parsed.tanah.batas_timur || '',
-          batas_selatan: parsed.tanah.batas_selatan || '',
-          batas_barat: parsed.tanah.batas_barat || '',
-          dasar_perolehan: parsed.tanah.dasar_perolehan || '',
+            toScanTitleCase(
+              parsed.tanah.kabupaten || parsed.pbb?.letak_objek_kabupaten || ''
+            ) || settings.nama_kabupaten,
+          provinsi:
+            toScanTitleCase(parsed.tanah.provinsi) || settings.nama_provinsi || 'Jawa Tengah',
+          batas_utara: toScanTitleCase(parsed.tanah.batas_utara),
+          batas_timur: toScanTitleCase(parsed.tanah.batas_timur),
+          batas_selatan: toScanTitleCase(parsed.tanah.batas_selatan),
+          batas_barat: toScanTitleCase(parsed.tanah.batas_barat),
+          dasar_perolehan: toScanTitleCase(parsed.tanah.dasar_perolehan),
           pemegang_hak_sertipikat: holders,
         }));
         setPemegangHakInput(holders.join(', '));
@@ -1859,9 +1870,9 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       <input
                         type="text"
                         value={p.nama}
-                        onChange={(e) => updateParty(p.id, { nama: e.target.value })}
-                        placeholder="Nama sesuai KTP"
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-medium"
+                        onChange={(e) => updateParty(p.id, { nama: e.target.value.toUpperCase() })}
+                        placeholder="NAMA SESUAI KTP"
+                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-medium uppercase"
                       />
                     </div>
                     <div>
@@ -2479,9 +2490,9 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     id="tanah-holders"
                     type="text"
                     value={pemegangHakInput}
-                    onChange={(e) => setPemegangHakInput(e.target.value)}
-                    placeholder="Contoh: Slamet Raharjo"
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                    onChange={(e) => setPemegangHakInput(e.target.value.toUpperCase())}
+                    placeholder="Contoh: SLAMET RAHARJO"
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md uppercase"
                   />
                 </div>
               </div>
@@ -3045,10 +3056,13 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             type="text"
                             value={nonAkta.nama_pewaris ?? ''}
                             onChange={(e) =>
-                              setNonAkta({ ...nonAkta, nama_pewaris: e.target.value })
+                              setNonAkta({
+                                ...nonAkta,
+                                nama_pewaris: e.target.value.toUpperCase(),
+                              })
                             }
                             placeholder="Contoh: HADI SUWARNO"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-medium"
+                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-medium uppercase"
                           />
                         </div>
                         <div>
@@ -3113,10 +3127,13 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             type="text"
                             value={nonAkta.nama_pasangan_pewaris ?? ''}
                             onChange={(e) =>
-                              setNonAkta({ ...nonAkta, nama_pasangan_pewaris: e.target.value })
+                              setNonAkta({
+                                ...nonAkta,
+                                nama_pasangan_pewaris: e.target.value.toUpperCase(),
+                              })
                             }
-                            placeholder="Nama janda/duda pewaris"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                            placeholder="NAMA JANDA/DUDA PEWARIS"
+                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md uppercase"
                           />
                         </div>
                         <div>
@@ -3733,9 +3750,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             id="akta-kuasa"
                             type="text"
                             value={akta.nama_kuasa_bpn}
-                            onChange={(e) => updateKuasaDetail({ nama: e.target.value })}
+                            onChange={(e) =>
+                              updateKuasaDetail({ nama: e.target.value.toUpperCase() })
+                            }
                             placeholder="SUWARDJO"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-medium"
+                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-medium uppercase"
                           />
                         </div>
                         <div>
@@ -3971,9 +3990,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                           id={sCfg.inputId}
                           type="text"
                           value={sCfg.nameVal}
-                          onChange={(e) => updateSaksiField({ nama: e.target.value })}
+                          onChange={(e) =>
+                            updateSaksiField({ nama: e.target.value.toUpperCase() })
+                          }
                           placeholder="SALIMIN"
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-medium"
+                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-medium uppercase"
                         />
                       </div>
                       <div>

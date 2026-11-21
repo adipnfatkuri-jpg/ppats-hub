@@ -625,17 +625,19 @@ Aturan singkat:
 - Sertipikat -> "tanah": jenis_sertipikat ("digital" NIBel / "analog" No SHM+Surat Ukur), jenis_hak, nib, nomor_hak_lama, surat_ukur_tanggal, surat_ukur_nomor, luas_m2, desa, kecamatan, kabupaten, provinsi, batas_utara/timur/selatan/barat, dasar_perolehan, pemegang_hak_sertipikat.
 - SPPT PBB -> "pbb": NOP, tahun_pajak, njop_bumi_m2, njop_bumi_total, njop_bangunan, luas_bumi_m2 (gabung angka terpotong 2 baris; cocokkan luas_bumi_m2 * njop_bumi_m2 ≈ njop_bumi_total), luas_bangunan_m2.
 - Pisahkan kolom kiri LETAK OBJEK PAJAK vs kolom kanan WAJIB PAJAK:
-  * letak_objek_lokasi = dukuh/jalan baris 1 kolom kiri (mis. "GORONGAN"), BUKAN desa & BUKAN alamat WP.
+  * letak_objek_lokasi = dukuh/jalan baris 1 kolom kiri (mis. "Gorongan"), BUKAN desa & BUKAN alamat WP.
   * letak_objek_rt_rw = RT/RW kolom kiri format "002/003", BUKAN RT/RW WP.
   * letak_objek_desa/kecamatan/kabupaten = dari kolom kiri; nama_wp_pbb = nama WP kolom kanan.
+- Aturan huruf: semua NAMA ORANG (pemegang_hak_sertipikat, nama_wp_pbb) WAJIB HURUF BESAR SEMUA (CAPSLOCK); teks lainnya (lokasi/dukuh, desa, kecamatan, kabupaten, provinsi, jenis_hak, batas, dasar_perolehan) ditulis Title Case (huruf depan kapital).
 - Field yang tidak ada isi "" atau 0.`
     : `Ekstrak data berkas PPATS (${fileNames}) untuk layanan "${layanan}" ke JSON sesuai skema.
 Aturan:
 1. KTP/KK/SKW -> "para_pihak" (peran_saran: "Pihak I"=pemilik/penjual/pemberi, "Pihak II"=pembeli/penerima, "Persetujuan Pasangan"=pasangan Pihak I, "Lampiran Lain"=saksi/lainnya). Tanggal lahir DD-MM-YYYY. Field kosong isi "".
 2. Sertipikat -> "tanah": jenis_sertipikat ("digital" NIBel / "analog" No SHM+SU), jenis_hak, nib, nomor_hak_lama, surat_ukur_tanggal/nomor, luas_m2, desa, kecamatan, kabupaten, provinsi, batas, dasar_perolehan, pemegang_hak_sertipikat.
 3. SPPT PBB -> "pbb": NOP, tahun_pajak, njop_bumi_m2, njop_bumi_total, njop_bangunan, luas_bumi_m2 (gabung jika terpotong 2 baris; pastikan luas_bumi_m2 * njop_bumi_m2 ≈ njop_bumi_total), luas_bangunan_m2.
-   WAJIB pisahkan kolom kiri LETAK OBJEK PAJAK (letak_objek_lokasi=dukuh baris 1 mis. "GORONGAN" bukan desa, letak_objek_rt_rw="002/003", letak_objek_desa/kecamatan/kabupaten) vs kolom kanan WAJIB PAJAK (nama_wp_pbb).
-4. "audit_warnings": ${scanMode === 'fast' ? 'isi [] kecuali ada ketidakcocokan nama/NIK/sertipikat yang jelas (maks 2 butir singkat).' : 'laporkan selisih alamat/RT/RW, NIK ganda, beda nama KTP vs sertipikat, atau Pihak I kawin tanpa pasangan.'}`;
+   WAJIB pisahkan kolom kiri LETAK OBJEK PAJAK (letak_objek_lokasi=dukuh baris 1 mis. "Gorongan" bukan desa, letak_objek_rt_rw="002/003", letak_objek_desa/kecamatan/kabupaten) vs kolom kanan WAJIB PAJAK (nama_wp_pbb).
+4. Aturan huruf: semua NAMA ORANG (para_pihak[].nama, pemegang_hak_sertipikat, nama_wp_pbb) WAJIB HURUF BESAR SEMUA (CAPSLOCK); seluruh teks lain (tempat_lahir, pekerjaan, alamat_jalan, desa, kecamatan, kabupaten, provinsi, status_perkawinan, jenis_hak, batas, dasar_perolehan, letak_objek_lokasi) ditulis Title Case (huruf depan kapital).
+5. "audit_warnings": ${scanMode === 'fast' ? 'isi [] kecuali ada ketidakcocokan nama/NIK/sertipikat yang jelas (maks 2 butir singkat).' : 'laporkan selisih alamat/RT/RW, NIK ganda, beda nama KTP vs sertipikat, atau Pihak I kawin tanpa pasangan.'}`;
 
   const parts = [
     ...files.map((f) => ({
@@ -678,6 +680,107 @@ Aturan:
   return normalizeExtractionOutput(parsed);
 }
 
+const SERVER_UPPERCASE_ACRONYMS = new Set([
+  'PNS',
+  'ASN',
+  'TNI',
+  'POLRI',
+  'BUMN',
+  'BUMD',
+  'BPN',
+  'ATR',
+  'PPAT',
+  'PPATS',
+  'BPHTB',
+  'PBB',
+  'SPPT',
+  'NJOP',
+  'SHM',
+  'HGB',
+  'HGU',
+  'SHGB',
+  'AJB',
+  'APHB',
+  'SKW',
+  'KTP',
+  'KK',
+  'NIK',
+  'NPWP',
+  'NIB',
+  'NOP',
+  'RT',
+  'RW',
+  'DKI',
+  'DIY',
+  'RI',
+  'WNI',
+  'WNA',
+  'PT',
+  'CV',
+  'UD',
+  'PD',
+  'SD',
+  'SMP',
+  'SMA',
+  'SMK',
+  'DPR',
+  'DPRD',
+  'RS',
+  'RSUD',
+]);
+
+function toScanUpperNameServer(val: unknown): string {
+  if (typeof val !== 'string') return '';
+  const clean = val.replace(/\s+/g, ' ').trim();
+  return clean ? clean.toUpperCase() : '';
+}
+
+function toScanTitleCaseServer(val: unknown): string {
+  if (typeof val !== 'string') return '';
+  const clean = val.replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
+  const converted = clean.replace(/[A-Za-zÀ-ÖØ-öø-ÿ]+/g, (word) => {
+    const upper = word.toUpperCase();
+    if (SERVER_UPPERCASE_ACRONYMS.has(upper)) return upper;
+    return upper.charAt(0) + upper.slice(1).toLowerCase();
+  });
+  return converted
+    .replace(/\bDi Yogyakarta\b/g, 'DI Yogyakarta')
+    .replace(/\bLaki-Laki\b/g, 'Laki-laki');
+}
+
+function normalizeScanGenderServer(val: unknown): string {
+  if (typeof val !== 'string') return '';
+  const clean = val.replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
+  if (/perempuan|wanita|^p$/i.test(clean)) return 'Perempuan';
+  if (/laki|pria|^l$/i.test(clean)) return 'Laki-laki';
+  return toScanTitleCaseServer(clean);
+}
+
+function normalizePersonFieldsServer(person: Record<string, unknown>): void {
+  if (typeof person.nama === 'string') {
+    person.nama = toScanUpperNameServer(person.nama);
+  }
+  const titleFields = [
+    'tempat_lahir',
+    'pekerjaan',
+    'alamat_jalan',
+    'desa_kelurahan',
+    'kecamatan',
+    'kabupaten',
+    'status_perkawinan',
+  ];
+  for (const key of titleFields) {
+    if (typeof person[key] === 'string') {
+      person[key] = toScanTitleCaseServer(person[key]);
+    }
+  }
+  if (typeof person.jenis_kelamin === 'string') {
+    person.jenis_kelamin = normalizeScanGenderServer(person.jenis_kelamin);
+  }
+}
+
 function normalizeSpptRtRwServer(raw?: unknown): string {
   const text = typeof raw === 'string' ? raw.replace(/\s+/g, ' ').trim() : '';
   if (!text || text === '-' || text === '/') return '';
@@ -691,9 +794,43 @@ function normalizeSpptRtRwServer(raw?: unknown): string {
 function normalizeExtractionOutput(parsed: unknown): unknown {
   if (!parsed || typeof parsed !== 'object') return parsed;
   const obj = parsed as Record<string, unknown>;
+  const paraPihak = Array.isArray(obj.para_pihak) ? obj.para_pihak : null;
   const pbb = obj.pbb && typeof obj.pbb === 'object' ? (obj.pbb as Record<string, unknown>) : null;
   const tanah =
     obj.tanah && typeof obj.tanah === 'object' ? (obj.tanah as Record<string, unknown>) : null;
+
+  if (paraPihak) {
+    for (const item of paraPihak) {
+      if (item && typeof item === 'object') {
+        normalizePersonFieldsServer(item as Record<string, unknown>);
+      }
+    }
+  }
+
+  if (tanah) {
+    const tanahTitleFields = [
+      'jenis_hak',
+      'desa',
+      'kecamatan',
+      'kabupaten',
+      'provinsi',
+      'batas_utara',
+      'batas_timur',
+      'batas_selatan',
+      'batas_barat',
+      'dasar_perolehan',
+    ];
+    for (const key of tanahTitleFields) {
+      if (typeof tanah[key] === 'string') {
+        tanah[key] = toScanTitleCaseServer(tanah[key]);
+      }
+    }
+    if (Array.isArray(tanah.pemegang_hak_sertipikat)) {
+      tanah.pemegang_hak_sertipikat = tanah.pemegang_hak_sertipikat
+        .map((h) => toScanUpperNameServer(h))
+        .filter(Boolean);
+    }
+  }
 
   if (pbb) {
     const rawLokasi =
@@ -707,8 +844,21 @@ function normalizeExtractionOutput(parsed: unknown): unknown {
       .replace(/^[,.\s-]+|[,.\s-]+$/g, '')
       .trim();
 
-    pbb.letak_objek_lokasi = cleanedLokasi;
+    pbb.letak_objek_lokasi = toScanTitleCaseServer(cleanedLokasi);
     pbb.letak_objek_rt_rw = directRtRw || embeddedRtRw;
+
+    if (typeof pbb.letak_objek_desa === 'string') {
+      pbb.letak_objek_desa = toScanTitleCaseServer(pbb.letak_objek_desa);
+    }
+    if (typeof pbb.letak_objek_kecamatan === 'string') {
+      pbb.letak_objek_kecamatan = toScanTitleCaseServer(pbb.letak_objek_kecamatan);
+    }
+    if (typeof pbb.letak_objek_kabupaten === 'string') {
+      pbb.letak_objek_kabupaten = toScanTitleCaseServer(pbb.letak_objek_kabupaten);
+    }
+    if (typeof pbb.nama_wp_pbb === 'string') {
+      pbb.nama_wp_pbb = toScanUpperNameServer(pbb.nama_wp_pbb);
+    }
 
     const origPbbLuas = Number(pbb.luas_bumi_m2) || 0;
     const njopPerM2 = Number(pbb.njop_bumi_m2) || 0;
@@ -764,7 +914,7 @@ export async function extractPersonWithGemini(
     })),
     {
       text: `Ekstrak identitas 1 orang (${role}) dari KTP (${files.map((f) => f.name).join(', ')}) ke JSON.
-Ambil nama, NIK 16 digit, tempat_lahir, tanggal_lahir (DD-MM-YYYY), jenis_kelamin ("Laki-laki"/"Perempuan"), status_perkawinan, pekerjaan, alamat_jalan (tanpa RT/RW), rt, rw, desa_kelurahan, kecamatan, kabupaten (dari header KTP). Field tidak terbaca isi "".`,
+Ambil nama (huruf KAPITAL semua), NIK 16 digit, tempat_lahir, tanggal_lahir (DD-MM-YYYY), jenis_kelamin ("Laki-laki"/"Perempuan"), status_perkawinan, pekerjaan, alamat_jalan (tanpa RT/RW), rt, rw, desa_kelurahan, kecamatan, kabupaten (dari header KTP). Field selain nama ditulis Title Case (huruf depan kapital). Field tidak terbaca isi "".`,
     },
   ];
 
@@ -781,6 +931,10 @@ Ambil nama, NIK 16 digit, tempat_lahir, tanggal_lahir (DD-MM-YYYY), jenis_kelami
     `person-extract(${role})`,
     5000
   );
+
+  if (parsed && typeof parsed === 'object') {
+    normalizePersonFieldsServer(parsed as Record<string, unknown>);
+  }
 
   return {
     person: parsed,

@@ -50,7 +50,7 @@ test('mergeScannedPersonIntoParty fills all KTP fields including gender, marital
   assert.equal(merged.nama, 'OKTY SRI LESTARININGSIH');
   assert.equal(merged.nik, '3309115811840001');
   assert.equal(merged.jenis_kelamin, 'Perempuan');
-  assert.equal(merged.status_perkawinan, 'KAWIN');
+  assert.equal(merged.status_perkawinan, 'Kawin');
   assert.equal(merged.rt_rw, '004/001');
   assert.equal(merged.kecamatan, 'Ngemplak');
   assert.equal(merged.kabupaten, 'Boyolali');
@@ -168,6 +168,9 @@ test('mergeObjectScanIntoWizardTanahPbb handles Analog SHM scan and subsequent S
   assert.equal(afterSppt.nextTanah.nomor_hak_lama, '3354');
   assert.equal(afterSppt.nextTanah.surat_ukur_nomor, '00143/Donohudan/2011');
   assert.equal(afterSppt.nextTanah.luas_m2, 160);
+  assert.equal(afterSppt.nextTanah.desa, 'Donohudan');
+  assert.equal(afterSppt.nextTanah.kecamatan, 'Ngemplak');
+  assert.equal(afterSppt.nextTanah.kabupaten, 'Boyolali');
   assert.equal(afterSppt.nextPbb.nop, '33.09.110.005.015-0200.0');
   assert.equal(afterSppt.nextPbb.njop_bumi_m2, 464000);
   assert.equal(afterSppt.nextPemegangHakInput, 'SUGIARTI, A.MD KOM');

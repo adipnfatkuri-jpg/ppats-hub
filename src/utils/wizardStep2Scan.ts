@@ -8,13 +8,18 @@ import {
 import { resolveAccurateLuasBumiM2 } from './bphtbObjectScan';
 import { resolveJenisSertipikat } from './bundleGenerator';
 import { formatNumberId, formatRupiah } from './indonesianFormatter';
+import {
+  normalizeScanGender,
+  toScanTitleCase,
+  toScanUpperName,
+} from './scanTextCase';
 
 function cleanRegionPrefix(val?: string, kind?: 'kec' | 'kab'): string {
   const raw = (val || '').replace(/\s+/g, ' ').trim();
   if (!raw) return '';
-  if (kind === 'kec') return raw.replace(/^(Kecamatan|Kec\.?)\s+/i, '').trim();
-  if (kind === 'kab') return raw.replace(/^(Kabupaten|Kab\.?|Kota)\s+/i, '').trim();
-  return raw;
+  if (kind === 'kec') return toScanTitleCase(raw.replace(/^(Kecamatan|Kec\.?)\s+/i, '').trim());
+  if (kind === 'kab') return toScanTitleCase(raw.replace(/^(Kabupaten|Kab\.?|Kota)\s+/i, '').trim());
+  return toScanTitleCase(raw);
 }
 
 /**
@@ -40,17 +45,17 @@ export function mergeScannedPersonIntoParty(
   return {
     ...prev,
     nik: scanned.nik?.trim() || prev.nik,
-    nama: scanned.nama?.trim() || prev.nama,
-    tempat_lahir: scanned.tempat_lahir?.trim() || prev.tempat_lahir,
+    nama: toScanUpperName(scanned.nama) || prev.nama,
+    tempat_lahir: toScanTitleCase(scanned.tempat_lahir) || prev.tempat_lahir,
     tanggal_lahir: scanned.tanggal_lahir?.trim() || prev.tanggal_lahir,
-    jenis_kelamin: scanned.jenis_kelamin?.trim() || prev.jenis_kelamin || 'Laki-laki',
-    alamat_jalan: scanned.alamat_jalan?.trim() || prev.alamat_jalan,
+    jenis_kelamin: normalizeScanGender(scanned.jenis_kelamin) || prev.jenis_kelamin || 'Laki-laki',
+    alamat_jalan: toScanTitleCase(scanned.alamat_jalan) || prev.alamat_jalan,
     rt_rw: combinedRtRw || prev.rt_rw,
-    desa_kelurahan: scanned.desa_kelurahan?.trim() || prev.desa_kelurahan,
+    desa_kelurahan: toScanTitleCase(scanned.desa_kelurahan) || prev.desa_kelurahan,
     kecamatan: cleanRegionPrefix(scanned.kecamatan, 'kec') || prev.kecamatan,
     kabupaten: cleanRegionPrefix(scanned.kabupaten, 'kab') || prev.kabupaten,
-    pekerjaan: scanned.pekerjaan?.trim() || prev.pekerjaan,
-    status_perkawinan: scanned.status_perkawinan?.trim() || prev.status_perkawinan,
+    pekerjaan: toScanTitleCase(scanned.pekerjaan) || prev.pekerjaan,
+    status_perkawinan: toScanTitleCase(scanned.status_perkawinan) || prev.status_perkawinan,
   };
 }
 
@@ -98,14 +103,12 @@ export function mergeObjectScanIntoWizardTanahPbb(
 
   const accurateLuas = resolveAccurateLuasBumiM2(scannedTanah?.luas_m2, scannedPbb);
   const scannedHolders = Array.isArray(scannedTanah?.pemegang_hak_sertipikat)
-    ? scannedTanah.pemegang_hak_sertipikat.map((h) => (h || '').trim()).filter(Boolean)
+    ? scannedTanah.pemegang_hak_sertipikat.map((h) => toScanUpperName(h)).filter(Boolean)
     : [];
 
-  const scannedDesa = (
-    scannedTanah?.desa?.trim() ||
-    scannedPbb?.letak_objek_desa?.trim() ||
-    ''
-  ).trim();
+  const scannedDesa = toScanTitleCase(
+    scannedTanah?.desa?.trim() || scannedPbb?.letak_objek_desa?.trim() || ''
+  );
   const scannedKec = cleanRegionPrefix(
     scannedTanah?.kecamatan?.trim() || scannedPbb?.letak_objek_kecamatan?.trim(),
     'kec'
@@ -118,7 +121,7 @@ export function mergeObjectScanIntoWizardTanahPbb(
   const nextTanah: DataTanah = {
     ...prevTanah,
     jenis_sertipikat: nextJenisSertipikat,
-    jenis_hak: scannedTanah?.jenis_hak?.trim() || prevTanah.jenis_hak || 'Hak Milik',
+    jenis_hak: toScanTitleCase(scannedTanah?.jenis_hak) || prevTanah.jenis_hak || 'Hak Milik',
     nib: scannedTanah?.nib?.trim() || prevTanah.nib,
     nomor_hak_lama:
       nextJenisSertipikat === 'analog'
@@ -136,15 +139,15 @@ export function mergeObjectScanIntoWizardTanahPbb(
     kecamatan: scannedKec || prevTanah.kecamatan,
     kabupaten: scannedKab || prevTanah.kabupaten || defaults?.kabupaten || '',
     provinsi:
-      scannedTanah?.provinsi?.trim() ||
+      toScanTitleCase(scannedTanah?.provinsi) ||
       prevTanah.provinsi ||
       defaults?.provinsi ||
       'Jawa Tengah',
-    batas_utara: scannedTanah?.batas_utara?.trim() || prevTanah.batas_utara || '',
-    batas_timur: scannedTanah?.batas_timur?.trim() || prevTanah.batas_timur || '',
-    batas_selatan: scannedTanah?.batas_selatan?.trim() || prevTanah.batas_selatan || '',
-    batas_barat: scannedTanah?.batas_barat?.trim() || prevTanah.batas_barat || '',
-    dasar_perolehan: scannedTanah?.dasar_perolehan?.trim() || prevTanah.dasar_perolehan,
+    batas_utara: toScanTitleCase(scannedTanah?.batas_utara) || prevTanah.batas_utara || '',
+    batas_timur: toScanTitleCase(scannedTanah?.batas_timur) || prevTanah.batas_timur || '',
+    batas_selatan: toScanTitleCase(scannedTanah?.batas_selatan) || prevTanah.batas_selatan || '',
+    batas_barat: toScanTitleCase(scannedTanah?.batas_barat) || prevTanah.batas_barat || '',
+    dasar_perolehan: toScanTitleCase(scannedTanah?.dasar_perolehan) || prevTanah.dasar_perolehan,
     pemegang_hak_sertipikat:
       scannedHolders.length > 0 ? scannedHolders : prevTanah.pemegang_hak_sertipikat,
   };

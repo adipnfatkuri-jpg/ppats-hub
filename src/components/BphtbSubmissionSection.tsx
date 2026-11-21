@@ -47,6 +47,7 @@ import {
 import { formatPersonFullAddress, resolvePersonDetail } from '../utils/bundleGenerator';
 import { optimizeDocumentFile } from '../utils/imageOptimizer';
 import { scanPersonFromFiles } from '../utils/personScan';
+import { toScanUpperName } from '../utils/scanTextCase';
 import { postScanJson } from '../utils/scanApi';
 import {
   ObjectTaxScanSyncPayload,
@@ -793,7 +794,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                       runKtpScan('wp', 'Wajib Pajak (Penerima Hak)', files, (person) => {
                         onChangeForm((prev) => ({
                           ...prev,
-                          wp_nama: person.nama || prev.wp_nama,
+                          wp_nama: toScanUpperName(person.nama) || prev.wp_nama,
                           wp_nik: person.nik || prev.wp_nik,
                           wp_ttl: buildTtlFromPerson(person) || prev.wp_ttl,
                           wp_pekerjaan: person.pekerjaan || prev.wp_pekerjaan,
@@ -817,10 +818,10 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                       type="text"
                       value={form.wp_nama}
                       onChange={(e) =>
-                        onChangeForm((prev) => ({ ...prev, wp_nama: e.target.value }))
+                        onChangeForm((prev) => ({ ...prev, wp_nama: e.target.value.toUpperCase() }))
                       }
                       placeholder="Nama lengkap sesuai KTP"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg uppercase focus:outline-none focus:ring-2 focus:ring-sky-500"
                     />
                   </div>
                   <div>
@@ -965,7 +966,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         (person) => {
                           onChangeForm((prev) => ({
                             ...prev,
-                            pemberi_nama: person.nama || prev.pemberi_nama,
+                            pemberi_nama: toScanUpperName(person.nama) || prev.pemberi_nama,
                             pemberi_nik: person.nik || prev.pemberi_nik,
                             pemberi_ttl: buildTtlFromPerson(person) || prev.pemberi_ttl,
                             pemberi_pekerjaan: person.pekerjaan || prev.pemberi_pekerjaan,
@@ -986,10 +987,13 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                       type="text"
                       value={form.pemberi_nama}
                       onChange={(e) =>
-                        onChangeForm((prev) => ({ ...prev, pemberi_nama: e.target.value }))
+                        onChangeForm((prev) => ({
+                          ...prev,
+                          pemberi_nama: e.target.value.toUpperCase(),
+                        }))
                       }
                       placeholder="Nama lengkap pemilik sertipikat semula"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg uppercase focus:outline-none focus:ring-2 focus:ring-sky-500"
                     />
                   </div>
                   <div>
@@ -1241,7 +1245,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         runKtpScan('kuasa', 'Penerima Kuasa BPHTB', files, (person) => {
                           onChangeForm((prev) => ({
                             ...prev,
-                            kuasa_nama: person.nama || prev.kuasa_nama,
+                            kuasa_nama: toScanUpperName(person.nama) || prev.kuasa_nama,
                             kuasa_nik: person.nik || prev.kuasa_nik,
                             kuasa_ttl: buildTtlFromPerson(person) || prev.kuasa_ttl,
                             kuasa_pekerjaan: person.pekerjaan || prev.kuasa_pekerjaan,
@@ -1259,7 +1263,10 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                       type="text"
                       value={form.kuasa_nama}
                       onChange={(e) =>
-                        onChangeForm((prev) => ({ ...prev, kuasa_nama: e.target.value }))
+                        onChangeForm((prev) => ({
+                          ...prev,
+                          kuasa_nama: e.target.value.toUpperCase(),
+                        }))
                       }
                       placeholder="Nama staf / kuasa pengurusan SIPAD"
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -1445,7 +1452,8 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                                                   item.id === approverId
                                                     ? {
                                                         ...item,
-                                                        nama: person.nama || item.nama,
+                                                        nama:
+                                                          toScanUpperName(person.nama) || item.nama,
                                                         nik: person.nik || item.nik,
                                                       }
                                                     : item
@@ -1476,7 +1484,9 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                                       type="text"
                                       value={approver.nama}
                                       onChange={(e) =>
-                                        handleUpdateApprover(approverId, { nama: e.target.value })
+                                        handleUpdateApprover(approverId, {
+                                          nama: e.target.value.toUpperCase(),
+                                        })
                                       }
                                       placeholder="Nama sesuai KTP"
                                       className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -1544,7 +1554,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                                 runKtpScan('saksi1', 'Saksi I', files, (person) => {
                                   onChangeForm((prev) => ({
                                     ...prev,
-                                    saksi_1_nama: person.nama || prev.saksi_1_nama,
+                                    saksi_1_nama: toScanUpperName(person.nama) || prev.saksi_1_nama,
                                   }));
                                 })
                               }
@@ -1557,11 +1567,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                             onChange={(e) =>
                               onChangeForm((prev) => ({
                                 ...prev,
-                                saksi_1_nama: e.target.value,
+                                saksi_1_nama: e.target.value.toUpperCase(),
                               }))
                             }
                             placeholder="Opsional · Nama Saksi I"
-                            className="w-full px-3 py-2 border border-emerald-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="w-full px-3 py-2 border border-emerald-200 rounded-lg bg-white uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500"
                           />
                         </div>
                         <div className="space-y-1">
@@ -1576,7 +1586,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                                 runKtpScan('saksi2', 'Saksi II', files, (person) => {
                                   onChangeForm((prev) => ({
                                     ...prev,
-                                    saksi_2_nama: person.nama || prev.saksi_2_nama,
+                                    saksi_2_nama: toScanUpperName(person.nama) || prev.saksi_2_nama,
                                   }));
                                 })
                               }
@@ -1589,11 +1599,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                             onChange={(e) =>
                               onChangeForm((prev) => ({
                                 ...prev,
-                                saksi_2_nama: e.target.value,
+                                saksi_2_nama: e.target.value.toUpperCase(),
                               }))
                             }
                             placeholder="Opsional · Nama Saksi II"
-                            className="w-full px-3 py-2 border border-emerald-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="w-full px-3 py-2 border border-emerald-200 rounded-lg bg-white uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500"
                           />
                         </div>
                         <datalist id="bphtb-saksi-list">

@@ -25,6 +25,7 @@ import {
 } from '../utils/bundleGenerator';
 import { SUPPORTED_TEMPLATE_TAGS } from '../utils/docxTemplates';
 import { scanPersonFromFiles } from '../utils/personScan';
+import { toScanUpperName } from '../utils/scanTextCase';
 import { CloudTeamPanel, type CloudTeamPanelProps } from './CloudTeamPanel';
 
 interface SettingsModuleProps {
@@ -272,9 +273,10 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
       const scanned = result.person;
 
       if (kind === 'saksi') {
+        const scannedUpper = toScanUpperName(scanned.nama);
         if (idx === 'new') {
           const nextIdx = form.daftar_saksi.length;
-          const namaBaru = scanned.nama || newSaksi.trim() || `Saksi Baru ${nextIdx + 1}`;
+          const namaBaru = scannedUpper || toScanUpperName(newSaksi) || `SAKSI BARU ${nextIdx + 1}`;
           const profile: PersonBasicInfo = { ...scanned, nama: namaBaru };
           const nextForm: OfficeSettings = {
             ...form,
@@ -290,8 +292,8 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
             'success'
           );
         } else {
-          const existingName = form.daftar_saksi[idx] || `Saksi ${idx + 1}`;
-          const nextName = scanned.nama || existingName;
+          const existingName = form.daftar_saksi[idx] || `SAKSI ${idx + 1}`;
+          const nextName = scannedUpper || existingName;
           const profiles = [...(form.profil_saksi ?? [])];
           const current = profiles[idx] ?? { nama: existingName };
           profiles[idx] = { ...current, ...scanned, nama: nextName };
@@ -308,9 +310,10 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
           onNotify(`Data Saksi "${nextName}" diperbarui dari hasil scan KTP.`, 'success');
         }
       } else {
+        const scannedUpper = toScanUpperName(scanned.nama);
         if (idx === 'new') {
           const nextIdx = form.daftar_kuasa_bpn.length;
-          const namaBaru = scanned.nama || newKuasa.trim() || `Staf Kuasa ${nextIdx + 1}`;
+          const namaBaru = scannedUpper || toScanUpperName(newKuasa) || `STAF KUASA ${nextIdx + 1}`;
           const profile: PersonBasicInfo = { ...scanned, nama: namaBaru };
           const nextForm: OfficeSettings = {
             ...form,
@@ -326,8 +329,8 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
             'success'
           );
         } else {
-          const existingName = form.daftar_kuasa_bpn[idx] || `Staf Kuasa ${idx + 1}`;
-          const nextName = scanned.nama || existingName;
+          const existingName = form.daftar_kuasa_bpn[idx] || `STAF KUASA ${idx + 1}`;
+          const nextName = scannedUpper || existingName;
           const profiles = [...(form.profil_kuasa ?? [])];
           const current = profiles[idx] ?? { nama: existingName };
           profiles[idx] = { ...current, ...scanned, nama: nextName };

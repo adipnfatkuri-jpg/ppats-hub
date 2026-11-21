@@ -1,6 +1,7 @@
 import { ExtractionApiResponse } from '../types/ppats';
 import { BphtbSubmissionFormData } from './bphtbSubmissionGenerator';
 import { formatNumberId, formatRupiah } from './indonesianFormatter';
+import { toScanTitleCase, toScanUpperName } from './scanTextCase';
 
 export interface ObjectTaxScanSyncPayload {
   luas_m2?: number;
@@ -11,9 +12,9 @@ export interface ObjectTaxScanSyncPayload {
 function cleanRegionPrefix(val?: string, kind?: 'kec' | 'kab'): string {
   const raw = (val || '').replace(/\s+/g, ' ').trim();
   if (!raw) return '';
-  if (kind === 'kec') return raw.replace(/^(Kecamatan|Kec\.?)\s+/i, '').trim();
-  if (kind === 'kab') return raw.replace(/^(Kabupaten|Kab\.?|Kota)\s+/i, '').trim();
-  return raw;
+  if (kind === 'kec') return toScanTitleCase(raw.replace(/^(Kecamatan|Kec\.?)\s+/i, '').trim());
+  if (kind === 'kab') return toScanTitleCase(raw.replace(/^(Kabupaten|Kab\.?|Kota)\s+/i, '').trim());
+  return toScanTitleCase(raw);
 }
 
 /**
@@ -59,7 +60,7 @@ export function splitLokasiAndRtRw(
     .trim();
 
   return {
-    lokasi: strippedLokasi,
+    lokasi: toScanTitleCase(strippedLokasi),
     rtRw: directRtRw || embeddedRtRw,
   };
 }
@@ -148,7 +149,9 @@ export function mergeObjectScanIntoBphtbForm(
     pbb?.letak_objek_rt_rw
   );
 
-  const scannedDesa = (tanah?.desa?.trim() || pbb?.letak_objek_desa?.trim() || '').trim();
+  const scannedDesa = toScanTitleCase(
+    tanah?.desa?.trim() || pbb?.letak_objek_desa?.trim() || ''
+  );
   const scannedKec = cleanRegionPrefix(
     tanah?.kecamatan?.trim() || pbb?.letak_objek_kecamatan?.trim(),
     'kec'
@@ -158,15 +161,16 @@ export function mergeObjectScanIntoBphtbForm(
     'kab'
   );
 
-  // Prioritaskan nama dukuh/lokasi dari SPPT PBB (misal "GORONGAN").
+  // Prioritaskan nama dukuh/lokasi dari SPPT PBB (misal "Gorongan").
   // Jangan timpa dengan nama desa jika dukuh tidak ditemukan dan field sebelumnya sudah terisi.
   const nextLokasi = pbbLokasi || prev.letaknya_jalan || scannedDesa;
   const nextRtRw = pbbRtRw || prev.objek_rt_rw;
 
-  const scannedOwner =
+  const scannedOwner = toScanUpperName(
     tanah?.pemegang_hak_sertipikat?.find((n) => n?.trim())?.trim() ||
-    pbb?.nama_wp_pbb?.trim() ||
-    '';
+      pbb?.nama_wp_pbb?.trim() ||
+      ''
+  );
 
   const hasValidBuildingArea =
     typeof pbb?.luas_bangunan_m2 === 'number' &&
@@ -178,7 +182,7 @@ export function mergeObjectScanIntoBphtbForm(
     ...prev,
     nop: pbb?.nop?.trim() || prev.nop,
     tahun_pajak: pbb?.tahun_pajak?.trim() || prev.tahun_pajak,
-    jenis_hak: tanah?.jenis_hak?.trim() || prev.jenis_hak,
+    jenis_hak: toScanTitleCase(tanah?.jenis_hak) || prev.jenis_hak,
     nomor_sertipikat: scannedCertNumber || prev.nomor_sertipikat,
     letaknya_jalan: nextLokasi,
     objek_rt_rw: nextRtRw,

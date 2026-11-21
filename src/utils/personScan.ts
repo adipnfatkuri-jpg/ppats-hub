@@ -2,6 +2,11 @@ import { PersonBasicInfo } from '../types/ppats.ts';
 import { parseFlexibleDate } from './indonesianFormatter.ts';
 import { optimizeDocumentFile } from './imageOptimizer.ts';
 import { postScanJson } from './scanApi.ts';
+import {
+  normalizeScanGender,
+  toScanTitleCase,
+  toScanUpperName,
+} from './scanTextCase.ts';
 
 export interface ExtractPersonApiResponse {
   person: PersonBasicInfo;
@@ -10,8 +15,10 @@ export interface ExtractPersonApiResponse {
 }
 
 /**
- * Menormalkan hasil scan identitas orang (Saksi / Kuasa BPN) agar sesuai format SIM-PPATS
- * (tanggal_lahir DD-MM-YYYY, NIK bersih, RT/RW rapi).
+ * Menormalkan hasil scan identitas orang (Pihak / Pemohon / Saksi / Kuasa BPN) agar sesuai format SIM-PPATS:
+ * - nama tetap CAPSLOCK
+ * - teks lain (tempat lahir, pekerjaan, alamat, wilayah, status perkawinan) ditulis Title Case
+ * - tanggal_lahir DD-MM-YYYY, NIK bersih, RT/RW rapi.
  */
 export function normalizeScannedPersonInfo(
   raw: Partial<PersonBasicInfo> | null | undefined,
@@ -27,29 +34,22 @@ export function normalizeScannedPersonInfo(
   const cleanRtRwSegment = (val?: string): string =>
     clean(val).replace(/^(RT|RW)\s*[:.]?\s*/i, '');
 
-  const nama = clean(raw?.nama) || clean(fallbackName);
-  const rawGender = clean(raw?.jenis_kelamin);
-  const normalizedGender = rawGender
-    ? /perempuan|wanita|^p$/i.test(rawGender)
-      ? 'Perempuan'
-      : /laki|pria|^l$/i.test(rawGender)
-        ? 'Laki-laki'
-        : rawGender
-    : '';
-  const normalizedMarital = clean(raw?.status_perkawinan).toUpperCase();
+  const nama = toScanUpperName(raw?.nama) || toScanUpperName(fallbackName);
+  const normalizedGender = normalizeScanGender(raw?.jenis_kelamin);
+  const normalizedMarital = toScanTitleCase(raw?.status_perkawinan);
 
   const result: PersonBasicInfo = {
     nama,
     nik: rawNik || clean(raw?.nik),
-    pekerjaan: clean(raw?.pekerjaan),
-    tempat_lahir: clean(raw?.tempat_lahir),
+    pekerjaan: toScanTitleCase(raw?.pekerjaan),
+    tempat_lahir: toScanTitleCase(raw?.tempat_lahir),
     tanggal_lahir: parsedTgl ? parsedTgl.ddMmYyyy : rawTgl,
-    alamat_jalan: clean(raw?.alamat_jalan),
+    alamat_jalan: toScanTitleCase(raw?.alamat_jalan),
     rt: cleanRtRwSegment(raw?.rt),
     rw: cleanRtRwSegment(raw?.rw),
-    desa_kelurahan: clean(raw?.desa_kelurahan),
-    kecamatan: clean(raw?.kecamatan),
-    kabupaten: clean(raw?.kabupaten),
+    desa_kelurahan: toScanTitleCase(raw?.desa_kelurahan),
+    kecamatan: toScanTitleCase(raw?.kecamatan),
+    kabupaten: toScanTitleCase(raw?.kabupaten),
   };
 
   if (normalizedGender) {
