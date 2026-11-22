@@ -24,6 +24,7 @@ import type {
   TemplateDocKey,
 } from '../types/ppats';
 import { DEFAULT_OFFICE_SETTINGS } from './seedData';
+import { normalizeBerkasStatus } from './dashboardHelpers';
 import { loadCustomTemplates, loadRecords, loadSettings } from './storage';
 import {
   BOOTSTRAPPED_ADMIN_EMAIL,
@@ -96,7 +97,7 @@ export function buildCloudBerkasPayload(
     kode_berkas: clampString(record.kode_berkas || safeId, 80) || safeId,
     tanggal_masuk: clampString(record.tanggal_masuk || '', 40),
     layanan: record.layanan,
-    status: record.status,
+    status: normalizeBerkasStatus(record.status),
     para_pihak: stripUndefinedDeep((record.para_pihak || []).slice(0, 50)),
     tanah: stripUndefinedDeep(record.tanah || {}),
     pbb: stripUndefinedDeep(record.pbb || {}),
@@ -198,7 +199,7 @@ function docDataToBerkasRecord(data: Record<string, unknown>): BerkasRecord {
     kode_berkas: String(data.kode_berkas || ''),
     tanggal_masuk: String(data.tanggal_masuk || ''),
     layanan: data.layanan as BerkasRecord['layanan'],
-    status: data.status as BerkasRecord['status'],
+    status: normalizeBerkasStatus(String(data.status ?? '')),
     para_pihak: (Array.isArray(data.para_pihak) ? data.para_pihak : []) as BerkasRecord['para_pihak'],
     tanah: (data.tanah || {}) as BerkasRecord['tanah'],
     pbb: (data.pbb || {}) as BerkasRecord['pbb'],

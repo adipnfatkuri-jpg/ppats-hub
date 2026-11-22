@@ -322,6 +322,10 @@
             "Pemecahan",
             "Ukur Ulang",
             "Ralat Data",
+            "Pengecekan Sertipikat",
+            "Validasi Sertipikat",
+            "Analisis Bidang",
+            "Permohonan PKKPR",
             "Pemecahan/Ukur Ulang"
           ]
         },
@@ -329,10 +333,16 @@
           "type": "string",
           "enum": [
             "1. Pemberkasan",
-            "2. Validasi Pajak",
-            "3. TTD Akta",
-            "4. Proses BPN",
-            "5. Selesai"
+            "2. Validasi",
+            "3. Ukur Ulang",
+            "4. Analisis Bidang",
+            "5. Pecah",
+            "6. Validasi Pajak",
+            "7. Pengecekan",
+            "8. Proses BPN",
+            "9. Pelaporan",
+            "10. Penerbitan",
+            "11. Selesai"
           ]
         },
         "para_pihak": {

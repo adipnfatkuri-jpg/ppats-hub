@@ -18,6 +18,7 @@ import {
 } from './types/ppats';
 import { DEFAULT_OFFICE_SETTINGS } from './utils/seedData';
 import { duplicateBerkasRecord } from './utils/recordDuplicate';
+import { isTerminalStatus } from './utils/dashboardHelpers';
 import {
   deleteCustomTemplate,
   deleteRecord,
@@ -517,10 +518,10 @@ export default function App() {
     if (
       isCloudConnected &&
       cloudSession.role !== 'admin' &&
-      target.status === '5. Selesai'
+      isTerminalStatus(target.status)
     ) {
       notify(
-        'Berkas yang sudah berstatus "5. Selesai" terkunci dan hanya dapat diubah oleh Admin Kantor.',
+        'Berkas yang sudah berstatus "11. Selesai" terkunci dan hanya dapat diubah oleh Admin Kantor.',
         'error'
       );
       return;

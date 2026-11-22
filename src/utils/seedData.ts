@@ -20,10 +20,16 @@ export const SERVICE_TYPES: ServiceType[] = [
 
 export const STATUS_OPTIONS: BerkasStatus[] = [
   '1. Pemberkasan',
-  '2. Validasi Pajak',
-  '3. TTD Akta',
-  '4. Proses BPN',
-  '5. Selesai',
+  '2. Validasi',
+  '3. Ukur Ulang',
+  '4. Analisis Bidang',
+  '5. Pecah',
+  '6. Validasi Pajak',
+  '7. Pengecekan',
+  '8. Proses BPN',
+  '9. Pelaporan',
+  '10. Penerbitan',
+  '11. Selesai',
 ];
 
 export const TEMPLATE_DOCS_META: TemplateDocMeta[] = [
@@ -151,7 +157,7 @@ export const INITIAL_SEED_RECORDS: BerkasRecord[] = [
     kode_berkas: 'REG-2026-001',
     tanggal_masuk: '2026-11-04',
     layanan: 'AJB',
-    status: '5. Selesai',
+    status: '11. Selesai',
     para_pihak: [
       {
         id: 'p-1a',
@@ -255,7 +261,7 @@ export const INITIAL_SEED_RECORDS: BerkasRecord[] = [
     kode_berkas: 'REG-2026-002',
     tanggal_masuk: '2026-11-11',
     layanan: 'APHB',
-    status: '4. Proses BPN',
+    status: '8. Proses BPN',
     para_pihak: [
       {
         id: 'p-2a',
@@ -341,7 +347,7 @@ export const INITIAL_SEED_RECORDS: BerkasRecord[] = [
     kode_berkas: 'REG-2026-003',
     tanggal_masuk: '2026-11-18',
     layanan: 'Akta Hibah',
-    status: '2. Validasi Pajak',
+    status: '6. Validasi Pajak',
     para_pihak: [
       {
         id: 'p-3a',

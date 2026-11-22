@@ -213,11 +213,16 @@ service cloud.firestore {
         && isValidString(data.tanggal_masuk, 0, 40)
         && data.layanan in [
           'AJB', 'APHB', 'Akta Hibah', 'Turun Waris',
-          'Pemecahan', 'Ukur Ulang', 'Ralat Data', 'Pemecahan/Ukur Ulang'
+          'Pemecahan', 'Ukur Ulang', 'Ralat Data',
+          'Pengecekan Sertipikat', 'Validasi Sertipikat',
+          'Analisis Bidang', 'Permohonan PKKPR',
+          'Pemecahan/Ukur Ulang'
         ]
         && data.status in [
-          '1. Pemberkasan', '2. Validasi Pajak', '3. TTD Akta',
-          '4. Proses BPN', '5. Selesai'
+          '1. Pemberkasan', '2. Validasi', '3. Ukur Ulang',
+          '4. Analisis Bidang', '5. Pecah', '6. Validasi Pajak',
+          '7. Pengecekan', '8. Proses BPN', '9. Pelaporan',
+          '10. Penerbitan', '11. Selesai'
         ]
         && isValidBoundedMapList(data.para_pihak, 50)
         && data.tanah is map
@@ -470,7 +475,7 @@ service cloud.firestore {
             // Tier 2: Office Staff can edit active (non-terminal) berkas fields without altering allowedEmails
             (
               isOfficeMember(officeId)
-              && existing().status != '5. Selesai'
+              && !(existing().status in ['5. Selesai', '11. Selesai'])
               && incoming().allowedEmails == existing().allowedEmails
               && incoming().diff(existing()).affectedKeys().hasOnly([
                 'no_urut', 'kode_berkas', 'tanggal_masuk', 'layanan', 'status',
@@ -483,7 +488,7 @@ service cloud.firestore {
           && isValidId(berkasId)
           && (
             isOfficeAdmin(officeId) ||
-            (isOfficeMember(officeId) && existing().status != '5. Selesai' && existing().createdByUid == request.auth.uid)
+            (isOfficeMember(officeId) && !(existing().status in ['5. Selesai', '11. Selesai']) && existing().createdByUid == request.auth.uid)
           );
       }
 

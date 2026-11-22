@@ -20,6 +20,7 @@ import {
   ServiceType,
 } from '../types/ppats';
 import { STATUS_OPTIONS } from '../utils/seedData';
+import { extractDashboardParties, normalizeBerkasStatus } from '../utils/dashboardHelpers';
 import {
   BULAN_ID,
   extractMonthYearFromDate,
@@ -57,7 +58,7 @@ const NON_AKTA_TABS: Array<{ id: 'SEMUA' | ServiceType; label: string }> = [
 ];
 
 function getNonAktaStatusLabel(status: BerkasStatus): string {
-  return status === '3. TTD Akta' ? '3. TTD & Pengesahan' : status;
+  return status;
 }
 
 function getPengesahanSummary(rec: BerkasRecord, settings: OfficeSettings): string {
@@ -456,13 +457,10 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
       ) : (
         <div className="space-y-4">
           {filtered.map((rec) => {
-            const currentStageIdx = STATUS_OPTIONS.indexOf(rec.status);
-            const pemohon =
-              rec.para_pihak
-                .filter((p) => p.peran.startsWith('Pihak '))
-                .map((p) => p.nama)
-                .filter(Boolean)
-                .join(', ') || '-';
+            const currentStatus = normalizeBerkasStatus(rec.status);
+            const currentStageIdx = STATUS_OPTIONS.indexOf(currentStatus);
+            const partySummary = extractDashboardParties(rec);
+            const pemohon = partySummary.pihakPertamaText;
             const tglMasuk = formatTanggalDDMMYYYY(rec.tanggal_masuk);
             const tglSurat = rec.akta.tanggal_akta
               ? formatTanggalDDMMYYYY(rec.akta.tanggal_akta)
@@ -497,7 +495,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                   <div className="no-print flex flex-wrap items-center gap-2">
                     <select
                       aria-label={`Ubah status Non-Akta ${rec.kode_berkas}`}
-                      value={rec.status}
+                      value={currentStatus}
                       onChange={(e) =>
                         onChangeStatus(rec.id, e.target.value as BerkasStatus)
                       }
@@ -543,11 +541,18 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                   <div>
                     <p className="text-slate-500 dark:text-teal-300/75 font-medium">
-                      {rec.layanan === 'Turun Waris' ? 'Para Ahli Waris / Pemohon' : 'Pemohon'}
+                      {partySummary.pihakPertamaLabel} &amp; {partySummary.pihakPenerimaLabel}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <PartyAvatar3D name={pemohon} />
-                      <p className="text-slate-900 dark:text-teal-50 font-semibold">{pemohon}</p>
+                      <div className="min-w-0">
+                        <p className="text-slate-900 dark:text-teal-50 font-semibold">{pemohon}</p>
+                        {partySummary.pihakPenerimaText !== '-' && (
+                          <p className="text-[11px] text-sky-700 dark:text-sky-300 font-medium">
+                            {partySummary.pihakPenerimaLabel}: {partySummary.pihakPenerimaText}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <p className="text-slate-600 dark:text-teal-200/75 mt-1">{getSpecificSummary(rec)}</p>
                   </div>
@@ -578,12 +583,12 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                   </div>
                 </div>
 
-                {/* 5-Stage Interactive Progress Tracking */}
+                {/* 11-Stage Interactive Progress Tracking */}
                 <div className="pt-2">
                   <p className="text-[11px] font-medium text-slate-500 dark:text-teal-300/75 mb-2">
-                    Tracking Tahapan Berkas Non-Akta (klik tahap untuk memperbarui progres):
+                    Tracking 11 Tahap Berkas Non-Akta (klik tahap untuk memperbarui progres):
                   </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2">
                     {STATUS_OPTIONS.map((stage, sIdx) => {
                       const isDone = sIdx < currentStageIdx;
                       const isCurrent = sIdx === currentStageIdx;

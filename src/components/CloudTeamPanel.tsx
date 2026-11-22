@@ -392,7 +392,7 @@ export const CloudTeamPanel: React.FC<CloudTeamPanelProps> = ({
             </div>
           ) : (
             <div className="p-3.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-500/30 text-xs text-sky-900 dark:text-sky-200">
-              Anda masuk sebagai <strong>Petugas Loket</strong>. Seluruh berkas register akta &amp; rekap non-akta kantor tersinkron otomatis. Pengaturan profil kantor, template Word, berkas berstatus <em>5. Selesai</em>, dan daftar tim dikelola oleh Admin Kantor.
+              Anda masuk sebagai <strong>Petugas Loket</strong>. Seluruh berkas register akta &amp; rekap non-akta kantor tersinkron otomatis. Pengaturan profil kantor, template Word, berkas berstatus <em>11. Selesai</em>, dan daftar tim dikelola oleh Admin Kantor.
             </div>
           )}
         </div>

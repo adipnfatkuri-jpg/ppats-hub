@@ -5,6 +5,7 @@ import {
   TemplateDocKey,
 } from '../types/ppats';
 import { DEFAULT_OFFICE_SETTINGS, INITIAL_SEED_RECORDS } from './seedData';
+import { normalizeBerkasStatus } from './dashboardHelpers';
 
 const DB_NAME = 'sim_ppats_db';
 const DB_VERSION = 1;
@@ -135,7 +136,9 @@ export async function loadRecords(): Promise<BerkasRecord[]> {
     localStorage.setItem(LS_SEED_INITIALIZED, '1');
   }
 
-  return [...records].sort((a, b) => a.no_urut - b.no_urut);
+  return [...records]
+    .map((r) => ({ ...r, status: normalizeBerkasStatus(r.status) }))
+    .sort((a, b) => a.no_urut - b.no_urut);
 }
 
 export async function saveRecord(record: BerkasRecord): Promise<void> {
@@ -271,7 +274,7 @@ export async function importDatabaseBackup(jsonText: string): Promise<{
   localStorage.removeItem(LS_FALLBACK_TEMPLATES);
 
   for (const rec of parsed.records) {
-    await saveRecord(rec);
+    await saveRecord({ ...rec, status: normalizeBerkasStatus(rec.status) });
   }
   if (parsed.settings) {
     await saveSettings({ ...DEFAULT_OFFICE_SETTINGS, ...parsed.settings });

@@ -5,7 +5,7 @@ import { duplicateBerkasRecord } from './recordDuplicate';
 import type { BerkasRecord } from '../types/ppats';
 
 test('duplicateBerkasRecord deep-clones an Akta record with unique ID, kode_berkas, nomor_akta, and resets status to Pemberkasan', () => {
-  const source = INITIAL_SEED_RECORDS[0]; // status '5. Selesai', AJB, REG-2026-001
+  const source = INITIAL_SEED_RECORDS[0]; // status '11. Selesai', AJB, REG-2026-001
   const fixedNow = new Date('2026-11-21T10:00:00.000Z');
 
   const copy = duplicateBerkasRecord(source, INITIAL_SEED_RECORDS, fixedNow);
@@ -36,7 +36,7 @@ test('duplicateBerkasRecord preserves non_akta payload for Non-Akta services and
     no_urut: 5,
     kode_berkas: 'REG-2026-005',
     layanan: 'Turun Waris',
-    status: '4. Proses BPN',
+    status: '8. Proses BPN',
     akta: {
       ...INITIAL_SEED_RECORDS[0].akta,
       nomor_akta: '',

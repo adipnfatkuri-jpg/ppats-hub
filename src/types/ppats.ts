@@ -103,10 +103,16 @@ export interface NonAktaDetail {
 
 export type BerkasStatus =
   | '1. Pemberkasan'
-  | '2. Validasi Pajak'
-  | '3. TTD Akta'
-  | '4. Proses BPN'
-  | '5. Selesai';
+  | '2. Validasi'
+  | '3. Ukur Ulang'
+  | '4. Analisis Bidang'
+  | '5. Pecah'
+  | '6. Validasi Pajak'
+  | '7. Pengecekan'
+  | '8. Proses BPN'
+  | '9. Pelaporan'
+  | '10. Penerbitan'
+  | '11. Selesai';
 
 export type PihakRole =
   | 'Pihak I'

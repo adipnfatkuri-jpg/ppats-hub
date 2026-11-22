@@ -117,11 +117,20 @@ export function summarizeNonAktaStats(records: BerkasRecord[]): NonAktaStatsSumm
     pemberkasanAwal: nonAkta.filter(
       (r) =>
         r.status === '1. Pemberkasan' ||
-        r.status === '2. Validasi Pajak' ||
-        r.status === '3. TTD Akta'
+        r.status === '2. Validasi' ||
+        r.status === '3. Ukur Ulang' ||
+        r.status === '4. Analisis Bidang' ||
+        r.status === '5. Pecah' ||
+        r.status === '6. Validasi Pajak' ||
+        r.status === '7. Pengecekan'
     ).length,
-    prosesBpn: nonAkta.filter((r) => r.status === '4. Proses BPN').length,
-    selesai: nonAkta.filter((r) => r.status === '5. Selesai').length,
+    prosesBpn: nonAkta.filter(
+      (r) =>
+        r.status === '8. Proses BPN' ||
+        r.status === '9. Pelaporan' ||
+        r.status === '10. Penerbitan'
+    ).length,
+    selesai: nonAkta.filter((r) => r.status === '11. Selesai').length,
   };
 }
 
@@ -373,7 +382,7 @@ export function exportNonAktaRekapXlsx(params: {
           : `${rec.tanah.jenis_hak} No. ${rec.tanah.nomor_hak_lama} (NIB: ${rec.tanah.nib || '-'})`,
         `${rec.tanah.desa}, ${rec.tanah.kecamatan}`,
         rec.tanah.luas_m2,
-        rec.status === '3. TTD Akta' ? '3. TTD / Pengesahan' : rec.status,
+        rec.status,
       ]);
     });
   }
