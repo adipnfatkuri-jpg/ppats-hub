@@ -40,13 +40,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       aria-modal="true"
       aria-labelledby="receipt-modal-title"
     >
-      <div className="bg-white border border-slate-200 rounded-xl w-full max-w-2xl shadow-xl overflow-hidden">
-        <div className="no-print flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+      <div className="bg-white border border-teal-900/15 dark:border-teal-400/25 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
+        <div className="no-print flex items-center justify-between px-6 py-4 border-b border-teal-900/10 dark:border-teal-400/20 bg-[#F4FAF8] dark:bg-[#0D262A]">
           <div className="flex items-center gap-2">
-            <FileText className="w-4.5 h-4.5 text-slate-700" />
+            <FileText className="w-4.5 h-4.5 text-teal-700 dark:text-teal-300" />
             <h2
               id="receipt-modal-title"
-              className="font-display font-semibold text-base text-slate-900"
+              className="font-display font-bold text-base text-slate-900 dark:text-white"
             >
               Tanda Terima Pemohon — {record.kode_berkas}
             </h2>
@@ -55,7 +55,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-medium transition-colors whitespace-nowrap"
+              className="btn-3d btn-3d-teal inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Cetak / Simpan PDF</span>
@@ -64,14 +64,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               type="button"
               onClick={onClose}
               aria-label="Tutup jendela tanda terima"
-              className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors"
+              className="p-2 rounded-lg text-slate-500 dark:text-teal-200/80 hover:text-slate-900 dark:hover:text-white hover:bg-teal-900/10 dark:hover:bg-teal-900/50 transition-colors"
             >
               <X className="w-4.5 h-4.5" />
             </button>
           </div>
         </div>
 
-        <div className="p-8 space-y-6 text-slate-900 text-sm">
+        <div className="p-8 space-y-6 bg-white text-slate-900 text-sm">
           {/* Kop Kantor */}
           <div className="text-center border-b-2 border-slate-900 pb-4 space-y-0.5">
             <p className="text-xs font-semibold tracking-wide uppercase text-slate-600">

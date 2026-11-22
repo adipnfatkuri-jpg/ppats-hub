@@ -1,9 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import {
+  Building2,
   CheckCircle2,
   ClipboardList,
+  Clock,
+  FileCheck2,
   FilePlus2,
   FileSpreadsheet,
+  FolderKanban,
   Pencil,
   Printer,
   Search,
@@ -27,6 +31,7 @@ import {
   filterNonAktaRecords,
   summarizeNonAktaStats,
 } from '../utils/reportGenerator';
+import { GlossyIcon3D, PartyAvatar3D } from './TactileUI';
 
 interface NonAktaRekapModuleProps {
   records: BerkasRecord[];
@@ -159,23 +164,25 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="no-print flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-sky-700 shrink-0" />
-            <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900">
+        <div className="flex items-start gap-3.5">
+          <GlossyIcon3D tone="sky" size="md">
+            <ClipboardList className="w-5 h-5" />
+          </GlossyIcon3D>
+          <div>
+            <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-teal-50">
               Rekap Berkas &amp; Tracking Non-Akta
             </h1>
+            <p className="text-sm text-slate-600 dark:text-teal-200/75 mt-1">
+              Buku rekapitulasi dan pelacakan tahapan khusus berkas Non-Akta (Turun Waris, Pemecahan, Ukur Ulang, Ralat Data) di luar Laporan Bulanan PPATS.
+            </p>
           </div>
-          <p className="text-sm text-slate-600 mt-1">
-            Buku rekapitulasi dan pelacakan tahapan khusus berkas Non-Akta (Turun Waris, Pemecahan, Ukur Ulang, Ralat Data) di luar Laporan Bulanan PPATS.
-          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
             type="button"
             onClick={handleExport}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-medium transition-colors whitespace-nowrap"
+            className="btn-3d btn-3d-emerald inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span>Export Rekap (.XLSX)</span>
@@ -184,7 +191,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors whitespace-nowrap"
+            className="btn-3d btn-3d-light inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
           >
             <Printer className="w-4 h-4" />
             <span>Cetak Rekap</span>
@@ -193,7 +200,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
           <button
             type="button"
             onClick={onCreateNewNonAkta}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-medium transition-colors whitespace-nowrap"
+            className="btn-3d btn-3d-teal inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
           >
             <FilePlus2 className="w-4 h-4" />
             <span>Buat Berkas Non-Akta</span>
@@ -203,51 +210,79 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
 
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <p className="text-xs font-medium text-slate-500">Total Berkas Non-Akta</p>
-          <p className="font-mono text-2xl font-semibold text-slate-900 mt-2 tabular-nums">
-            {stats.total}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-1">
-            Waris {stats.turunWaris} · Pecah {stats.pemecahan} · Ukur {stats.ukurUlang} · Ralat {stats.ralatData}
-          </p>
+        <div className="bento-card bento-card-hover p-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-slate-500 dark:text-teal-200/75">
+              Total Berkas Non-Akta
+            </p>
+            <p className="font-mono text-2xl font-bold text-slate-900 dark:text-teal-50 mt-2 tabular-nums">
+              {stats.total}
+            </p>
+            <p className="text-[11px] text-slate-500 dark:text-teal-300/70 mt-1">
+              Waris {stats.turunWaris} · Pecah {stats.pemecahan} · Ukur {stats.ukurUlang} · Ralat {stats.ralatData}
+            </p>
+          </div>
+          <GlossyIcon3D tone="teal" size="md">
+            <FolderKanban className="w-5 h-5" />
+          </GlossyIcon3D>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <p className="text-xs font-medium text-slate-500">Pemberkasan &amp; Pengesahan</p>
-          <p className="font-mono text-2xl font-semibold text-amber-700 mt-2 tabular-nums">
-            {stats.pemberkasanAwal}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-1">
-            Menunggu tanda tangan, Kades, atau validasi pajak
-          </p>
+        <div className="bento-card bento-card-hover p-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-slate-500 dark:text-teal-200/75">
+              Pemberkasan &amp; Pengesahan
+            </p>
+            <p className="font-mono text-2xl font-bold text-amber-600 dark:text-amber-300 mt-2 tabular-nums">
+              {stats.pemberkasanAwal}
+            </p>
+            <p className="text-[11px] text-slate-500 dark:text-teal-300/70 mt-1">
+              Menunggu tanda tangan, Kades, atau validasi pajak
+            </p>
+          </div>
+          <GlossyIcon3D tone="amber" size="md">
+            <Clock className="w-5 h-5" />
+          </GlossyIcon3D>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <p className="text-xs font-medium text-slate-500">Sedang Proses di BPN</p>
-          <p className="font-mono text-2xl font-semibold text-indigo-700 mt-2 tabular-nums">
-            {stats.prosesBpn}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-1">
-            Berkas sudah masuk loket Kantor Pertanahan
-          </p>
+        <div className="bento-card bento-card-hover p-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-slate-500 dark:text-teal-200/75">
+              Sedang Proses di BPN
+            </p>
+            <p className="font-mono text-2xl font-bold text-indigo-600 dark:text-indigo-300 mt-2 tabular-nums">
+              {stats.prosesBpn}
+            </p>
+            <p className="text-[11px] text-slate-500 dark:text-teal-300/70 mt-1">
+              Berkas sudah masuk loket Kantor Pertanahan
+            </p>
+          </div>
+          <GlossyIcon3D tone="indigo" size="md">
+            <Building2 className="w-5 h-5" />
+          </GlossyIcon3D>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <p className="text-xs font-medium text-slate-500">Selesai / Terbit</p>
-          <p className="font-mono text-2xl font-semibold text-emerald-700 mt-2 tabular-nums">
-            {stats.selesai}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-1">
-            Sertipikat / hasil layanan Non-Akta selesai
-          </p>
+        <div className="bento-card bento-card-hover p-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-slate-500 dark:text-teal-200/75">
+              Selesai / Terbit
+            </p>
+            <p className="font-mono text-2xl font-bold text-emerald-600 dark:text-emerald-300 mt-2 tabular-nums">
+              {stats.selesai}
+            </p>
+            <p className="text-[11px] text-slate-500 dark:text-teal-300/70 mt-1">
+              Sertipikat / hasil layanan Non-Akta selesai
+            </p>
+          </div>
+          <GlossyIcon3D tone="emerald" size="md">
+            <FileCheck2 className="w-5 h-5" />
+          </GlossyIcon3D>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="no-print bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+      <div className="no-print bento-card p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-lg">
+          <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-teal-950/[0.04] dark:bg-teal-950/60 border border-teal-900/10 dark:border-teal-500/15 rounded-2xl">
             {NON_AKTA_TABS.map((tab) => {
               const active = layananFilter === tab.id;
               return (
@@ -255,10 +290,10 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => setLayananFilter(tab.id)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 whitespace-nowrap ${
                     active
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-gradient-to-b from-teal-500 to-teal-600 text-white border-b-[3px] border-teal-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_6px_14px_-4px_rgba(20,184,166,0.5)] -translate-y-0.5'
+                      : 'text-slate-600 dark:text-teal-200/80 hover:text-teal-900 dark:hover:text-white hover:bg-white/70 dark:hover:bg-teal-900/40'
                   }`}
                 >
                   {tab.label}
@@ -268,28 +303,28 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
           </div>
 
           <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-teal-600/70 dark:text-teal-300/70 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari pemohon, pewaris, NIB, desa..."
               aria-label="Cari berkas Non-Akta"
-              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full pl-10 pr-3.5 py-2 text-xs"
             />
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-xs pt-1 border-t border-slate-100">
+        <div className="flex flex-wrap items-center gap-3 text-xs pt-2 border-t border-teal-900/10 dark:border-teal-500/15">
           <div className="flex items-center gap-1.5">
-            <label htmlFor="nonakta-filter-status" className="text-slate-500 font-medium">
+            <label htmlFor="nonakta-filter-status" className="text-slate-600 dark:text-teal-200/80 font-semibold">
               Status
             </label>
             <select
               id="nonakta-filter-status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as 'SEMUA' | BerkasStatus)}
-              className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white text-slate-800"
+              className="input-airy px-2.5 py-1.5 text-xs"
             >
               <option value="SEMUA">Semua Status</option>
               {STATUS_OPTIONS.map((st) => (
@@ -301,7 +336,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <label htmlFor="nonakta-filter-bulan" className="text-slate-500 font-medium">
+            <label htmlFor="nonakta-filter-bulan" className="text-slate-600 dark:text-teal-200/80 font-semibold">
               Bulan
             </label>
             <select
@@ -310,7 +345,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
               onChange={(e) =>
                 setMonthFilter(e.target.value === 'SEMUA' ? 'SEMUA' : Number(e.target.value))
               }
-              className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white text-slate-800"
+              className="input-airy px-2.5 py-1.5 text-xs"
             >
               <option value="SEMUA">Semua Bulan</option>
               {BULAN_ID.map((name, idx) => (
@@ -322,7 +357,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <label htmlFor="nonakta-filter-tahun" className="text-slate-500 font-medium">
+            <label htmlFor="nonakta-filter-tahun" className="text-slate-600 dark:text-teal-200/80 font-semibold">
               Tahun
             </label>
             <select
@@ -331,7 +366,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
               onChange={(e) =>
                 setYearFilter(e.target.value === 'SEMUA' ? 'SEMUA' : Number(e.target.value))
               }
-              className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white font-mono text-slate-800"
+              className="input-airy px-2.5 py-1.5 text-xs font-mono"
             >
               <option value="SEMUA">Semua Tahun</option>
               {availableYears.map((y) => (
@@ -342,8 +377,8 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
             </select>
           </div>
 
-          <span className="ml-auto text-slate-500 tabular-nums">
-            Menampilkan <strong className="text-slate-800">{filtered.length}</strong> dari{' '}
+          <span className="ml-auto text-slate-500 dark:text-teal-200/75 tabular-nums">
+            Menampilkan <strong className="text-slate-900 dark:text-teal-50">{filtered.length}</strong> dari{' '}
             {allNonAkta.length} berkas Non-Akta
           </span>
         </div>
@@ -362,24 +397,24 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
 
       {/* Interactive Tracking Cards */}
       {filtered.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center space-y-2">
-          <p className="text-sm font-semibold text-slate-800">
+        <div className="bento-card p-12 text-center space-y-2">
+          <p className="text-sm font-semibold text-slate-800 dark:text-teal-50">
             Belum ada berkas Non-Akta yang sesuai filter saat ini.
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-teal-200/70">
             Buat berkas Turun Waris, Pemecahan, Ukur Ulang, atau Ralat Data baru agar muncul di rekap dan pelacakan ini.
           </p>
           <button
             type="button"
             onClick={onCreateNewNonAkta}
-            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-medium transition-colors"
+            className="btn-3d btn-3d-teal mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold"
           >
             <FilePlus2 className="w-3.5 h-3.5" />
             <span>Buat Berkas Non-Akta</span>
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {filtered.map((rec) => {
             const currentStageIdx = STATUS_OPTIONS.indexOf(rec.status);
             const pemohon =
@@ -396,37 +431,37 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
             return (
               <div
                 key={rec.id}
-                className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 space-y-4 break-inside-avoid"
+                className="bento-card bento-card-hover p-5 space-y-4 break-inside-avoid"
               >
                 {/* Top Meta & Actions */}
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-slate-100 pb-3">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-teal-900/10 dark:border-teal-500/15 pb-3.5">
                   <div className="flex flex-wrap items-center gap-2.5">
-                    <span className="font-mono text-xs font-semibold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md tabular-nums">
+                    <span className="font-mono text-xs font-bold text-teal-900 dark:text-teal-100 bg-teal-50 dark:bg-teal-900/60 border border-teal-200/80 dark:border-teal-500/30 px-2.5 py-1 rounded-lg tabular-nums">
                       {rec.kode_berkas}
                     </span>
-                    <span className="text-xs font-semibold text-sky-900 bg-sky-50 border border-sky-200 px-2.5 py-0.5 rounded-md">
+                    <span className="text-xs font-semibold text-sky-900 dark:text-sky-200 bg-sky-50 dark:bg-sky-900/40 border border-sky-200 dark:border-sky-500/30 px-2.5 py-0.5 rounded-lg">
                       {rec.layanan}
                     </span>
-                    <span className="font-mono text-xs text-slate-600 tabular-nums">
-                      Masuk: <strong>{tglMasuk}</strong>
+                    <span className="font-mono text-xs text-slate-600 dark:text-teal-200/80 tabular-nums">
+                      Masuk: <strong className="text-slate-900 dark:text-teal-50">{tglMasuk}</strong>
                     </span>
-                    <span className="text-slate-300">·</span>
-                    <span className="font-mono text-xs text-slate-600 tabular-nums">
+                    <span className="text-slate-300 dark:text-teal-700">·</span>
+                    <span className="font-mono text-xs text-slate-600 dark:text-teal-200/80 tabular-nums">
                       Tgl Berkas:{' '}
-                      <strong className={!rec.akta.tanggal_akta ? 'text-amber-700 font-sans' : ''}>
+                      <strong className={!rec.akta.tanggal_akta ? 'text-amber-600 dark:text-amber-300 font-sans' : 'text-slate-900 dark:text-teal-50'}>
                         {tglSurat}
                       </strong>
                     </span>
                   </div>
 
-                  <div className="no-print flex flex-wrap items-center gap-1.5">
+                  <div className="no-print flex flex-wrap items-center gap-2">
                     <select
                       aria-label={`Ubah status Non-Akta ${rec.kode_berkas}`}
                       value={rec.status}
                       onChange={(e) =>
                         onChangeStatus(rec.id, e.target.value as BerkasStatus)
                       }
-                      className="text-xs font-medium rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy text-xs font-medium px-2.5 py-1.5"
                     >
                       {STATUS_OPTIONS.map((opt) => (
                         <option key={opt} value={opt}>
@@ -438,7 +473,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                     <button
                       type="button"
                       onClick={() => onEditRecord(rec)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700"
+                      className="btn-3d btn-3d-light inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold"
                     >
                       <Pencil className="w-3 h-3" />
                       <span>Edit</span>
@@ -447,7 +482,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                     <button
                       type="button"
                       onClick={() => onPrintReceipt(rec)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700"
+                      className="btn-3d btn-3d-light inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold"
                     >
                       <Printer className="w-3 h-3" />
                       <span>Kwitansi</span>
@@ -457,7 +492,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                       type="button"
                       onClick={() => onDeleteRecord(rec.id)}
                       aria-label={`Hapus berkas ${rec.kode_berkas}`}
-                      className="p-1.5 rounded-lg border border-transparent hover:border-rose-200 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
+                      className="p-1.5 rounded-xl border border-transparent hover:border-rose-200 dark:hover:border-rose-500/30 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-slate-400 hover:text-rose-600 dark:hover:text-rose-300 transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -467,34 +502,37 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                 {/* Details Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                   <div>
-                    <p className="text-slate-500 font-medium">
+                    <p className="text-slate-500 dark:text-teal-300/75 font-medium">
                       {rec.layanan === 'Turun Waris' ? 'Para Ahli Waris / Pemohon' : 'Pemohon'}
                     </p>
-                    <p className="text-slate-900 font-semibold mt-0.5">{pemohon}</p>
-                    <p className="text-slate-600 mt-0.5">{getSpecificSummary(rec)}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <PartyAvatar3D name={pemohon} />
+                      <p className="text-slate-900 dark:text-teal-50 font-semibold">{pemohon}</p>
+                    </div>
+                    <p className="text-slate-600 dark:text-teal-200/75 mt-1">{getSpecificSummary(rec)}</p>
                   </div>
 
                   <div>
-                    <p className="text-slate-500 font-medium">Objek Tanah &amp; Sertipikat</p>
-                    <p className="text-slate-900 font-medium mt-0.5">
+                    <p className="text-slate-500 dark:text-teal-300/75 font-medium">Objek Tanah &amp; Sertipikat</p>
+                    <p className="text-slate-900 dark:text-teal-50 font-semibold mt-1">
                       {rec.tanah.jenis_sertipikat === 'digital' || !rec.tanah.nomor_hak_lama
                         ? `${rec.tanah.jenis_hak} Digital · NIBel ${rec.tanah.nib || '-'}`
                         : `${rec.tanah.jenis_hak} No. ${rec.tanah.nomor_hak_lama} · NIB ${rec.tanah.nib || '-'}`}
                     </p>
-                    <p className="text-slate-600 mt-0.5">
+                    <p className="text-slate-600 dark:text-teal-200/75 mt-1">
                       Desa {rec.tanah.desa}, Kec. {rec.tanah.kecamatan} ·{' '}
-                      <span className="font-mono tabular-nums">
+                      <span className="font-mono tabular-nums font-semibold text-teal-800 dark:text-teal-200">
                         {formatNumberId(rec.tanah.luas_m2)} m²
                       </span>
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-slate-500 font-medium">Kuasa BPN &amp; Pengesahan</p>
-                    <p className="text-slate-900 mt-0.5">
-                      Kuasa: <span className="font-medium">{rec.akta.nama_kuasa_bpn || '-'}</span>
+                    <p className="text-slate-500 dark:text-teal-300/75 font-medium">Kuasa BPN &amp; Pengesahan</p>
+                    <p className="text-slate-900 dark:text-teal-50 mt-1">
+                      Kuasa: <span className="font-semibold">{rec.akta.nama_kuasa_bpn || '-'}</span>
                     </p>
-                    <p className="text-slate-600 mt-0.5">
+                    <p className="text-slate-600 dark:text-teal-200/75 mt-1">
                       Pengesahan: {getPengesahanSummary(rec, settings)}
                     </p>
                   </div>
@@ -502,7 +540,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
 
                 {/* 5-Stage Interactive Progress Tracking */}
                 <div className="pt-2">
-                  <p className="text-[11px] font-medium text-slate-500 mb-2">
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-teal-300/75 mb-2">
                     Tracking Tahapan Berkas Non-Akta (klik tahap untuk memperbarui progres):
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -514,21 +552,21 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                           key={stage}
                           type="button"
                           onClick={() => onChangeStatus(rec.id, stage)}
-                          className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-left text-[11px] font-medium transition-colors ${
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-left text-[11px] font-semibold transition-all duration-150 ${
                             isCurrent
-                              ? 'border-sky-600 bg-sky-50 text-sky-950 ring-1 ring-sky-600/20'
+                              ? 'border-teal-500 bg-gradient-to-b from-teal-500 to-teal-600 text-white border-b-[3px] border-b-teal-800 shadow-[0_6px_14px_-4px_rgba(20,184,166,0.45)] -translate-y-0.5'
                               : isDone
-                              ? 'border-emerald-200 bg-emerald-50/70 text-emerald-900 hover:bg-emerald-100/70'
-                              : 'border-slate-200 bg-slate-50/70 text-slate-600 hover:bg-slate-100'
+                              ? 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/80 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/50'
+                              : 'border-teal-900/10 dark:border-teal-500/15 bg-teal-50/30 dark:bg-teal-950/40 text-slate-600 dark:text-teal-200/75 hover:bg-teal-50 dark:hover:bg-teal-900/30'
                           }`}
                         >
                           <CheckCircle2
                             className={`w-3.5 h-3.5 shrink-0 ${
                               isCurrent
-                                ? 'text-sky-600'
+                                ? 'text-white'
                                 : isDone
-                                ? 'text-emerald-600'
-                                : 'text-slate-300'
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-slate-300 dark:text-teal-700'
                             }`}
                           />
                           <span className="truncate">{getNonAktaStatusLabel(stage)}</span>

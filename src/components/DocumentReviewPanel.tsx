@@ -222,17 +222,17 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
   return (
     <section
       aria-label="Review Dokumen Sebelum Generate"
-      className="border border-slate-200 rounded-xl bg-white overflow-hidden"
+      className="border border-teal-900/12 dark:border-teal-500/20 rounded-2xl bg-white dark:bg-[#0A2226] overflow-hidden"
     >
       {/* Top Toolbar */}
-      <div className="px-4 py-3.5 border-b border-slate-200 bg-slate-50/70 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      <div className="px-4 py-3.5 border-b border-teal-900/10 dark:border-teal-500/20 bg-[#F4FAF8] dark:bg-[#0D2B30] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div className="flex items-start gap-2.5">
-          <Eye className="w-4.5 h-4.5 text-slate-700 mt-0.5 shrink-0" />
+          <Eye className="w-4.5 h-4.5 text-teal-700 dark:text-teal-300 mt-0.5 shrink-0" />
           <div>
-            <h3 className="font-display text-sm font-semibold text-slate-900">
+            <h3 className="font-display text-sm font-bold text-slate-900 dark:text-white">
               Review Dokumen Sebelum Generate
             </h3>
-            <p className="text-xs text-slate-600 mt-0.5">
+            <p className="text-xs text-slate-600 dark:text-teal-200/80 mt-0.5">
               {preview ? (
                 <>
                   <span>{preview.fileName}</span>
@@ -256,7 +256,7 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
           <div
             role="tablist"
             aria-label="Pilih dokumen untuk direview"
-            className="inline-flex items-center p-1 bg-slate-200/70 rounded-lg"
+            className="inline-flex items-center p-1 bg-teal-900/8 dark:bg-[#071A1D] border border-teal-900/10 dark:border-teal-500/20 rounded-xl"
           >
             {isAkta && (
               <button
@@ -264,10 +264,10 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
                 role="tab"
                 aria-selected={activeDocKey === '01_akta'}
                 onClick={() => onSelectDocKey('01_akta')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
                   activeDocKey === '01_akta'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-teal-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-teal-200/80 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 01. Blangko Akta (A4)
@@ -278,10 +278,10 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
               role="tab"
               aria-selected={!isAkta || activeDocKey === '02_lampiran_bundel'}
               onClick={() => onSelectDocKey('02_lampiran_bundel')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
                 !isAkta || activeDocKey === '02_lampiran_bundel'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-teal-200/80 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               {isAkta ? '02. Lampiran Bundel (F4)' : 'Bundel Lampiran Non-Akta (F4)'}
@@ -289,17 +289,17 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
           </div>
 
           {/* Zoom Controls */}
-          <div className="inline-flex items-center border border-slate-200 rounded-lg bg-white overflow-hidden">
+          <div className="inline-flex items-center border border-teal-900/12 dark:border-teal-500/25 rounded-lg bg-white dark:bg-[#081E22] overflow-hidden">
             <button
               type="button"
               onClick={() => setZoomPct(zoomPct === 115 ? 100 : 85)}
               disabled={zoomPct === 85}
               aria-label="Perkecil pratinjau"
-              className="px-2 py-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              className="px-2 py-1.5 text-slate-600 dark:text-teal-200 hover:bg-teal-50 dark:hover:bg-teal-900/50 disabled:opacity-40"
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <span className="px-2 text-xs font-mono tabular-nums text-slate-700 border-x border-slate-200">
+            <span className="px-2 text-xs font-mono tabular-nums text-slate-700 dark:text-teal-100 border-x border-teal-900/12 dark:border-teal-500/25">
               {zoomPct}%
             </span>
             <button
@@ -307,7 +307,7 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
               onClick={() => setZoomPct(zoomPct === 85 ? 100 : 115)}
               disabled={zoomPct === 115}
               aria-label="Perbesar pratinjau"
-              className="px-2 py-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              className="px-2 py-1.5 text-slate-600 dark:text-teal-200 hover:bg-teal-50 dark:hover:bg-teal-900/50 disabled:opacity-40"
             >
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
@@ -317,13 +317,13 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
 
       {/* Verification Strip (Resolved Roles & Leftover Tag Check) */}
       {preview && (
-        <div className="px-4 py-2.5 border-b border-slate-200 bg-white flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 text-xs">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-700">
+        <div className="px-4 py-2.5 border-b border-teal-900/10 dark:border-teal-500/20 bg-white dark:bg-[#0A2226] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-700 dark:text-teal-100/85">
             <span
-              className={`inline-flex items-center gap-1.5 font-medium ${
+              className={`inline-flex items-center gap-1.5 font-semibold ${
                 preview.summary.leftoverTags.length === 0
-                  ? 'text-emerald-700'
-                  : 'text-rose-700'
+                  ? 'text-emerald-700 dark:text-emerald-300'
+                  : 'text-rose-700 dark:text-rose-300'
               }`}
             >
               {preview.summary.leftoverTags.length === 0 ? (
@@ -335,61 +335,61 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
                 ? 'Seluruh variabel dokumen terisi'
                 : `${preview.summary.leftoverTags.length} tag belum terisi (${preview.summary.leftoverTags.join(', ')})`}
             </span>
-            <span aria-hidden="true" className="text-slate-300">|</span>
+            <span aria-hidden="true" className="text-slate-300 dark:text-teal-700">|</span>
             {isAkta ? (
               <>
                 <span>
-                  <strong className="text-slate-900">{preview.summary.ketPihak1Label}:</strong>{' '}
+                  <strong className="text-slate-900 dark:text-white">{preview.summary.ketPihak1Label}:</strong>{' '}
                   {preview.summary.ketPihak1Names}
                 </span>
-                <span aria-hidden="true" className="text-slate-300">·</span>
+                <span aria-hidden="true" className="text-slate-300 dark:text-teal-700">·</span>
                 <span>
-                  <strong className="text-slate-900">{preview.summary.ketPihak2Label}:</strong>{' '}
+                  <strong className="text-slate-900 dark:text-white">{preview.summary.ketPihak2Label}:</strong>{' '}
                   {preview.summary.ketPihak2Names}
                 </span>
-                <span aria-hidden="true" className="text-slate-300">·</span>
+                <span aria-hidden="true" className="text-slate-300 dark:text-teal-700">·</span>
                 <span>
-                  <strong className="text-slate-900">TTD Kuasa/Permohonan/BPHTB/Fisik/Keabsahan:</strong>{' '}
+                  <strong className="text-slate-900 dark:text-white">TTD Kuasa/Permohonan/BPHTB/Fisik/Keabsahan:</strong>{' '}
                   {preview.summary.penerimaNama}
                 </span>
-                <span aria-hidden="true" className="text-slate-300">·</span>
+                <span aria-hidden="true" className="text-slate-300 dark:text-teal-700">·</span>
                 <span>
-                  <strong className="text-slate-900">TTD SPPT/PBB:</strong>{' '}
+                  <strong className="text-slate-900 dark:text-white">TTD SPPT/PBB:</strong>{' '}
                   {preview.summary.pemilikAwalNama}
                 </span>
-                <span aria-hidden="true" className="text-slate-300">·</span>
+                <span aria-hidden="true" className="text-slate-300 dark:text-teal-700">·</span>
                 <span className="tabular-nums">
-                  <strong className="text-slate-900">TTD Data Pribadi:</strong>{' '}
+                  <strong className="text-slate-900 dark:text-white">TTD Data Pribadi:</strong>{' '}
                   {preview.summary.dataPribadiSignersCount} pihak (tanpa pasangan)
                 </span>
               </>
             ) : (
               <>
                 <span>
-                  <strong className="text-slate-900">Berkas Non-Akta:</strong>{' '}
+                  <strong className="text-slate-900 dark:text-white">Berkas Non-Akta:</strong>{' '}
                   {record.layanan} (F4 Only · Non-Laporan Bulanan)
                 </span>
-                <span aria-hidden="true" className="text-slate-300">·</span>
+                <span aria-hidden="true" className="text-slate-300 dark:text-teal-700">·</span>
                 <span>
-                  <strong className="text-slate-900">
+                  <strong className="text-slate-900 dark:text-white">
                     {record.layanan === 'Turun Waris' ? 'Ahli Waris / Pemohon:' : 'Pemohon:'}
                   </strong>{' '}
                   {nonAktaPemohonNames}
                 </span>
                 {pengesahanTunggal && (
                   <>
-                    <span aria-hidden="true" className="text-slate-300">·</span>
+                    <span aria-hidden="true" className="text-slate-300 dark:text-teal-700">·</span>
                     <span>
-                      <strong className="text-slate-900">Pengesahan Lainnya:</strong>{' '}
+                      <strong className="text-slate-900 dark:text-white">Pengesahan Lainnya:</strong>{' '}
                       {pengesahanTunggal.jabatanLines.join(' ')} ({pengesahanTunggal.nama})
                     </span>
                   </>
                 )}
                 {hasDualPengesahan && pengesahanGanda && (
                   <>
-                    <span aria-hidden="true" className="text-slate-300">·</span>
+                    <span aria-hidden="true" className="text-slate-300 dark:text-teal-700">·</span>
                     <span>
-                      <strong className="text-slate-900">Pengesahan SKW/Beda Nama:</strong>{' '}
+                      <strong className="text-slate-900 dark:text-white">Pengesahan SKW/Beda Nama:</strong>{' '}
                       {pengesahanGanda.camatJabatan} &amp; {pengesahanGanda.kadesJabatan}
                     </span>
                   </>
@@ -402,7 +402,7 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
             <button
               type="button"
               onClick={() => onEditStep(2)}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-xs font-medium text-slate-700 whitespace-nowrap"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-teal-900/15 dark:border-teal-500/30 bg-white dark:bg-[#0D2B30] hover:bg-teal-50 dark:hover:bg-teal-900/50 text-xs font-medium text-slate-700 dark:text-teal-100 whitespace-nowrap"
             >
               <Edit3 className="w-3 h-3" />
               <span>Revisi Pihak/Tanah</span>
@@ -410,7 +410,7 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
             <button
               type="button"
               onClick={() => onEditStep(3)}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-xs font-medium text-slate-700 whitespace-nowrap"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-teal-900/15 dark:border-teal-500/30 bg-white dark:bg-[#0D2B30] hover:bg-teal-50 dark:hover:bg-teal-900/50 text-xs font-medium text-slate-700 dark:text-teal-100 whitespace-nowrap"
             >
               <Edit3 className="w-3 h-3" />
               <span>{isAkta ? 'Ubah Parameter Akta' : 'Pengesahan & Parameter'}</span>
@@ -421,14 +421,14 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
 
       {/* Page Navigation Bar */}
       {preview && preview.pages.length > 1 && (
-        <div className="px-4 py-2 border-b border-slate-200 bg-slate-50/50 flex items-center gap-1.5 overflow-x-auto">
+        <div className="px-4 py-2 border-b border-teal-900/10 dark:border-teal-500/20 bg-[#F4FAF8] dark:bg-[#092024] flex items-center gap-1.5 overflow-x-auto">
           <button
             type="button"
             onClick={() => setSelectedPage('all')}
-            className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
               selectedPage === 'all'
-                ? 'bg-[#0f172a] text-white'
-                : 'text-slate-600 hover:bg-slate-200/70'
+                ? 'bg-teal-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-teal-200/80 hover:bg-teal-900/10 dark:hover:bg-teal-900/50'
             }`}
           >
             Semua Bagian ({preview.pages.length})
@@ -438,10 +438,10 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
               key={p.pageNumber}
               type="button"
               onClick={() => setSelectedPage(p.pageNumber)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 selectedPage === p.pageNumber
-                  ? 'bg-[#0f172a] text-white'
-                  : 'text-slate-600 hover:bg-slate-200/70'
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-teal-200/80 hover:bg-teal-900/10 dark:hover:bg-teal-900/50'
               }`}
             >
               {p.title}
@@ -451,7 +451,7 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
       )}
 
       {/* Paper Viewport */}
-      <div className="bg-slate-100/90 p-4 sm:p-6 max-h-[680px] overflow-y-auto overflow-x-auto space-y-6">
+      <div className="bg-[#EAF2F0] dark:bg-[#061619] p-4 sm:p-6 max-h-[680px] overflow-y-auto overflow-x-auto space-y-6">
         {loading && (
           <div className="mx-auto bg-white border border-slate-200 rounded-md p-8 max-w-[770px] space-y-3 animate-pulse">
             <div className="h-5 w-1/2 bg-slate-200 rounded mx-auto" />
@@ -464,9 +464,9 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
         {error && !loading && (
           <div
             role="alert"
-            className="mx-auto max-w-[770px] p-4 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-800 flex items-start gap-2.5"
+            className="mx-auto max-w-[770px] p-4 rounded-xl border border-rose-200 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/60 text-xs text-rose-800 dark:text-rose-200 flex items-start gap-2.5"
           >
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
             <div>
               <p className="font-semibold">Gagal Memuat Review Dokumen</p>
               <p className="mt-0.5">{error}</p>
@@ -478,9 +478,9 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
           !error &&
           visiblePages.map((page) => (
             <div key={page.pageNumber} className="mx-auto" style={{ maxWidth: `${paperMaxWidthPx}px` }}>
-              <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1.5 px-1">
-                <span className="inline-flex items-center gap-1.5 font-medium text-slate-700">
-                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+              <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-teal-200/80 mb-1.5 px-1">
+                <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700 dark:text-teal-100">
+                  <FileText className="w-3.5 h-3.5 text-teal-600 dark:text-teal-300" />
                   <span>{page.title}</span>
                 </span>
                 <span className="font-mono tabular-nums">
@@ -489,7 +489,7 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
               </div>
 
               <div
-                className="bg-white border border-slate-300 shadow-xs rounded-[2px] text-slate-900"
+                className="bg-white border border-slate-300 shadow-sm rounded-[2px] text-slate-900"
                 style={{
                   fontFamily: '"Bookman Old Style", "URW Bookman", Georgia, "Times New Roman", serif',
                   padding:

@@ -48,17 +48,17 @@ export class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="min-h-screen app-canvas flex items-center justify-center p-6">
+          <div className="max-w-md w-full bento-card p-6 space-y-4">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-700/60 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
               </div>
               <div className="min-w-0">
-                <h1 className="font-display font-bold text-base text-slate-900">
+                <h1 className="font-display font-bold text-base text-slate-900 dark:text-white">
                   Terjadi Kendala Aplikasi
                 </h1>
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-teal-200/80 mt-1 leading-relaxed">
                   {this.state.friendlyMessage}
                 </p>
               </div>
@@ -66,7 +66,7 @@ export class ErrorBoundary extends React.Component<
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-sm font-medium transition-colors"
+              className="btn-3d btn-3d-teal w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Muat Ulang Aplikasi</span>

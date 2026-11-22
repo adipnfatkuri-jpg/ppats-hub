@@ -21,9 +21,18 @@ import {
   Camera,
   LayoutDashboard,
   FilePlus2,
+  Handshake,
+  Users,
+  Gift,
+  ScrollText,
+  Grid2x2,
+  Compass,
+  FilePenLine,
+  Check,
 } from 'lucide-react';
 import { DocumentReviewPanel } from './DocumentReviewPanel';
 import { DateInputId } from './DateInputId';
+import { GlossyIcon3D, type GlossyTone } from './TactileUI';
 import {
   AuditWarning,
   BerkasRecord,
@@ -1157,17 +1166,53 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     setParaPihak((prev) => prev.filter((p) => p.id !== id));
   };
 
+  const SERVICE_VISUALS: Record<
+    ServiceType,
+    {
+      Icon: React.ComponentType<{ className?: string }>;
+      tone: GlossyTone;
+      subtitle: string;
+    }
+  > = {
+    AJB: { Icon: Handshake, tone: 'teal', subtitle: 'Akta A4 + Lampiran F4' },
+    APHB: { Icon: Users, tone: 'sky', subtitle: 'Akta A4 + Lampiran F4' },
+    'Akta Hibah': { Icon: Gift, tone: 'emerald', subtitle: 'Akta A4 + Lampiran F4' },
+    'Turun Waris': { Icon: ScrollText, tone: 'amber', subtitle: 'Non-Akta · Bundel F4' },
+    Pemecahan: { Icon: Grid2x2, tone: 'indigo', subtitle: 'Non-Akta · Bundel F4' },
+    'Ukur Ulang': { Icon: Compass, tone: 'cyan', subtitle: 'Non-Akta · Bundel F4' },
+    'Ralat Data': { Icon: FilePenLine, tone: 'violet', subtitle: 'Non-Akta · Bundel F4' },
+    'Pemecahan/Ukur Ulang': { Icon: Grid2x2, tone: 'indigo', subtitle: 'Non-Akta · Bundel F4' },
+  };
+
+  const wizardSteps = [
+    { num: 1 as const, short: 'Layanan & AI', label: '1. Layanan & Upload AI' },
+    { num: 2 as const, short: 'Verifikasi', label: '2. Meja Verifikasi & Audit' },
+    {
+      num: 3 as const,
+      short: isAkta ? 'Parameter Akta' : 'Pengesahan',
+      label: isAkta
+        ? '3. Parameter Akta & Saksi'
+        : '3. Pengesahan & Detail Berkas',
+    },
+    {
+      num: 4 as const,
+      short: isAkta ? 'Bundel .ZIP' : 'Unduh F4',
+      label: isAkta ? '4. Generate Bundel .ZIP' : '4. Review & Unduh F4',
+    },
+  ];
+  const progressPercent = ((step - 1) / (wizardSteps.length - 1)) * 100;
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="font-display text-2xl sm:text-[26px] font-bold tracking-tight text-slate-900 dark:text-white">
             {editingRecord
               ? `Edit / Revisi Berkas — ${editingRecord.kode_berkas}`
               : 'Buat Berkas Baru (Wizard 4 Langkah)'}
           </h1>
-          <p className="text-sm text-slate-600 mt-1">
+          <p className="text-sm text-slate-600 dark:text-teal-200/75 mt-1">
             Alur terpandu dari unggah berkas &amp; ekstraksi AI, verifikasi audit, parameter akta &amp; saksi, hingga dokumen Word (.DOCX · Akta A4 &amp; 1 File Lampiran F4). Perhitungan pajak dilakukan di menu terpisah.
           </p>
         </div>
@@ -1176,111 +1221,172 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
           <button
             type="button"
             onClick={onCancelEdit}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-medium text-slate-700 whitespace-nowrap"
+            className="btn-3d btn-3d-light inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
           >
             <X className="w-3.5 h-3.5" />
-            <span>Batal Edit & Buat Baru</span>
+            <span>Batal Edit &amp; Buat Baru</span>
           </button>
         )}
       </div>
 
-      {/* Stepper */}
-      <nav aria-label="Tahapan Wizard" className="bg-white border border-slate-200 rounded-xl p-2">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          {[
-            { num: 1 as const, label: '1. Layanan & Upload AI' },
-            { num: 2 as const, label: '2. Meja Verifikasi & Audit' },
-            {
-              num: 3 as const,
-              label: isAkta
-                ? '3. Parameter Akta & Saksi'
-                : '3. Pengesahan & Detail Berkas',
-            },
-            {
-              num: 4 as const,
-              label: isAkta ? '4. Generate Bundel .ZIP' : '4. Review & Unduh F4',
-            },
-          ].map((item) => {
-            const active = step === item.num;
-            const completed = step > item.num;
-            return (
-              <button
-                key={item.num}
-                type="button"
-                onClick={() => setStep(item.num)}
-                className={`px-3.5 py-2.5 rounded-lg text-xs font-semibold text-left transition-colors whitespace-nowrap truncate ${
-                  active
-                    ? 'bg-[#0f172a] text-white'
-                    : completed
-                    ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+      {/* Modern 3D Stepper with Bright Teal Progress Line */}
+      <nav aria-label="Tahapan Wizard" className="bento-card p-4 sm:p-5">
+        <div className="relative">
+          {/* Connecting Progress Track (Desktop) */}
+          <div
+            aria-hidden="true"
+            className="hidden lg:block absolute top-5 left-[12%] right-[12%] h-2 rounded-full bg-teal-900/10 dark:bg-teal-950/90 shadow-inner overflow-hidden"
+          >
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-teal-400 via-emerald-400 to-teal-500 shadow-[0_0_12px_rgba(20,184,166,0.65)] transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 relative z-10">
+            {wizardSteps.map((item) => {
+              const active = step === item.num;
+              const completed = step > item.num;
+              return (
+                <button
+                  key={item.num}
+                  type="button"
+                  onClick={() => setStep(item.num)}
+                  aria-current={active ? 'step' : undefined}
+                  className={`group flex items-center lg:flex-col lg:text-center gap-2.5 px-3 py-2.5 rounded-2xl border transition-all duration-150 ${
+                    active
+                      ? 'bg-gradient-to-br from-teal-50 to-emerald-50/80 dark:from-teal-900/60 dark:to-emerald-950/60 border-teal-400 dark:border-teal-500/70 border-b-4 border-b-teal-600 shadow-[0_10px_22px_-8px_rgba(20,184,166,0.35)] -translate-y-0.5'
+                      : completed
+                      ? 'bg-emerald-50/50 dark:bg-emerald-950/35 border-emerald-200/80 dark:border-emerald-700/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/60'
+                      : 'bg-white/80 dark:bg-[#091F22]/80 border-teal-900/8 dark:border-teal-400/15 hover:bg-teal-50/40 dark:hover:bg-teal-900/30'
+                  }`}
+                >
+                  <span
+                    className={`w-9 h-9 rounded-full flex items-center justify-center font-mono text-xs font-bold shrink-0 transition-all duration-150 ${
+                      active
+                        ? 'bg-gradient-to-b from-teal-400 to-teal-600 text-white border-b-2 border-teal-800 shadow-[inset_0_2px_3px_rgba(255,255,255,0.55),0_6px_14px_-2px_rgba(20,184,166,0.65)] scale-105'
+                        : completed
+                        ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-[inset_0_2px_3px_rgba(255,255,255,0.5),0_4px_10px_-2px_rgba(16,185,129,0.5)]'
+                        : 'bg-teal-900/8 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-900/12 dark:border-teal-700/60'
+                    }`}
+                  >
+                    {completed ? <Check className="w-4 h-4 stroke-[3]" /> : item.num}
+                  </span>
+                  <div className="min-w-0 text-left lg:text-center">
+                    <span
+                      className={`block text-xs font-bold leading-tight truncate ${
+                        active
+                          ? 'text-teal-950 dark:text-white'
+                          : completed
+                          ? 'text-emerald-900 dark:text-emerald-200'
+                          : 'text-slate-600 dark:text-teal-200/75'
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </nav>
 
       {/* STEP 1 */}
       {step === 1 && (
-        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-6">
+        <div className="bento-card p-6 space-y-6">
           <div className="space-y-4">
-            <h2 className="font-display text-base font-semibold text-slate-900">
-              Pilih Jenis Layanan Pertanahan
-            </h2>
+            <div>
+              <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                Pilih Jenis Layanan Pertanahan
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-teal-200/70 mt-0.5">
+                Klik jenis layanan untuk menyesuaikan otomatis format dokumen A4/F4 dan kolom verifikasi.
+              </p>
+            </div>
 
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-slate-600">
+            <div className="space-y-2.5">
+              <p className="text-xs font-semibold text-teal-800 dark:text-teal-300">
                 1. Layanan Akta PPATS (Blangko Akta A4 + Lampiran F4 · Masuk Laporan Bulanan PPATS)
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 {AKTA_SERVICE_TYPES.map((type) => {
                   const selected = layanan === type;
+                  const visual = SERVICE_VISUALS[type];
+                  const IconComp = visual.Icon;
                   return (
                     <button
                       key={type}
                       type="button"
                       onClick={() => handleServiceChange(type)}
-                      className={`px-4 py-3 rounded-xl border text-left transition-colors ${
+                      aria-pressed={selected}
+                      className={`relative p-4 rounded-2xl text-left transition-all duration-150 flex items-center gap-3.5 ${
                         selected
-                          ? 'border-sky-600 bg-sky-50 text-sky-900'
-                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                          ? 'border-2 border-teal-500 border-b-4 border-b-teal-700 bg-gradient-to-br from-teal-50 via-white to-emerald-50/80 dark:from-teal-900/65 dark:via-[#0E2E33] dark:to-emerald-950/65 text-teal-950 dark:text-white shadow-[0_14px_28px_-8px_rgba(20,184,166,0.35)] -translate-y-1'
+                          : 'border border-teal-900/10 dark:border-teal-400/15 border-b-2 border-b-teal-900/12 dark:border-b-black/40 bg-white dark:bg-[#091F22] hover:bg-teal-50/40 dark:hover:bg-teal-900/35 hover:-translate-y-0.5 text-slate-800 dark:text-teal-100 shadow-xs'
                       }`}
                     >
-                      <span className="block text-sm font-semibold">{type}</span>
-                      <span className="block text-[11px] opacity-75 mt-0.5">
-                        Akta A4 + Lampiran F4
-                      </span>
+                      {selected && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-gradient-to-b from-teal-400 to-emerald-600 text-white flex items-center justify-center border-2 border-white dark:border-[#0D262A] shadow-[0_4px_10px_rgba(16,185,129,0.55)]"
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </span>
+                      )}
+                      <GlossyIcon3D tone={visual.tone} size="sm">
+                        <IconComp className="w-5 h-5" />
+                      </GlossyIcon3D>
+                      <div className="min-w-0">
+                        <span className="block text-sm font-bold truncate">{type}</span>
+                        <span className="block text-[11px] text-slate-500 dark:text-teal-200/75 mt-0.5 truncate">
+                          {visual.subtitle}
+                        </span>
+                      </div>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-slate-600">
+            <div className="space-y-2.5">
+              <p className="text-xs font-semibold text-teal-800 dark:text-teal-300">
                 2. Berkas Non-Akta (Hanya Bundel F4 · Tidak Masuk Laporan Bulanan PPATS)
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                 {NON_AKTA_SERVICE_TYPES.map((type) => {
                   const selected = layanan === type;
+                  const visual = SERVICE_VISUALS[type];
+                  const IconComp = visual.Icon;
                   return (
                     <button
                       key={type}
                       type="button"
                       onClick={() => handleServiceChange(type)}
-                      className={`px-4 py-3 rounded-xl border text-left transition-colors ${
+                      aria-pressed={selected}
+                      className={`relative p-3.5 rounded-2xl text-left transition-all duration-150 flex items-center gap-3 ${
                         selected
-                          ? 'border-sky-600 bg-sky-50 text-sky-900'
-                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                          ? 'border-2 border-teal-500 border-b-4 border-b-teal-700 bg-gradient-to-br from-teal-50 via-white to-emerald-50/80 dark:from-teal-900/65 dark:via-[#0E2E33] dark:to-emerald-950/65 text-teal-950 dark:text-white shadow-[0_14px_28px_-8px_rgba(20,184,166,0.35)] -translate-y-1'
+                          : 'border border-teal-900/10 dark:border-teal-400/15 border-b-2 border-b-teal-900/12 dark:border-b-black/40 bg-white dark:bg-[#091F22] hover:bg-teal-50/40 dark:hover:bg-teal-900/35 hover:-translate-y-0.5 text-slate-800 dark:text-teal-100 shadow-xs'
                       }`}
                     >
-                      <span className="block text-sm font-semibold">{type}</span>
-                      <span className="block text-[11px] opacity-75 mt-0.5">
-                        Non-Akta · Bundel F4
-                      </span>
+                      {selected && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-gradient-to-b from-teal-400 to-emerald-600 text-white flex items-center justify-center border-2 border-white dark:border-[#0D262A] shadow-[0_4px_10px_rgba(16,185,129,0.55)]"
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </span>
+                      )}
+                      <GlossyIcon3D tone={visual.tone} size="sm">
+                        <IconComp className="w-4.5 h-4.5" />
+                      </GlossyIcon3D>
+                      <div className="min-w-0">
+                        <span className="block text-sm font-bold truncate">{type}</span>
+                        <span className="block text-[11px] text-slate-500 dark:text-teal-200/75 mt-0.5 truncate">
+                          {visual.subtitle}
+                        </span>
+                      </div>
                     </button>
                   );
                 })}
@@ -1288,7 +1394,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             </div>
 
             {!isAkta && (
-              <div className="p-3.5 rounded-lg border border-sky-200 bg-sky-50/70 text-xs text-sky-950">
+              <div className="p-3.5 rounded-2xl border border-sky-200/90 dark:border-sky-700/50 bg-sky-50/75 dark:bg-sky-950/45 text-xs text-sky-950 dark:text-sky-100">
                 <strong>Catatan Berkas Non-Akta ({layanan}):</strong> Berkas ini{' '}
                 <strong>tidak menerbitkan Akta A4</strong>,{' '}
                 <strong>tidak masuk dalam Laporan Bulanan PPATS</strong>, dan hanya menghasilkan 1 file bundel Word ukuran F4. Pengesahan dokumen dapat diatur di Langkah 3 (SKW &amp; Beda Nama otomatis 2 pengesahan Camat + Kepala Desa asal sertipikat; dokumen lainnya default PPATS atau pilih Kepala Desa / isi manual).
@@ -1296,23 +1402,23 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             )}
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3.5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <h2 className="font-display text-base font-semibold text-slate-900">
+              <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
                 Unggah Dokumen Pendukung (KTP, KK, Sertipikat Tanah/Elektronik, SPPT PBB, SKW)
               </h2>
               <div
                 role="group"
                 aria-label="Mode Kecepatan Scan AI"
-                className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs shrink-0"
+                className="inline-flex rounded-full border border-teal-900/10 dark:border-teal-400/20 bg-[#EAF3F1] dark:bg-[#081F22] p-1 text-xs shrink-0 shadow-inner"
               >
                 <button
                   type="button"
                   onClick={() => setScanMode('fast')}
-                  className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                  className={`px-3 py-1 rounded-full font-semibold transition-all duration-150 ${
                     scanMode === 'fast'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-gradient-to-b from-teal-400 to-teal-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-teal-200/75 hover:text-teal-900 dark:hover:text-white'
                   }`}
                 >
                   Mode Cepat (~3 dtk)
@@ -1320,10 +1426,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 <button
                   type="button"
                   onClick={() => setScanMode('accurate')}
-                  className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                  className={`px-3 py-1 rounded-full font-semibold transition-all duration-150 ${
                     scanMode === 'accurate'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-gradient-to-b from-sky-400 to-sky-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-teal-200/75 hover:text-teal-900 dark:hover:text-white'
                   }`}
                 >
                   Mode Detail
@@ -1331,6 +1437,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               </div>
             </div>
 
+            {/* Inset 3D AI Dropzone */}
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -1342,23 +1449,36 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 setIsDragging(false);
                 handleFilesSelected(e.dataTransfer.files);
               }}
-              className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+              className={`dropzone-3d-inset border-2 border-dashed rounded-2xl p-8 sm:p-10 text-center transition-all duration-200 ${
                 isDragging
-                  ? 'border-sky-500 bg-sky-50/70'
-                  : 'border-slate-300 bg-slate-50/50 hover:bg-slate-50'
+                  ? 'border-teal-500 bg-gradient-to-br from-sky-100/80 via-teal-100/70 to-emerald-100/70 dark:from-sky-900/50 dark:via-teal-900/50 dark:to-emerald-900/50 scale-[1.01]'
+                  : 'border-teal-400/75 dark:border-teal-500/45 bg-gradient-to-br from-sky-50/70 via-teal-50/55 to-emerald-50/50 dark:from-sky-950/35 dark:via-[#082024] dark:to-teal-950/40 hover:border-teal-500'
               }`}
             >
-              <UploadCloud className="w-8 h-8 text-slate-400 mx-auto mb-3" />
-              <p className="text-sm font-medium text-slate-800">
+              <div className="flex justify-center mb-4">
+                <div className="animate-float-slow relative">
+                  <GlossyIcon3D tone="cyan" size="lg">
+                    <UploadCloud className="w-8 h-8" />
+                  </GlossyIcon3D>
+                  <span
+                    aria-hidden="true"
+                    className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 text-white flex items-center justify-center border-2 border-white dark:border-[#082024] shadow-md"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">
                 Tarik dan lepaskan multi-file PDF atau Foto/Scan (JPG, PNG, WebP) di sini
               </p>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-600 dark:text-teal-200/75 mt-1 max-w-xl mx-auto">
                 {scanMode === 'fast'
                   ? 'Mode Cepat (gemini-3.1-flash-lite) + kompresi foto otomatis untuk pembacaan KTP, KK, Sertipikat, dan SPPT dalam hitungan detik.'
                   : 'Mode Detail (gemini-4-hydrogen) untuk dokumen buram/tulisan tangan dengan fallback otomatis ke Mode Cepat.'}
               </p>
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-800 cursor-pointer">
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                <label className="btn-3d btn-3d-light inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer">
+                  <FileText className="w-3.5 h-3.5 text-teal-600 dark:text-teal-300" />
                   <span>{preparingFiles ? 'Mengoptimalkan gambar...' : 'Pilih File Dokumen'}</span>
                   <input
                     type="file"
@@ -1371,7 +1491,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     className="hidden"
                   />
                 </label>
-                <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-sky-200 bg-sky-50 hover:bg-sky-100 text-xs font-semibold text-sky-800 cursor-pointer">
+                <label className="btn-3d btn-3d-sky inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer">
                   <Camera className="w-3.5 h-3.5" />
                   <span>Foto Kamera</span>
                   <input
@@ -1389,7 +1509,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             </div>
 
             {uploadedFiles.length > 0 && (
-              <div className="border border-slate-200 rounded-xl divide-y divide-slate-200">
+              <div className="border border-teal-900/12 dark:border-teal-400/20 rounded-2xl divide-y divide-teal-900/8 dark:divide-teal-400/15 bg-white/80 dark:bg-[#091F22]">
                 {uploadedFiles.map((file) => {
                   const wasCompressed =
                     typeof file.originalSize === 'number' && file.originalSize > file.size * 1.1;
@@ -1399,11 +1519,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       className="flex items-center justify-between px-4 py-2.5 text-sm"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <FileText className="w-4 h-4 text-sky-600 shrink-0" />
-                        <span className="font-medium text-slate-800 truncate">
+                        <FileText className="w-4 h-4 text-teal-600 dark:text-teal-300 shrink-0" />
+                        <span className="font-medium text-slate-800 dark:text-teal-50 truncate">
                           {file.name}
                         </span>
-                        <span className="font-mono text-xs text-slate-500 shrink-0">
+                        <span className="font-mono text-xs text-slate-500 dark:text-teal-200/70 shrink-0">
                           {wasCompressed && file.originalSize
                             ? `${formatCompactFileSize(file.originalSize)} → ${formatCompactFileSize(file.size)}`
                             : formatCompactFileSize(file.size)}
@@ -1430,9 +1550,9 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             {extractError && (
               <div
                 role="alert"
-                className="p-3.5 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-800 flex items-start gap-2.5"
+                className="p-3.5 rounded-2xl border border-rose-200 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/60 text-xs text-rose-800 dark:text-rose-200 flex items-start gap-2.5"
               >
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
                 <div>
                   <p className="font-semibold">Ekstraksi AI Tidak Dapat Dilanjutkan</p>
                   <p className="mt-0.5">{extractError}</p>
@@ -1441,22 +1561,22 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-slate-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-teal-900/10 dark:border-teal-400/15">
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700"
+              className="btn-3d btn-3d-light inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
             >
               <span>Lanjut Isi / Verifikasi Manual</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2.5">
               {extracting && (
                 <button
                   type="button"
                   onClick={handleCancelExtractAi}
-                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-medium transition-colors"
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-semibold transition-colors"
                 >
                   <X className="w-4 h-4" />
                   <span>Batalkan</span>
@@ -1466,7 +1586,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 type="button"
                 onClick={handleExtractAi}
                 disabled={extracting || preparingFiles}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-sm font-medium transition-colors disabled:opacity-60"
+                className="btn-3d btn-3d-teal inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60"
               >
                 {extracting ? (
                   <>
@@ -1475,8 +1595,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-amber-400" />
-                    <span>Ekstrak Dokumen dengan AI & Lanjut</span>
+                    <Sparkles className="w-4 h-4 text-amber-200" />
+                    <span>Ekstrak Dokumen dengan AI &amp; Lanjut</span>
                   </>
                 )}
               </button>
@@ -1489,16 +1609,16 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       {step === 2 && (
         <div className="space-y-6">
           {/* Audit Warnings Panel */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+          <div className="bento-card p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-display text-base font-semibold text-slate-900">
-                Hasil Audit & Peringatan Verifikasi Berkas ({combinedAuditWarnings.length})
+              <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                Hasil Audit &amp; Peringatan Verifikasi Berkas ({combinedAuditWarnings.length})
               </h2>
             </div>
 
             {combinedAuditWarnings.length === 0 ? (
-              <div className="p-3.5 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-800 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div className="p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-700/50 bg-emerald-50 dark:bg-emerald-950/50 text-xs text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>
                   Tidak ditemukan kejanggalan data (NIK ganda, selisih nama sertipikat, atau persetujuan pasangan). Tetap lakukan pengecekan fisik dokumen asli.
                 </span>
@@ -1508,10 +1628,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 {combinedAuditWarnings.map((w) => {
                   const tone =
                     w.tingkat === 'tinggi'
-                      ? 'border-rose-200 bg-rose-50 text-rose-900'
+                      ? 'border-rose-200 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-100'
                       : w.tingkat === 'sedang'
-                      ? 'border-amber-200 bg-amber-50 text-amber-900'
-                      : 'border-sky-200 bg-sky-50 text-sky-900';
+                      ? 'border-amber-200 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-100'
+                      : 'border-sky-200 dark:border-sky-700/60 bg-sky-50 dark:bg-sky-950/50 text-sky-900 dark:text-sky-100';
                   const label =
                     w.tingkat === 'tinggi'
                       ? 'Perhatian Tinggi'
@@ -1522,7 +1642,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   return (
                     <div
                       key={w.id}
-                      className={`p-3.5 rounded-lg border text-xs flex items-start gap-2.5 ${tone}`}
+                      className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 ${tone}`}
                     >
                       <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                       <div>
@@ -1541,21 +1661,21 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
           {/* Step 2 Inline Scan Status Banner */}
           {step2ScanNotice && (
             <div
-              className={`rounded-xl border px-4 py-3 text-xs flex items-center justify-between gap-3 ${
+              className={`rounded-2xl border px-4 py-3 text-xs flex items-center justify-between gap-3 ${
                 step2ScanNotice.type === 'error'
-                  ? 'border-rose-200 bg-rose-50 text-rose-900'
+                  ? 'border-rose-200 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-100'
                   : step2ScanNotice.type === 'success'
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                  : 'border-sky-200 bg-sky-50 text-sky-900'
+                  ? 'border-emerald-200 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-100'
+                  : 'border-sky-200 dark:border-sky-700/60 bg-sky-50 dark:bg-sky-950/60 text-sky-900 dark:text-sky-100'
               }`}
             >
               <div className="flex items-center gap-2 min-w-0">
                 {step2ScanNotice.type === 'info' ? (
-                  <Loader2 className="w-4 h-4 animate-spin shrink-0 text-sky-600" />
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0 text-sky-600 dark:text-sky-400" />
                 ) : step2ScanNotice.type === 'success' ? (
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                 ) : (
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
                 )}
                 <span className="font-medium break-words">{step2ScanNotice.message}</span>
               </div>
@@ -1564,7 +1684,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   type="button"
                   onClick={() => setStep2ScanNotice(null)}
                   aria-label="Tutup notifikasi scan"
-                  className="p-1 rounded hover:bg-black/5 shrink-0"
+                  className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 shrink-0"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -1573,17 +1693,17 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
           )}
 
           {/* Para Pihak Editable List */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+          <div className="bento-card p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
               <div>
-                <h2 className="font-display text-base font-semibold text-slate-900">
+                <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
                   {isAkta
                     ? `Data Para Pihak (${paraPihak.length})`
                     : layanan === 'Turun Waris'
                     ? `Daftar Ahli Waris / Pemohon (${paraPihak.length})`
                     : `Data Pemohon / Pemilik Sertipikat (${paraPihak.length})`}
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-600 dark:text-teal-200/75 mt-0.5">
                   {layanan === 'AJB' || layanan === 'Akta Hibah'
                     ? `Akta ${layanan} hanya terdiri dari Pihak I (${layanan === 'AJB' ? 'Penjual' : 'Pemberi Hibah'}) dan Pihak II (${layanan === 'AJB' ? 'Pembeli' : 'Penerima Hibah'}). Jika pemilik lebih dari satu orang, tambahkan sebagai Pihak I agar tergabung dalam PIHAK PERTAMA.`
                     : layanan === 'APHB'
@@ -1597,10 +1717,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 {/* Scan KTP Tambah Pihak / Pemohon (multi-file & kamera) */}
                 <div className="inline-flex items-center gap-1">
                   <label
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold whitespace-nowrap transition-colors ${
                       step2ScanSlot !== null
-                        ? 'opacity-60 pointer-events-none border-sky-200 bg-sky-50 text-sky-700'
-                        : 'cursor-pointer border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800'
+                        ? 'opacity-60 pointer-events-none border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
+                        : 'cursor-pointer border-sky-200 dark:border-sky-400/35 bg-sky-50 dark:bg-sky-950/70 hover:bg-sky-100 dark:hover:bg-sky-900/70 text-sky-800 dark:text-sky-200'
                     }`}
                     title="Pilih 1 atau beberapa foto/PDF KTP untuk otomatis mengisi atau menambah Pihak / Pemohon"
                   >
@@ -1628,8 +1748,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   <label
                     className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
                       step2ScanSlot !== null
-                        ? 'opacity-60 pointer-events-none border-slate-200 bg-slate-50 text-slate-400'
-                        : 'cursor-pointer border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                        ? 'opacity-60 pointer-events-none border-teal-900/10 dark:border-teal-500/20 bg-slate-50 dark:bg-[#081E22] text-slate-400 dark:text-teal-500/50'
+                        : 'cursor-pointer border-teal-900/15 dark:border-teal-400/25 bg-white dark:bg-[#0D2B30] hover:bg-teal-50 dark:hover:bg-[#12383F] text-slate-700 dark:text-teal-100'
                     }`}
                     title="Foto KTP langsung dari kamera"
                   >
@@ -1652,7 +1772,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       onClick={() =>
                         setParaPihak((prev) => [...prev, createEmptyPihak('Pihak I')])
                       }
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-medium whitespace-nowrap"
+                      className="btn-3d btn-3d-teal inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Tambah Pemilik (Pihak I)</span>
@@ -1662,7 +1782,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       onClick={() =>
                         setParaPihak((prev) => [...prev, createEmptyPihak('Pihak II')])
                       }
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-medium whitespace-nowrap"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-900/15 dark:border-teal-400/30 bg-white dark:bg-[#0D2B30] hover:bg-teal-50 dark:hover:bg-[#12383F] text-slate-800 dark:text-teal-100 text-xs font-semibold whitespace-nowrap transition-colors"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Tambah Pihak II</span>
@@ -1677,7 +1797,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         createEmptyPihak(suggestNextPartyRole(prev, layanan)),
                       ])
                     }
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-medium whitespace-nowrap"
+                    className="btn-3d btn-3d-teal inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>
@@ -1696,7 +1816,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               paraPihak.some(
                 (p) => p.peran.startsWith('Pihak ') && p.peran !== 'Pihak I' && p.peran !== 'Pihak II'
               ) && (
-                <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2">
+                <div className="p-3 rounded-xl border border-amber-200 dark:border-amber-500/35 bg-amber-50 dark:bg-amber-950/50 text-xs text-amber-900 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2">
                   <span>
                     Ditemukan peran <strong>Pihak III+</strong> pada layanan {layanan}. Dalam {layanan}, seluruh pemilik seharusnya berada di <strong>Pihak I</strong> atau <strong>Pihak II</strong>.
                   </span>
@@ -1713,7 +1833,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         )
                       )
                     }
-                    className="px-2.5 py-1 rounded-md bg-amber-900 text-white font-medium hover:bg-amber-800"
+                    className="px-2.5 py-1 rounded-md bg-amber-600 text-white font-semibold hover:bg-amber-700"
                   >
                     Gabungkan Pihak III+ ke Pihak I
                   </button>
@@ -1727,7 +1847,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   .map((p) => p.peran);
                 return new Set(partyRoles).size < partyRoles.length;
               })() && (
-                <div className="p-3 rounded-lg border border-sky-200 bg-sky-50 text-xs text-sky-900 flex flex-wrap items-center justify-between gap-2">
+                <div className="p-3 rounded-xl border border-sky-200 dark:border-sky-500/35 bg-sky-50 dark:bg-sky-950/50 text-xs text-sky-900 dark:text-sky-100 flex flex-wrap items-center justify-between gap-2">
                   <span>
                     Pada APHB, setiap pemilik sebaiknya menjadi pihak yang terpisah (Pihak I, Pihak II, Pihak III, dst.).
                   </span>
@@ -1743,7 +1863,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         });
                       })
                     }
-                    className="px-2.5 py-1 rounded-md bg-sky-800 text-white font-medium hover:bg-sky-700"
+                    className="px-2.5 py-1 rounded-md bg-sky-600 text-white font-semibold hover:bg-sky-700"
                   >
                     Pisahkan Jadi Pihak I, II, III...
                   </button>
@@ -1760,11 +1880,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 return (
                 <div
                   key={p.id}
-                  className="border border-slate-200 rounded-xl p-4 bg-slate-50/40 space-y-3"
+                  className="border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-teal-900/10 dark:border-teal-500/20">
                     <div className="flex flex-wrap items-center gap-2.5">
-                      <span className="font-mono text-xs font-semibold text-slate-500">
+                      <span className="font-mono text-xs font-bold text-teal-800 dark:text-teal-300">
                         Subjek #{idx + 1}
                       </span>
                       <select
@@ -1773,7 +1893,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         onChange={(e) =>
                           updateParty(p.id, { peran: e.target.value as PihakRole })
                         }
-                        className="text-xs font-semibold border border-slate-300 rounded-md px-2.5 py-1 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        className="input-airy text-xs font-semibold px-2.5 py-1"
                       >
                         {buildRoleOptions(paraPihak, layanan).map((r) => (
                           <option key={r} value={r}>
@@ -1782,17 +1902,17 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         ))}
                       </select>
                       {sameRoleCount > 1 && p.peran.startsWith('Pihak ') && (
-                        <span className="text-[11px] font-medium text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded">
+                        <span className="text-[11px] font-semibold text-sky-800 dark:text-sky-200 bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-400/35 px-2 py-0.5 rounded-md">
                           Kepemilikan Bersama #{sameRoleIdx} ({p.peran})
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <label
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md border text-[11px] font-medium whitespace-nowrap transition-colors ${
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold whitespace-nowrap transition-colors ${
                           step2ScanSlot !== null
-                            ? 'opacity-60 pointer-events-none border-sky-200 bg-sky-50 text-sky-700'
-                            : 'cursor-pointer border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800'
+                            ? 'opacity-60 pointer-events-none border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
+                            : 'cursor-pointer border-sky-200 dark:border-sky-400/35 bg-sky-50 dark:bg-sky-950/70 hover:bg-sky-100 dark:hover:bg-sky-900/70 text-sky-800 dark:text-sky-200'
                         }`}
                         title={`Scan foto/PDF KTP untuk mengisi data ${p.peran} #${idx + 1}`}
                       >
@@ -1819,10 +1939,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         </span>
                       </label>
                       <label
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[11px] font-medium whitespace-nowrap transition-colors ${
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-medium whitespace-nowrap transition-colors ${
                           step2ScanSlot !== null
-                            ? 'opacity-60 pointer-events-none border-slate-200 bg-slate-50 text-slate-400'
-                            : 'cursor-pointer border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                            ? 'opacity-60 pointer-events-none border-teal-900/10 dark:border-teal-500/20 bg-slate-50 dark:bg-[#081E22] text-slate-400 dark:text-teal-500/50'
+                            : 'cursor-pointer border-teal-900/15 dark:border-teal-400/25 bg-white dark:bg-[#0D2B30] hover:bg-teal-50 dark:hover:bg-[#12383F] text-slate-700 dark:text-teal-100'
                         }`}
                         title={`Foto KTP ${p.peran} #${idx + 1} dari kamera`}
                       >
@@ -1846,7 +1966,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         type="button"
                         onClick={() => removeParty(p.id)}
                         aria-label={`Hapus pihak ${p.nama || idx + 1}`}
-                        className="inline-flex items-center gap-1 text-xs text-rose-600 hover:text-rose-800 font-medium pl-1"
+                        className="inline-flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 font-semibold pl-1"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Hapus</span>
@@ -1856,27 +1976,27 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                     <div>
-                      <label className="block text-slate-600 mb-1">NIK (16 Digit)</label>
+                      <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">NIK (16 Digit)</label>
                       <input
                         type="text"
                         value={p.nik}
                         onChange={(e) => updateParty(p.id, { nik: e.target.value })}
                         placeholder="3322..."
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-mono"
+                        className="input-airy w-full px-2.5 py-1.5 font-mono"
                       />
                     </div>
                     <div className="lg:col-span-2">
-                      <label className="block text-slate-600 mb-1">Nama Lengkap</label>
+                      <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Nama Lengkap</label>
                       <input
                         type="text"
                         value={p.nama}
                         onChange={(e) => updateParty(p.id, { nama: e.target.value.toUpperCase() })}
                         placeholder="NAMA SESUAI KTP"
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-medium uppercase"
+                        className="input-airy w-full px-2.5 py-1.5 font-medium uppercase"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1">Status Perkawinan</label>
+                      <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Status Perkawinan</label>
                       <input
                         type="text"
                         value={p.status_perkawinan}
@@ -1884,106 +2004,106 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                           updateParty(p.id, { status_perkawinan: e.target.value })
                         }
                         placeholder="KAWIN / BELUM KAWIN"
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                        className="input-airy w-full px-2.5 py-1.5"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1">Tempat Lahir</label>
+                      <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Tempat Lahir</label>
                       <input
                         type="text"
                         value={p.tempat_lahir}
                         onChange={(e) =>
                           updateParty(p.id, { tempat_lahir: e.target.value })
                         }
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                        className="input-airy w-full px-2.5 py-1.5"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1">Tanggal Lahir</label>
+                      <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Tanggal Lahir</label>
                       <DateInputId
                         value={p.tanggal_lahir}
                         onChange={(val) => updateParty(p.id, { tanggal_lahir: val })}
                         placeholder="DD-MM-YYYY"
                         ariaLabel={`Tanggal lahir ${p.nama || p.peran}`}
-                        className="py-1.5 px-2.5 rounded-md"
+                        className="py-1.5 px-2.5"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1">Jenis Kelamin</label>
+                      <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Jenis Kelamin</label>
                       <select
                         value={p.jenis_kelamin}
                         onChange={(e) =>
                           updateParty(p.id, { jenis_kelamin: e.target.value })
                         }
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                        className="input-airy w-full px-2.5 py-1.5"
                       >
                         <option value="Laki-laki">Laki-laki</option>
                         <option value="Perempuan">Perempuan</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1">Pekerjaan</label>
+                      <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Pekerjaan</label>
                       <input
                         type="text"
                         value={p.pekerjaan}
                         onChange={(e) =>
                           updateParty(p.id, { pekerjaan: e.target.value })
                         }
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                        className="input-airy w-full px-2.5 py-1.5"
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-slate-600 mb-1">Alamat Jalan / Dukuh</label>
+                      <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Alamat Jalan / Dukuh</label>
                       <input
                         type="text"
                         value={p.alamat_jalan}
                         onChange={(e) =>
                           updateParty(p.id, { alamat_jalan: e.target.value })
                         }
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                        className="input-airy w-full px-2.5 py-1.5"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1">RT / RW</label>
+                      <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">RT / RW</label>
                       <input
                         type="text"
                         value={p.rt_rw}
                         onChange={(e) => updateParty(p.id, { rt_rw: e.target.value })}
                         placeholder="001/002"
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-mono"
+                        className="input-airy w-full px-2.5 py-1.5 font-mono"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1">Desa / Kelurahan</label>
+                      <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Desa / Kelurahan</label>
                       <input
                         type="text"
                         value={p.desa_kelurahan}
                         onChange={(e) =>
                           updateParty(p.id, { desa_kelurahan: e.target.value })
                         }
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                        className="input-airy w-full px-2.5 py-1.5"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1">Kecamatan</label>
+                      <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Kecamatan</label>
                       <input
                         type="text"
                         value={p.kecamatan}
                         onChange={(e) =>
                           updateParty(p.id, { kecamatan: e.target.value })
                         }
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                        className="input-airy w-full px-2.5 py-1.5"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1">Kabupaten / Kota</label>
+                      <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Kabupaten / Kota</label>
                       <input
                         type="text"
                         value={p.kabupaten}
                         onChange={(e) =>
                           updateParty(p.id, { kabupaten: e.target.value })
                         }
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                        className="input-airy w-full px-2.5 py-1.5"
                       />
                     </div>
                   </div>
@@ -1994,26 +2114,26 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
             {/* Pengaturan Persetujuan Pasangan: hanya untuk Akta PPATS */}
             {isAkta && (
-              <div className="border-t border-slate-200 pt-4 space-y-3">
+              <div className="border-t border-teal-900/10 dark:border-teal-500/20 pt-4 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                       Persetujuan Pasangan / Pihak Terkait
                     </h3>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-600 dark:text-teal-200/75">
                       Pilih apakah perbuatan hukum ini memerlukan persetujuan pasangan (suami/istri) atau tidak.
                     </p>
                   </div>
-                  <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100">
+                  <div className="inline-flex rounded-xl border border-teal-900/12 dark:border-teal-500/25 p-1 bg-teal-900/5 dark:bg-[#071A1D]">
                     <button
                       type="button"
                       onClick={() =>
                         setAkta((prev) => ({ ...prev, butuh_persetujuan_pasangan: true }))
                       }
-                      className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                         akta.butuh_persetujuan_pasangan !== false
-                          ? 'bg-[#0f172a] text-white'
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-teal-600 text-white shadow-sm'
+                          : 'text-slate-600 dark:text-teal-200/80 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       Ada Persetujuan
@@ -2028,10 +2148,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             prev.keterangan_tanpa_persetujuan || DEFAULT_TANPA_PERSETUJUAN_TEXT,
                         }))
                       }
-                      className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                         akta.butuh_persetujuan_pasangan === false
-                          ? 'bg-[#0f172a] text-white'
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-teal-600 text-white shadow-sm'
+                          : 'text-slate-600 dark:text-teal-200/80 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       Tidak Memerlukan Persetujuan
@@ -2040,11 +2160,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 </div>
 
                 {akta.butuh_persetujuan_pasangan === false && (
-                  <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/50 space-y-2.5 text-xs">
+                  <div className="p-4 rounded-2xl border border-amber-200 dark:border-amber-500/35 bg-amber-50/70 dark:bg-amber-950/40 space-y-2.5 text-xs">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <label
                         htmlFor="keterangan-tanpa-persetujuan"
-                        className="font-semibold text-slate-800"
+                        className="font-semibold text-amber-950 dark:text-amber-100"
                       >
                         Kolom Keterangan Tanpa Persetujuan (akan dicetak dalam Akta):
                       </label>
@@ -2058,7 +2178,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                 'Menurut keterangan para pihak, dalam melakukan perbuatan hukum ini tanpa memerlukan persetujuan dari siapapun, dikarenakan tanah tersebut berasal dari Warisan.',
                             }))
                           }
-                          className="px-2 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                          className="px-2.5 py-1 rounded-lg border border-amber-300/70 dark:border-amber-500/35 bg-white dark:bg-[#0D2B30] hover:bg-amber-50 dark:hover:bg-[#12383F] text-slate-700 dark:text-amber-100 font-medium"
                         >
                           Template Warisan
                         </button>
@@ -2071,7 +2191,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                 'Menurut keterangan para pihak, dalam melakukan perbuatan hukum ini tanpa memerlukan persetujuan dari siapapun, dikarenakan yang bersangkutan berstatus Belum Kawin / Cerai.',
                             }))
                           }
-                          className="px-2 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                          className="px-2.5 py-1 rounded-lg border border-amber-300/70 dark:border-amber-500/35 bg-white dark:bg-[#0D2B30] hover:bg-amber-50 dark:hover:bg-[#12383F] text-slate-700 dark:text-amber-100 font-medium"
                         >
                           Template Belum Kawin / Cerai
                         </button>
@@ -2087,7 +2207,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                           keterangan_tanpa_persetujuan: e.target.value,
                         }))
                       }
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                 )}
@@ -2097,18 +2217,18 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
           {/* Data Tanah & PBB */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+            <div className="bento-card p-5 space-y-4">
               <div className="flex flex-col gap-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="font-display text-base font-semibold text-slate-900">
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
                     Data Objek Tanah (Sertipikat)
                   </h2>
                   <div className="inline-flex items-center gap-1">
                     <label
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold whitespace-nowrap transition-colors ${
                         step2ScanSlot !== null
-                          ? 'opacity-60 pointer-events-none border-sky-200 bg-sky-50 text-sky-700'
-                          : 'cursor-pointer border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800'
+                          ? 'opacity-60 pointer-events-none border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
+                          : 'cursor-pointer border-sky-200 dark:border-sky-400/35 bg-sky-50 dark:bg-sky-950/70 hover:bg-sky-100 dark:hover:bg-sky-900/70 text-sky-800 dark:text-sky-200'
                       }`}
                       title="Scan foto/PDF Sertipikat Tanah (Digital/Analog) atau SPPT PBB"
                     >
@@ -2134,8 +2254,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     <label
                       className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
                         step2ScanSlot !== null
-                          ? 'opacity-60 pointer-events-none border-slate-200 bg-slate-50 text-slate-400'
-                          : 'cursor-pointer border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                          ? 'opacity-60 pointer-events-none border-teal-900/10 dark:border-teal-500/20 bg-slate-50 dark:bg-[#081E22] text-slate-400 dark:text-teal-500/50'
+                          : 'cursor-pointer border-teal-900/15 dark:border-teal-400/25 bg-white dark:bg-[#0D2B30] hover:bg-teal-50 dark:hover:bg-[#12383F] text-slate-700 dark:text-teal-100'
                       }`}
                       title="Foto Sertipikat langsung dari kamera"
                     >
@@ -2154,7 +2274,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 <div
                   role="radiogroup"
                   aria-label="Pilih Jenis Sertipikat"
-                  className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 self-start"
+                  className="inline-flex rounded-xl border border-teal-900/12 dark:border-teal-500/25 p-1 bg-teal-900/5 dark:bg-[#071A1D] self-start"
                 >
                   <button
                     type="button"
@@ -2163,10 +2283,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     onClick={() =>
                       setTanah((prev) => ({ ...prev, jenis_sertipikat: 'digital' }))
                     }
-                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors whitespace-nowrap ${
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
                       resolveJenisSertipikat(tanah) === 'digital'
-                        ? 'bg-[#0f172a] text-white'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-teal-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-teal-200/80 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     Digital (Sertipikat Elektronik)
@@ -2178,10 +2298,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     onClick={() =>
                       setTanah((prev) => ({ ...prev, jenis_sertipikat: 'analog' }))
                     }
-                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors whitespace-nowrap ${
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
                       resolveJenisSertipikat(tanah) === 'analog'
-                        ? 'bg-[#0f172a] text-white'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-teal-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-teal-200/80 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     Analog (SHM / Fisik)
@@ -2190,7 +2310,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label htmlFor="tanah-jenis-hak" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-jenis-hak" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Jenis Hak
                   </label>
                   <input
@@ -2198,12 +2318,12 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     type="text"
                     value={tanah.jenis_hak}
                     onChange={(e) => setTanah({ ...tanah, jenis_hak: e.target.value })}
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                    className="input-airy w-full px-2.5 py-1.5"
                   />
                 </div>
                 {resolveJenisSertipikat(tanah) === 'digital' ? (
                   <div>
-                    <label htmlFor="tanah-nib" className="block text-slate-600 mb-1">
+                    <label htmlFor="tanah-nib" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                       NIBel (Nomor Identifikasi Bidang Elektronik)
                     </label>
                     <input
@@ -2212,16 +2332,16 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       value={tanah.nib}
                       onChange={(e) => setTanah({ ...tanah, nib: e.target.value })}
                       placeholder="Contoh: 11.17.000023383.0"
-                      className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono"
+                      className="input-airy w-full px-2.5 py-1.5 font-mono"
                     />
-                    <p className="text-[11px] text-slate-500 mt-1">
+                    <p className="text-[11px] text-slate-600 dark:text-teal-200/75 mt-1">
                       Pada akta hanya ditulis NIBel (tanpa Nomor Hak atau Surat Ukur).
                     </p>
                   </div>
                 ) : (
                   <>
                     <div>
-                      <label htmlFor="tanah-no-hak" className="block text-slate-600 mb-1">
+                      <label htmlFor="tanah-no-hak" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                         Nomor SHM / Sertipikat
                       </label>
                       <input
@@ -2232,11 +2352,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                           setTanah({ ...tanah, nomor_hak_lama: e.target.value })
                         }
                         placeholder="Contoh: 3354"
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono"
+                        className="input-airy w-full px-2.5 py-1.5 font-mono"
                       />
                     </div>
                     <div>
-                      <label htmlFor="tanah-nib" className="block text-slate-600 mb-1">
+                      <label htmlFor="tanah-nib" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                         NIB (Nomor Identifikasi Bidang)
                       </label>
                       <input
@@ -2245,11 +2365,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         value={tanah.nib}
                         onChange={(e) => setTanah({ ...tanah, nib: e.target.value })}
                         placeholder="Contoh: 11.17.11.10.01450"
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono"
+                        className="input-airy w-full px-2.5 py-1.5 font-mono"
                       />
                     </div>
                     <div>
-                      <label htmlFor="tanah-su-tanggal" className="block text-slate-600 mb-1">
+                      <label htmlFor="tanah-su-tanggal" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                         Tanggal Surat Ukur
                       </label>
                       <input
@@ -2260,11 +2380,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                           setTanah({ ...tanah, surat_ukur_tanggal: e.target.value })
                         }
                         placeholder="DD-MM-YYYY (atau 19/10/2011)"
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono"
+                        className="input-airy w-full px-2.5 py-1.5 font-mono"
                       />
                     </div>
                     <div>
-                      <label htmlFor="tanah-su-nomor" className="block text-slate-600 mb-1">
+                      <label htmlFor="tanah-su-nomor" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                         Nomor Surat Ukur
                       </label>
                       <input
@@ -2275,13 +2395,13 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                           setTanah({ ...tanah, surat_ukur_nomor: e.target.value })
                         }
                         placeholder="Contoh: 00143/Sindon/2011"
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono"
+                        className="input-airy w-full px-2.5 py-1.5 font-mono"
                       />
                     </div>
                   </>
                 )}
                 <div>
-                  <label htmlFor="tanah-luas" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-luas" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Luas Tanah (m²)
                   </label>
                   <input
@@ -2293,11 +2413,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     onChange={(e) =>
                       setTanah({ ...tanah, luas_m2: Number(e.target.value) || 0 })
                     }
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono tabular-nums"
+                    className="input-airy w-full px-2.5 py-1.5 font-mono tabular-nums"
                   />
                 </div>
                 <div>
-                  <label htmlFor="tanah-desa" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-desa" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Desa / Kelurahan
                   </label>
                   <input
@@ -2305,11 +2425,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     type="text"
                     value={tanah.desa}
                     onChange={(e) => setTanah({ ...tanah, desa: e.target.value })}
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                    className="input-airy w-full px-2.5 py-1.5"
                   />
                 </div>
                 <div>
-                  <label htmlFor="tanah-kec" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-kec" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Kecamatan
                   </label>
                   <input
@@ -2317,11 +2437,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     type="text"
                     value={tanah.kecamatan}
                     onChange={(e) => setTanah({ ...tanah, kecamatan: e.target.value })}
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                    className="input-airy w-full px-2.5 py-1.5"
                   />
                 </div>
                 <div>
-                  <label htmlFor="tanah-kab" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-kab" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Kabupaten / Kota
                   </label>
                   <input
@@ -2329,11 +2449,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     type="text"
                     value={tanah.kabupaten}
                     onChange={(e) => setTanah({ ...tanah, kabupaten: e.target.value })}
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                    className="input-airy w-full px-2.5 py-1.5"
                   />
                 </div>
                 <div>
-                  <label htmlFor="tanah-provinsi" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-provinsi" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Provinsi
                   </label>
                   <input
@@ -2341,11 +2461,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     type="text"
                     value={tanah.provinsi ?? ''}
                     onChange={(e) => setTanah({ ...tanah, provinsi: e.target.value })}
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                    className="input-airy w-full px-2.5 py-1.5"
                   />
                 </div>
                 <div>
-                  <label htmlFor="tanah-dasar" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-dasar" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Dasar Perolehan
                   </label>
                   <input
@@ -2355,11 +2475,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     onChange={(e) =>
                       setTanah({ ...tanah, dasar_perolehan: e.target.value })
                     }
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                    className="input-airy w-full px-2.5 py-1.5"
                   />
                 </div>
                 <div>
-                  <label htmlFor="tanah-penggunaan" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-penggunaan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Penggunaan Tanah (untuk Akta & Lampiran F4)
                   </label>
                   <input
@@ -2370,11 +2490,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       setTanah({ ...tanah, penggunaan_tanah: e.target.value })
                     }
                     placeholder="Misal: Pekarangan / Tanah Pertanian"
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                    className="input-airy w-full px-2.5 py-1.5"
                   />
                 </div>
                 <div>
-                  <label htmlFor="tanah-status" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-status" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Status Jenis Tanah (Pasal Akta)
                   </label>
                   <select
@@ -2386,17 +2506,17 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         status_tanah: e.target.value as 'Non-Pertanian' | 'Pertanian',
                       })
                     }
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                    className="input-airy w-full px-2.5 py-1.5"
                   >
                     <option value="Non-Pertanian">Non-Pertanian (Pekarangan / Bangunan)</option>
                     <option value="Pertanian">Tanah Pertanian (Sisipkan Pasal 3 Maksimum Tanah)</option>
                   </select>
                 </div>
                 {tanah.status_tanah === 'Pertanian' && (
-                  <div className="sm:col-span-2 p-2.5 rounded-lg border border-emerald-200 bg-emerald-50/70 space-y-1.5">
+                  <div className="sm:col-span-2 p-3 rounded-xl border border-emerald-200 dark:border-emerald-500/35 bg-emerald-50/70 dark:bg-emerald-950/45 space-y-1.5">
                     <label
                       htmlFor="tanah-tgl-pertanian"
-                      className="block font-medium text-emerald-900"
+                      className="block font-semibold text-emerald-900 dark:text-emerald-100"
                     >
                       Tanggal Surat Pernyataan Tidak Melanggar Batas Maksimum Tanah Pertanian
                     </label>
@@ -2408,15 +2528,15 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         setTanah({ ...tanah, tanggal_pernyataan_pertanian: val })
                       }
                       placeholder="DD-MM-YYYY (kosongkan jika ikuti tanggal akta)"
-                      className="border-emerald-300 rounded-md py-1.5"
+                      className="py-1.5"
                     />
-                    <p className="text-[11px] text-emerald-800">
+                    <p className="text-[11px] text-emerald-800 dark:text-emerald-200/85">
                       Pasal 3 khusus ketentuan maksimum penguasaan tanah pertanian akan otomatis disisipkan dan nomor pasal berikutnya bergeser (+1).
                     </p>
                   </div>
                 )}
                 <div>
-                  <label htmlFor="tanah-tahun-kuasa" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-tahun-kuasa" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Dikuasai Sejak Tahun
                   </label>
                   <input
@@ -2427,11 +2547,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       setTanah({ ...tanah, menguasai_sejak_tahun: e.target.value })
                     }
                     placeholder="Misal: 2012"
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono"
+                    className="input-airy w-full px-2.5 py-1.5 font-mono"
                   />
                 </div>
                 <div>
-                  <label htmlFor="tanah-batas-utara" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-batas-utara" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Batas Sebelah Utara
                   </label>
                   <input
@@ -2440,11 +2560,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     value={tanah.batas_utara ?? ''}
                     onChange={(e) => setTanah({ ...tanah, batas_utara: e.target.value })}
                     placeholder="Misal: Jalan Kampung / Tanah Sdr. ..."
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                    className="input-airy w-full px-2.5 py-1.5"
                   />
                 </div>
                 <div>
-                  <label htmlFor="tanah-batas-timur" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-batas-timur" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Batas Sebelah Timur
                   </label>
                   <input
@@ -2453,11 +2573,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     value={tanah.batas_timur ?? ''}
                     onChange={(e) => setTanah({ ...tanah, batas_timur: e.target.value })}
                     placeholder="Misal: Tanah Sdr. ..."
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                    className="input-airy w-full px-2.5 py-1.5"
                   />
                 </div>
                 <div>
-                  <label htmlFor="tanah-batas-selatan" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-batas-selatan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Batas Sebelah Selatan
                   </label>
                   <input
@@ -2466,11 +2586,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     value={tanah.batas_selatan ?? ''}
                     onChange={(e) => setTanah({ ...tanah, batas_selatan: e.target.value })}
                     placeholder="Misal: Tanah Sdr. ..."
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                    className="input-airy w-full px-2.5 py-1.5"
                   />
                 </div>
                 <div>
-                  <label htmlFor="tanah-batas-barat" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-batas-barat" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Batas Sebelah Barat
                   </label>
                   <input
@@ -2479,11 +2599,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     value={tanah.batas_barat ?? ''}
                     onChange={(e) => setTanah({ ...tanah, batas_barat: e.target.value })}
                     placeholder="Misal: Selokan / Jalan ..."
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                    className="input-airy w-full px-2.5 py-1.5"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label htmlFor="tanah-holders" className="block text-slate-600 mb-1">
+                  <label htmlFor="tanah-holders" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Pemegang Hak pada Sertipikat (pisahkan koma jika lebih dari 1)
                   </label>
                   <input
@@ -2492,23 +2612,23 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     value={pemegangHakInput}
                     onChange={(e) => setPemegangHakInput(e.target.value.toUpperCase())}
                     placeholder="Contoh: SLAMET RAHARJO"
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md uppercase"
+                    className="input-airy w-full px-2.5 py-1.5 uppercase"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+            <div className="bento-card p-5 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-display text-base font-semibold text-slate-900">
+                <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
                   Data SPPT PBB-P2
                 </h2>
                 <div className="inline-flex items-center gap-1">
                   <label
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold whitespace-nowrap transition-colors ${
                       step2ScanSlot !== null
-                        ? 'opacity-60 pointer-events-none border-sky-200 bg-sky-50 text-sky-700'
-                        : 'cursor-pointer border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800'
+                        ? 'opacity-60 pointer-events-none border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
+                        : 'cursor-pointer border-sky-200 dark:border-sky-400/35 bg-sky-50 dark:bg-sky-950/70 hover:bg-sky-100 dark:hover:bg-sky-900/70 text-sky-800 dark:text-sky-200'
                     }`}
                     title="Scan foto/PDF SPPT PBB untuk mengisi NOP, Tahun Pajak, NJOP, dan luas"
                   >
@@ -2529,8 +2649,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   <label
                     className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
                       step2ScanSlot !== null
-                        ? 'opacity-60 pointer-events-none border-slate-200 bg-slate-50 text-slate-400'
-                        : 'cursor-pointer border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                        ? 'opacity-60 pointer-events-none border-teal-900/10 dark:border-teal-500/20 bg-slate-50 dark:bg-[#081E22] text-slate-400 dark:text-teal-500/50'
+                        : 'cursor-pointer border-teal-900/15 dark:border-teal-400/25 bg-white dark:bg-[#0D2B30] hover:bg-teal-50 dark:hover:bg-[#12383F] text-slate-700 dark:text-teal-100'
                     }`}
                     title="Foto SPPT PBB langsung dari kamera"
                   >
@@ -2548,7 +2668,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="sm:col-span-2">
-                  <label htmlFor="pbb-nop" className="block text-slate-600 mb-1">
+                  <label htmlFor="pbb-nop" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Nomor Objek Pajak (NOP)
                   </label>
                   <input
@@ -2557,11 +2677,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     value={pbb.nop}
                     onChange={(e) => setPbb({ ...pbb, nop: e.target.value })}
                     placeholder="33.22.140.xxx.xxx-xxxx.0"
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono"
+                    className="input-airy w-full px-2.5 py-1.5 font-mono"
                   />
                 </div>
                 <div>
-                  <label htmlFor="pbb-tahun" className="block text-slate-600 mb-1">
+                  <label htmlFor="pbb-tahun" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Tahun Pajak
                   </label>
                   <input
@@ -2569,11 +2689,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     type="text"
                     value={pbb.tahun_pajak}
                     onChange={(e) => setPbb({ ...pbb, tahun_pajak: e.target.value })}
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono"
+                    className="input-airy w-full px-2.5 py-1.5 font-mono"
                   />
                 </div>
                 <div>
-                  <label htmlFor="pbb-njop-bumi" className="block text-slate-600 mb-1">
+                  <label htmlFor="pbb-njop-bumi" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     NJOP Bumi / m² (Rp)
                   </label>
                   <input
@@ -2584,11 +2704,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     onChange={(e) =>
                       setPbb({ ...pbb, njop_bumi_m2: Number(e.target.value) || 0 })
                     }
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono tabular-nums"
+                    className="input-airy w-full px-2.5 py-1.5 font-mono tabular-nums"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label htmlFor="pbb-njop-bangunan" className="block text-slate-600 mb-1">
+                  <label htmlFor="pbb-njop-bangunan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Total NJOP Bangunan (Rp)
                   </label>
                   <input
@@ -2599,7 +2719,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     onChange={(e) =>
                       setPbb({ ...pbb, njop_bangunan: Number(e.target.value) || 0 })
                     }
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono tabular-nums"
+                    className="input-airy w-full px-2.5 py-1.5 font-mono tabular-nums"
                   />
                 </div>
               </div>
@@ -2610,7 +2730,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700"
+              className="btn-3d btn-3d-light inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Kembali ke Langkah 1</span>
@@ -2618,7 +2738,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             <button
               type="button"
               onClick={() => setStep(3)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-sm font-medium"
+              className="btn-3d btn-3d-teal inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold"
             >
               <span>
                 {isAkta
@@ -2634,15 +2754,15 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       {/* STEP 3 */}
       {step === 3 && (
         <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-4">
+          <div className="bento-card p-6 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 dark:border-teal-400/15 pb-4">
               <div>
-                <h2 className="font-display text-base font-semibold text-slate-900">
+                <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
                   {isAkta
                     ? 'Parameter Akta & Penandatanganan'
                     : `Pengesahan, Detail Berkas Non-Akta (${layanan}) & Saksi`}
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-600 dark:text-teal-200/75 mt-0.5">
                   {isAkta
                     ? 'Lengkapi nomor akta, pejabat PPATS, kuasa BPN, saksi-saksi, dan nilai transaksi pada akta.'
                     : 'Atur pejabat pengesahan dokumen, detail khusus layanan Non-Akta, kuasa BPN, dan saksi-saksi.'}
@@ -2655,16 +2775,16 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   setSavedRecordId(rec.id);
                   await onOpenTaxCalculator(rec);
                 }}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-medium text-slate-800 whitespace-nowrap shrink-0"
+                className="btn-3d btn-3d-light inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0"
               >
-                <Calculator className="w-3.5 h-3.5 text-sky-700" />
+                <Calculator className="w-3.5 h-3.5 text-teal-600 dark:text-teal-300" />
                 <span>Buka Jalur Perhitungan Pajak (BPHTB/PPh)</span>
               </button>
             </div>
 
             {!isAkta && (
-              <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-700">
-                <strong>Berkas Non-Akta ({layanan}):</strong> Tidak menggunakan Nomor Akta PPATS, tidak menerbitkan Blangko Akta A4, dan otomatis dikecualikan dari Laporan Bulanan PPATS.
+              <div className="p-3.5 rounded-xl border border-teal-900/12 dark:border-teal-500/25 bg-[#F6FBFA] dark:bg-[#0A2226] text-xs text-slate-700 dark:text-teal-100">
+                <strong className="text-slate-900 dark:text-white">Berkas Non-Akta ({layanan}):</strong> Tidak menggunakan Nomor Akta PPATS, tidak menerbitkan Blangko Akta A4, dan otomatis dikecualikan dari Laporan Bulanan PPATS.
               </div>
             )}
 
@@ -2672,7 +2792,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               {isAkta && (
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label htmlFor="akta-nomor" className="text-slate-600 font-medium">
+                    <label htmlFor="akta-nomor" className="text-slate-700 dark:text-teal-100/90 font-medium">
                       Nomor Akta PPATS
                     </label>
                     <button
@@ -2684,7 +2804,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             .nomorAkta,
                         })
                       }
-                      className="text-sky-700 hover:underline font-medium"
+                      className="text-teal-700 dark:text-teal-300 hover:underline font-semibold"
                     >
                       Pakai Saran ({nextSuggestion.nomorAkta})
                     </button>
@@ -2694,7 +2814,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     type="text"
                     value={akta.nomor_akta}
                     onChange={(e) => setAkta({ ...akta, nomor_akta: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono"
+                    className="input-airy w-full px-3 py-2 font-mono"
                   />
                 </div>
               )}
@@ -2702,14 +2822,14 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               <div className={!isAkta ? 'sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4' : ''}>
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <label htmlFor="akta-tanggal" className="text-slate-600 font-medium">
+                    <label htmlFor="akta-tanggal" className="text-slate-700 dark:text-teal-100/90 font-medium">
                       {isAkta ? 'Tanggal Akta (Opsional)' : 'Tanggal Surat / Berkas (Opsional)'}
                     </label>
                     {akta.tanggal_akta.trim() !== '' && (
                       <button
                         type="button"
                         onClick={() => setAkta({ ...akta, tanggal_akta: '' })}
-                        className="text-[11px] font-medium text-rose-600 hover:underline"
+                        className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:underline"
                       >
                         Kosongkan Tanggal
                       </button>
@@ -2723,20 +2843,20 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     placeholder="DD-MM-YYYY (boleh dikosongi)"
                     ariaLabel={isAkta ? 'Tanggal Akta (format DD-MM-YYYY)' : 'Tanggal Surat Berkas (format DD-MM-YYYY)'}
                   />
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <p className="text-[11px] text-slate-600 dark:text-teal-200/75 mt-1">
                     Format hari-bulan-tahun (DD-MM-YYYY). Boleh dikosongkan untuk pengisian blangko manual.
                   </p>
                 </div>
                 {!isAkta && (
                   <div>
-                    <label htmlFor="akta-status-nonakta" className="block text-slate-600 font-medium mb-1">
+                    <label htmlFor="akta-status-nonakta" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                       Status Progres Berkas
                     </label>
                     <select
                       id="akta-status-nonakta"
                       value={status}
                       onChange={(e) => setStatus(e.target.value as BerkasStatus)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                      className="input-airy w-full px-3 py-2"
                     >
                       {STATUS_OPTIONS.map((opt) => (
                         <option key={opt} value={opt}>
@@ -2749,7 +2869,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               </div>
 
               {!isAkta && !akta.tanggal_akta.trim() && (
-                <div className="sm:col-span-2 p-3 rounded-lg bg-amber-50/70 border border-amber-200 text-amber-900">
+                <div className="sm:col-span-2 p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/45 border border-amber-200 dark:border-amber-500/35 text-amber-900 dark:text-amber-100">
                   <span className="font-semibold">Tanggal Berkas Dikosongkan:</span>{' '}
                   Seluruh titik tanggal pada bundel Non-Akta (Permohonan, Surat Kuasa, Pernyataan, dan Pengesahan) akan dicetak kosong (<span className="font-mono">......................</span>) untuk diisi manual.
                 </div>
@@ -2757,15 +2877,15 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
               {isAkta && (
                 <>
-                  <div className="sm:col-span-2 p-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-700">
-                    <span className="font-semibold text-slate-900">Pratinjau Kalimat Tanggal Akta:</span>{' '}
+                  <div className="sm:col-span-2 p-3 rounded-xl bg-[#F6FBFA] dark:bg-[#081E22] border border-teal-900/12 dark:border-teal-500/25 text-slate-700 dark:text-teal-100/90">
+                    <span className="font-semibold text-slate-900 dark:text-white">Pratinjau Kalimat Tanggal Akta:</span>{' '}
                     {akta.tanggal_akta.trim() && formattedAktaDate.kalimat_akta !== '-'
                       ? formattedAktaDate.kalimat_akta
                       : 'Tanggal dikosongkan — blangko akta & lampiran akan dicetak dengan titik-titik (..........) untuk pengisian manual.'}
                   </div>
 
                   <div>
-                    <label htmlFor="akta-ppats" className="block text-slate-600 font-medium mb-1">
+                    <label htmlFor="akta-ppats" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                       Nama Pejabat PPATS
                     </label>
                     <input
@@ -2773,12 +2893,12 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       type="text"
                       value={akta.nama_ppats}
                       onChange={(e) => setAkta({ ...akta, nama_ppats: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="akta-jabatan" className="block text-slate-600 font-medium mb-1">
+                    <label htmlFor="akta-jabatan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                       Jabatan PPATS
                     </label>
                     <input
@@ -2786,21 +2906,21 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       type="text"
                       value={akta.jabatan_ppats}
                       onChange={(e) => setAkta({ ...akta, jabatan_ppats: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
 
-                  <div className="sm:col-span-2 p-3.5 rounded-lg border border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="space-y-0.5">
-                      <p className="font-semibold text-slate-800">
+                  <div className="sm:col-span-2 p-4 rounded-2xl border border-teal-900/12 dark:border-teal-500/20 bg-[#F6FBFA] dark:bg-[#0A2226] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="font-bold text-slate-900 dark:text-white">
                         Ringkasan Nilai Transaksi &amp; Pajak Tersimpan
                       </p>
-                      <p className="text-[11px] text-slate-600 font-mono tabular-nums">
+                      <p className="text-[11px] text-teal-800 dark:text-teal-200 font-mono tabular-nums">
                         Nilai Kesepakatan: {formatRupiah(taxCalc.nilai_kesepakatan)} · BPHTB: {formatRupiah(taxCalc.bphtb)} · PPh Final: {formatRupiah(taxCalc.pph)}
                       </p>
                     </div>
                     <div className="sm:w-64">
-                      <label htmlFor="akta-override" className="block text-slate-600 font-medium mb-1">
+                      <label htmlFor="akta-override" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                         Nilai Transaksi Akta (Rp, opsional)
                       </label>
                       <input
@@ -2816,7 +2936,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                           })
                         }
                         placeholder="Atur via Perhitungan Pajak"
-                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white font-mono tabular-nums"
+                        className="input-airy w-full px-3 py-1.5 font-mono tabular-nums"
                       />
                     </div>
                   </div>
@@ -2824,8 +2944,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               )}
 
               {layanan === 'APHB' && (
-                <div className="sm:col-span-2 p-3 rounded-lg border border-sky-200 bg-sky-50/60">
-                  <label htmlFor="akta-penerima-aphb" className="block text-slate-800 font-semibold mb-1">
+                <div className="sm:col-span-2 p-3.5 rounded-xl border border-sky-200 dark:border-sky-500/35 bg-sky-50/70 dark:bg-sky-950/45">
+                  <label htmlFor="akta-penerima-aphb" className="block text-sky-950 dark:text-sky-100 font-semibold mb-1.5">
                     Pihak Penerima Tunggal Hak Bersama (APHB)
                   </label>
                   <select
@@ -2834,7 +2954,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     onChange={(e) =>
                       setAkta({ ...akta, pihak_penerima_aphb: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-sky-200 rounded-lg bg-white text-slate-900"
+                    className="input-airy w-full px-3 py-2"
                   >
                     {paraPihak
                       .filter((p) => p.peran.startsWith('Pihak '))
@@ -2855,14 +2975,14 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               {isAkta && (
                 <>
                   <div>
-                    <label htmlFor="akta-status" className="block text-slate-600 font-medium mb-1">
+                    <label htmlFor="akta-status" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                       Status Progres Berkas
                     </label>
                     <select
                       id="akta-status"
                       value={status}
                       onChange={(e) => setStatus(e.target.value as BerkasStatus)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                      className="input-airy w-full px-3 py-2"
                     >
                       {STATUS_OPTIONS.map((opt) => (
                         <option key={opt} value={opt}>
@@ -2879,12 +2999,12 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               {!isAkta && (
                 <>
                   {/* 1. Pengesahan Tunggal ("Mengetahui") - Default PPATS */}
-                  <div className="sm:col-span-2 border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
-                    <div className="border-b border-slate-200 pb-2">
-                      <h3 className="text-xs font-semibold text-slate-900">
+                  <div className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3">
+                    <div className="border-b border-teal-900/10 dark:border-teal-500/20 pb-2">
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-white">
                         Pengesahan Dokumen Non-Akta Lainnya (&ldquo;Mengetahui&rdquo;) — Default PPATS
                       </h3>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-[11px] text-slate-600 dark:text-teal-200/75 mt-0.5">
                         Berlaku untuk Surat Kuasa, Penguasaan Fisik, SPPT/PBB, BPHTB Waris, Permohonan Pemecahan/Ukur, Tanda Batas, Sket, Pelepasan Jalan, dan Penutupan PNBP. Secara default menggunakan PPATS, atau pilih Kepala Desa / Camat / Isi Manual sesuai kebutuhan.
                       </p>
                     </div>
@@ -2952,10 +3072,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                 };
                               });
                             }}
-                            className={`px-3 py-2 rounded-lg border text-xs font-semibold text-left transition-colors ${
+                            className={`px-3 py-2 rounded-xl border text-xs font-semibold text-left transition-colors ${
                               active
-                                ? 'border-[#0f172a] bg-[#0f172a] text-white'
-                                : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                                ? 'border-teal-600 bg-teal-600 text-white shadow-sm'
+                                : 'border-teal-900/12 dark:border-teal-500/25 bg-white dark:bg-[#081E22] hover:bg-teal-50 dark:hover:bg-[#103036] text-slate-700 dark:text-teal-100'
                             }`}
                           >
                             {opt.label}
@@ -2966,7 +3086,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label htmlFor="na-pengesahan-jabatan" className="block text-slate-600 mb-1">
+                        <label htmlFor="na-pengesahan-jabatan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                           Jabatan Pengesahan
                         </label>
                         <input
@@ -2985,11 +3105,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                   ? `PPATS / Camat ${(tanah.kecamatan || settings.nama_kecamatan || '-').replace(/^Kecamatan\s+/i, '')}`
                                   : 'Jabatan pejabat pengesahan'
                           }
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                          className="input-airy w-full px-2.5 py-1.5"
                         />
                       </div>
                       <div>
-                        <label htmlFor="na-pengesahan-nama" className="block text-slate-600 mb-1">
+                        <label htmlFor="na-pengesahan-nama" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                           Nama Pejabat Pengesahan
                         </label>
                         <input
@@ -3000,11 +3120,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             setNonAkta({ ...nonAkta, pengesahan_nama: e.target.value })
                           }
                           placeholder="Nama & gelar pejabat"
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-medium"
+                          className="input-airy w-full px-2.5 py-1.5 font-medium"
                         />
                       </div>
                       <div>
-                        <label htmlFor="na-pengesahan-nip" className="block text-slate-600 mb-1">
+                        <label htmlFor="na-pengesahan-nip" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                           NIP (Opsional)
                         </label>
                         <input
@@ -3015,7 +3135,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             setNonAkta({ ...nonAkta, pengesahan_nip: e.target.value })
                           }
                           placeholder="Kosongkan jika bukan ASN"
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-mono"
+                          className="input-airy w-full px-2.5 py-1.5 font-mono"
                         />
                       </div>
                     </div>
@@ -3023,13 +3143,13 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
                   {/* 2. Detail Khusus Turun Waris */}
                   {layanan === 'Turun Waris' && (
-                    <div className="sm:col-span-2 border border-slate-200 rounded-xl p-4 bg-white space-y-3">
-                      <h3 className="text-xs font-semibold text-slate-900 border-b border-slate-200 pb-2">
+                    <div className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3">
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-white border-b border-teal-900/10 dark:border-teal-500/20 pb-2">
                         Data Pewaris &amp; Surat Keterangan Warisan (SKW)
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                          <label htmlFor="tw-sebutan" className="block text-slate-600 mb-1">
+                          <label htmlFor="tw-sebutan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Sebutan Pewaris
                           </label>
                           <select
@@ -3041,14 +3161,14 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                 sebutan_pewaris: e.target.value as 'Almarhum' | 'Almarhumah',
                               })
                             }
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                            className="input-airy w-full px-2.5 py-1.5"
                           >
                             <option value="Almarhum">Almarhum</option>
                             <option value="Almarhumah">Almarhumah</option>
                           </select>
                         </div>
                         <div className="sm:col-span-2">
-                          <label htmlFor="tw-pewaris" className="block text-slate-600 mb-1">
+                          <label htmlFor="tw-pewaris" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Nama Pewaris (Pemegang Hak Meninggal)
                           </label>
                           <input
@@ -3062,11 +3182,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               })
                             }
                             placeholder="Contoh: HADI SUWARNO"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-medium uppercase"
+                            className="input-airy w-full px-2.5 py-1.5 font-medium uppercase"
                           />
                         </div>
                         <div>
-                          <label htmlFor="tw-tgl-meninggal" className="block text-slate-600 mb-1">
+                          <label htmlFor="tw-tgl-meninggal" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Tanggal Meninggal (Opsional)
                           </label>
                           <DateInputId
@@ -3077,11 +3197,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               setNonAkta({ ...nonAkta, tanggal_meninggal: val })
                             }
                             placeholder="DD-MM-YYYY"
-                            className="py-1.5 px-2.5 rounded-md"
+                            className="py-1.5 px-2.5"
                           />
                         </div>
                         <div className="sm:col-span-2">
-                          <label htmlFor="tw-tempat-meninggal" className="block text-slate-600 mb-1">
+                          <label htmlFor="tw-tempat-meninggal" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Tempat Meninggal / Akta Kematian
                           </label>
                           <input
@@ -3092,11 +3212,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               setNonAkta({ ...nonAkta, tempat_meninggal: e.target.value })
                             }
                             placeholder="Contoh: Desa Sindon, Kec. Ngemplak, Boyolali"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                            className="input-airy w-full px-2.5 py-1.5"
                           />
                         </div>
                         <div>
-                          <label htmlFor="tw-hubungan" className="block text-slate-600 mb-1">
+                          <label htmlFor="tw-hubungan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Hubungan Pasangan Pewaris
                           </label>
                           <select
@@ -3111,7 +3231,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                   | 'Pasangannya',
                               })
                             }
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                            className="input-airy w-full px-2.5 py-1.5"
                           >
                             <option value="Istrinya">Istrinya</option>
                             <option value="Suaminya">Suaminya</option>
@@ -3119,7 +3239,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                           </select>
                         </div>
                         <div>
-                          <label htmlFor="tw-pasangan" className="block text-slate-600 mb-1">
+                          <label htmlFor="tw-pasangan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Nama Pasangan Pewaris
                           </label>
                           <input
@@ -3133,11 +3253,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               })
                             }
                             placeholder="NAMA JANDA/DUDA PEWARIS"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md uppercase"
+                            className="input-airy w-full px-2.5 py-1.5 uppercase"
                           />
                         </div>
                         <div>
-                          <label htmlFor="tw-tgl-pasangan" className="block text-slate-600 mb-1">
+                          <label htmlFor="tw-tgl-pasangan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Tgl Lahir Pasangan
                           </label>
                           <DateInputId
@@ -3151,11 +3271,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               })
                             }
                             placeholder="DD-MM-YYYY"
-                            className="py-1.5 px-2.5 rounded-md"
+                            className="py-1.5 px-2.5"
                           />
                         </div>
                         <div className="sm:col-span-3">
-                          <label htmlFor="tw-catatan" className="block text-slate-600 mb-1">
+                          <label htmlFor="tw-catatan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Catatan Tambahan SKW (Opsional)
                           </label>
                           <input
@@ -3166,7 +3286,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               setNonAkta({ ...nonAkta, catatan_skw: e.target.value })
                             }
                             placeholder="Misal: Pernikahan tercatat pada KUA Ngemplak Nomor ..."
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                            className="input-airy w-full px-2.5 py-1.5"
                           />
                         </div>
                       </div>
@@ -3177,9 +3297,9 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   {(layanan === 'Pemecahan' ||
                     layanan === 'Ukur Ulang' ||
                     layanan === 'Pemecahan/Ukur Ulang') && (
-                    <div className="sm:col-span-2 border border-slate-200 rounded-xl p-4 bg-white space-y-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
-                        <h3 className="text-xs font-semibold text-slate-900">
+                    <div className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/10 dark:border-teal-500/20 pb-2">
+                        <h3 className="text-xs font-bold text-slate-900 dark:text-white">
                           Detail Permohonan {layanan}, Bidang Pecahan &amp; Sket Tanah
                         </h3>
                         <select
@@ -3195,7 +3315,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                 | 'Pengukuran & Validasi',
                             })
                           }
-                          className="px-2.5 py-1 border border-slate-300 rounded-md bg-white text-xs font-medium"
+                          className="input-airy px-2.5 py-1 text-xs font-semibold"
                         >
                           <option value="Pemecahan">Permohonan Pemecahan Bidang</option>
                           <option value="Pemecahan & Validasi">Pemecahan &amp; Validasi</option>
@@ -3206,7 +3326,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold text-slate-800">
+                          <span className="font-semibold text-slate-900 dark:text-white">
                             Rincian Bidang Pecahan / Pengukuran ({(nonAkta.bidang_pecahan ?? []).length})
                           </span>
                           <button
@@ -3223,7 +3343,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                 bidang_pecahan: [...(prev.bidang_pecahan ?? []), item],
                               }));
                             }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#0f172a] hover:bg-slate-800 text-white font-medium"
+                            className="btn-3d btn-3d-teal inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold"
                           >
                             <Plus className="w-3 h-3" />
                             <span>Tambah Bidang Pecahan</span>
@@ -3233,10 +3353,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         {(nonAkta.bidang_pecahan ?? []).map((b, bIdx) => (
                           <div
                             key={b.id}
-                            className="p-3 rounded-lg border border-slate-200 bg-slate-50/70 grid grid-cols-1 sm:grid-cols-4 gap-2 items-end"
+                            className="p-3 rounded-xl border border-teal-900/10 dark:border-teal-500/20 bg-white dark:bg-[#081E22] grid grid-cols-1 sm:grid-cols-4 gap-2 items-end"
                           >
                             <div className="sm:col-span-2">
-                              <label className="block text-slate-600 mb-1">
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                                 Nama / Label Bidang #{bIdx + 1}
                               </label>
                               <input
@@ -3251,11 +3371,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                   }))
                                 }
                                 placeholder="Misal: Bagian 1 (Sdr. ...)"
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                                className="input-airy w-full px-2.5 py-1.5"
                               />
                             </div>
                             <div>
-                              <label className="block text-slate-600 mb-1">Luas (m²)</label>
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Luas (m²)</label>
                               <input
                                 type="number"
                                 min="0"
@@ -3271,7 +3391,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                     ),
                                   }))
                                 }
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-mono tabular-nums"
+                                className="input-airy w-full px-2.5 py-1.5 font-mono tabular-nums"
                               />
                             </div>
                             <div className="flex justify-end">
@@ -3285,7 +3405,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                     ),
                                   }))
                                 }
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-rose-200 text-rose-700 hover:bg-rose-50"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-500/35 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 font-medium"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                                 <span>Hapus</span>
@@ -3296,7 +3416,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                        <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 cursor-pointer">
+                        <label className="flex items-center gap-2 p-2.5 rounded-xl border border-teal-900/12 dark:border-teal-500/20 bg-white dark:bg-[#081E22] cursor-pointer">
                           <input
                             type="checkbox"
                             checked={Boolean(nonAkta.sertakan_pelepasan_jalan)}
@@ -3306,13 +3426,13 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                 sertakan_pelepasan_jalan: e.target.checked,
                               })
                             }
-                            className="rounded border-slate-300"
+                            className="rounded border-teal-500/40 accent-teal-600"
                           />
-                          <span className="font-medium text-slate-800">
+                          <span className="font-medium text-slate-800 dark:text-teal-100">
                             Sertakan Surat Pelepasan Hak Tanah untuk Jalan
                           </span>
                         </label>
-                        <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 cursor-pointer">
+                        <label className="flex items-center gap-2 p-2.5 rounded-xl border border-teal-900/12 dark:border-teal-500/20 bg-white dark:bg-[#081E22] cursor-pointer">
                           <input
                             type="checkbox"
                             checked={Boolean(nonAkta.sertakan_beda_nama)}
@@ -3322,18 +3442,18 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                 sertakan_beda_nama: e.target.checked,
                               })
                             }
-                            className="rounded border-slate-300"
+                            className="rounded border-teal-500/40 accent-teal-600"
                           />
-                          <span className="font-medium text-slate-800">
+                          <span className="font-medium text-slate-800 dark:text-teal-100">
                             Sertakan Surat Pernyataan Beda Nama (Pengesahan Camat &amp; Kades)
                           </span>
                         </label>
                       </div>
 
                       {nonAkta.sertakan_pelepasan_jalan && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50/40">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl border border-teal-900/10 dark:border-teal-500/20 bg-white dark:bg-[#081E22]">
                           <div>
-                            <label className="block text-slate-600 mb-1">
+                            <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                               Luas Tanah Dilepas untuk Jalan (m²)
                             </label>
                             <input
@@ -3346,11 +3466,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                   pelepasan_jalan_luas_m2: Number(e.target.value) || 0,
                                 })
                               }
-                              className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-mono"
+                              className="input-airy w-full px-2.5 py-1.5 font-mono"
                             />
                           </div>
                           <div>
-                            <label className="block text-slate-600 mb-1">
+                            <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                               Keterangan Jalan (Opsional)
                             </label>
                             <input
@@ -3363,7 +3483,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                 })
                               }
                               placeholder="Misal: Akses jalan umum RT 001/002"
-                              className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                              className="input-airy w-full px-2.5 py-1.5"
                             />
                           </div>
                         </div>
@@ -3371,7 +3491,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-slate-600 mb-1">
+                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Koordinat GPS Lokasi Bidang (Opsional)
                           </label>
                           <input
@@ -3381,11 +3501,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               setNonAkta({ ...nonAkta, koordinat_gps: e.target.value })
                             }
                             placeholder="Contoh: -7.5194, 110.7798"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono"
+                            className="input-airy w-full px-2.5 py-1.5 font-mono"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-600 mb-1">
+                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Link Google Maps / Poligon (Opsional)
                           </label>
                           <input
@@ -3395,7 +3515,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               setNonAkta({ ...nonAkta, link_maps: e.target.value })
                             }
                             placeholder="https://maps.google.com/..."
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                            className="input-airy w-full px-2.5 py-1.5"
                           />
                         </div>
                       </div>
@@ -3404,13 +3524,13 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
                   {/* 4. Detail Khusus Ralat Data */}
                   {layanan === 'Ralat Data' && (
-                    <div className="sm:col-span-2 border border-slate-200 rounded-xl p-4 bg-white space-y-3">
-                      <h3 className="text-xs font-semibold text-slate-900 border-b border-slate-200 pb-2">
+                    <div className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3">
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-white border-b border-teal-900/10 dark:border-teal-500/20 pb-2">
                         Data Ralat Sertipikat, Beda Nama &amp; Kronologi
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label htmlFor="rd-keperluan" className="block text-slate-600 mb-1">
+                          <label htmlFor="rd-keperluan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Keperluan Permohonan
                           </label>
                           <input
@@ -3421,11 +3541,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               setNonAkta({ ...nonAkta, keperluan_ralat: e.target.value })
                             }
                             placeholder="Ralat Data Sertipikat"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                            className="input-airy w-full px-2.5 py-1.5"
                           />
                         </div>
                         <div>
-                          <label htmlFor="rd-kk" className="block text-slate-600 mb-1">
+                          <label htmlFor="rd-kk" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Nomor Kartu Keluarga (KK)
                           </label>
                           <input
@@ -3436,11 +3556,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               setNonAkta({ ...nonAkta, nomor_kk: e.target.value })
                             }
                             placeholder="3309..."
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono"
+                            className="input-airy w-full px-2.5 py-1.5 font-mono"
                           />
                         </div>
                         <div>
-                          <label htmlFor="rd-nama-cert" className="block text-slate-600 mb-1">
+                          <label htmlFor="rd-nama-cert" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Nama Tertulis di Sertipikat
                           </label>
                           <input
@@ -3451,11 +3571,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               setNonAkta({ ...nonAkta, nama_di_sertipikat: e.target.value })
                             }
                             placeholder="Contoh: SARNO / WAGINEM"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-medium"
+                            className="input-airy w-full px-2.5 py-1.5 font-medium"
                           />
                         </div>
                         <div>
-                          <label htmlFor="rd-nama-ktp" className="block text-slate-600 mb-1">
+                          <label htmlFor="rd-nama-ktp" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Nama Benar Sesuai KTP &amp; KK
                           </label>
                           <input
@@ -3466,11 +3586,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               setNonAkta({ ...nonAkta, nama_di_ktp_kk: e.target.value })
                             }
                             placeholder="Contoh: SUWARNO"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-medium"
+                            className="input-airy w-full px-2.5 py-1.5 font-medium"
                           />
                         </div>
                         <div>
-                          <label htmlFor="rd-dok-lain" className="block text-slate-600 mb-1">
+                          <label htmlFor="rd-dok-lain" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Jenis Dokumen Lain (Opsional)
                           </label>
                           <input
@@ -3481,11 +3601,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               setNonAkta({ ...nonAkta, jenis_dokumen_lain: e.target.value })
                             }
                             placeholder="Akta Kelahiran / Buku Nikah / Ijazah"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                            className="input-airy w-full px-2.5 py-1.5"
                           />
                         </div>
                         <div>
-                          <label htmlFor="rd-nama-dok-lain" className="block text-slate-600 mb-1">
+                          <label htmlFor="rd-nama-dok-lain" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Nama pada Dokumen Lain (Opsional)
                           </label>
                           <input
@@ -3495,11 +3615,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             onChange={(e) =>
                               setNonAkta({ ...nonAkta, nama_di_dokumen_lain: e.target.value })
                             }
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                            className="input-airy w-full px-2.5 py-1.5"
                           />
                         </div>
                         <div className="sm:col-span-2">
-                          <label htmlFor="rd-kronologi" className="block text-slate-600 mb-1">
+                          <label htmlFor="rd-kronologi" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Uraian Kronologi Tambahan (Opsional)
                           </label>
                           <textarea
@@ -3510,7 +3630,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               setNonAkta({ ...nonAkta, uraian_kronologi: e.target.value })
                             }
                             placeholder="Kosongkan untuk menggunakan uraian kronologi standar..."
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                            className="input-airy w-full px-2.5 py-1.5"
                           />
                         </div>
                       </div>
@@ -3521,22 +3641,22 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   {(layanan === 'Turun Waris' ||
                     layanan === 'Ralat Data' ||
                     nonAkta.sertakan_beda_nama) && (
-                    <div className="sm:col-span-2 border border-amber-200 rounded-xl p-4 bg-amber-50/40 space-y-3">
-                      <div className="border-b border-amber-200 pb-2">
-                        <h3 className="text-xs font-semibold text-slate-900">
+                    <div className="sm:col-span-2 border border-amber-200 dark:border-amber-500/35 rounded-2xl p-4 bg-amber-50/50 dark:bg-amber-950/35 space-y-3">
+                      <div className="border-b border-amber-200 dark:border-amber-500/30 pb-2">
+                        <h3 className="text-xs font-bold text-amber-950 dark:text-amber-100">
                           Pengesahan Wajib Camat &amp; Kepala Desa Asal Sertipikat (SKW / Beda Nama / Kronologi)
                         </h3>
-                        <p className="text-[11px] text-slate-600 mt-0.5">
+                        <p className="text-[11px] text-amber-900/80 dark:text-amber-200/80 mt-0.5">
                           Khusus Surat Keterangan Warisan, Surat Pernyataan Beda Nama, dan Kronologi Ralat Data wajib disahkan oleh kedua pejabat berikut: Camat dan Kepala Desa letak/asal sertipikat.
                         </p>
                       </div>
 
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <div className="p-3 rounded-lg border border-slate-200 bg-white space-y-2.5">
-                          <p className="font-semibold text-slate-800">1. Pengesahan Camat</p>
+                        <div className="p-3 rounded-xl border border-teal-900/12 dark:border-teal-500/20 bg-white dark:bg-[#0A2226] space-y-2.5">
+                          <p className="font-bold text-slate-900 dark:text-white">1. Pengesahan Camat</p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
-                              <label className="block text-slate-600 mb-1">Jabatan Camat</label>
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Jabatan Camat</label>
                               <input
                                 type="text"
                                 value={nonAkta.camat_pengesahan_jabatan ?? ''}
@@ -3547,11 +3667,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                   })
                                 }
                                 placeholder={`Camat ${tanah.kecamatan || '-'}`}
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                                className="input-airy w-full px-2.5 py-1.5"
                               />
                             </div>
                             <div>
-                              <label className="block text-slate-600 mb-1">Nama Camat</label>
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Nama Camat</label>
                               <input
                                 type="text"
                                 value={nonAkta.camat_pengesahan_nama ?? ''}
@@ -3561,11 +3681,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                     camat_pengesahan_nama: e.target.value,
                                   })
                                 }
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-medium"
+                                className="input-airy w-full px-2.5 py-1.5 font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-slate-600 mb-1">NIP Camat</label>
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">NIP Camat</label>
                               <input
                                 type="text"
                                 value={nonAkta.camat_pengesahan_nip ?? ''}
@@ -3575,11 +3695,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                     camat_pengesahan_nip: e.target.value,
                                   })
                                 }
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono"
+                                className="input-airy w-full px-2.5 py-1.5 font-mono"
                               />
                             </div>
                             <div>
-                              <label className="block text-slate-600 mb-1">
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                                 No. Register Kec (Opsional)
                               </label>
                               <input
@@ -3592,19 +3712,19 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                   })
                                 }
                                 placeholder="593/..."
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono"
+                                className="input-airy w-full px-2.5 py-1.5 font-mono"
                               />
                             </div>
                           </div>
                         </div>
 
-                        <div className="p-3 rounded-lg border border-slate-200 bg-white space-y-2.5">
-                          <p className="font-semibold text-slate-800">
+                        <div className="p-3 rounded-xl border border-teal-900/12 dark:border-teal-500/20 bg-white dark:bg-[#0A2226] space-y-2.5">
+                          <p className="font-bold text-slate-900 dark:text-white">
                             2. Pengesahan Kepala Desa Asal Sertipikat ({tanah.desa || '-'})
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div className="sm:col-span-2">
-                              <label className="block text-slate-600 mb-1">Jabatan Kepala Desa</label>
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Jabatan Kepala Desa</label>
                               <input
                                 type="text"
                                 value={nonAkta.kades_pengesahan_jabatan ?? ''}
@@ -3615,11 +3735,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                   })
                                 }
                                 placeholder={`Kepala Desa ${tanah.desa || '-'}`}
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md"
+                                className="input-airy w-full px-2.5 py-1.5"
                               />
                             </div>
                             <div>
-                              <label className="block text-slate-600 mb-1">Nama Kepala Desa</label>
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Nama Kepala Desa</label>
                               <input
                                 type="text"
                                 value={nonAkta.kades_pengesahan_nama ?? ''}
@@ -3630,11 +3750,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                   })
                                 }
                                 placeholder="Nama lengkap Kepala Desa"
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-medium"
+                                className="input-airy w-full px-2.5 py-1.5 font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-slate-600 mb-1">
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                                 No. Register Desa (Opsional)
                               </label>
                               <input
@@ -3647,7 +3767,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                   })
                                 }
                                 placeholder="474/..."
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md font-mono"
+                                className="input-airy w-full px-2.5 py-1.5 font-mono"
                               />
                             </div>
                           </div>
@@ -3659,22 +3779,22 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               )}
 
               {/* Form Lengkap Data Kuasa BPN */}
-              <div className="sm:col-span-2 border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200 pb-2">
+              <div className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-teal-900/10 dark:border-teal-500/20 pb-2.5">
                   <div>
-                    <h3 className="text-xs font-semibold text-slate-900">
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white">
                       Data Penerima Kuasa Substitusi BPN
                     </h3>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-slate-600 dark:text-teal-200/75">
                       Pilih staf kuasa dari daftar kantor atau isi/ubah detail lengkap untuk Surat Kuasa & Permohonan BPN.
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <label
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors whitespace-nowrap ${
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors whitespace-nowrap ${
                         scanningPersonKey === 'kuasa'
                           ? 'bg-amber-600 text-white'
-                          : 'bg-sky-700 hover:bg-sky-800 text-white'
+                          : 'bg-sky-600 hover:bg-sky-700 text-white shadow-sm'
                       }`}
                     >
                       {scanningPersonKey === 'kuasa' ? (
@@ -3713,7 +3833,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                           kuasa_bpn_detail: preset,
                         }));
                       }}
-                      className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white text-xs font-medium"
+                      className="input-airy px-2.5 py-1.5 text-xs font-semibold"
                     >
                       <option value="__manual__">-- Isi Manual / Custom --</option>
                       {settings.daftar_kuasa_bpn.map((k) => (
@@ -3743,7 +3863,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     <>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                         <div>
-                          <label htmlFor="akta-kuasa" className="block text-slate-600 mb-1">
+                          <label htmlFor="akta-kuasa" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                             Nama Kuasa BPN
                           </label>
                           <input
@@ -3754,116 +3874,116 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               updateKuasaDetail({ nama: e.target.value.toUpperCase() })
                             }
                             placeholder="SUWARDJO"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-medium uppercase"
+                            className="input-airy w-full px-2.5 py-1.5 font-medium uppercase"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-600 mb-1">Nomor KTP (NIK)</label>
+                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Nomor KTP (NIK)</label>
                           <input
                             type="text"
                             value={kd.nik ?? ''}
                             onChange={(e) => updateKuasaDetail({ nik: e.target.value })}
                             placeholder="3309111011570003"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-mono"
+                            className="input-airy w-full px-2.5 py-1.5 font-mono"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-600 mb-1">Pekerjaan</label>
+                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Pekerjaan</label>
                           <input
                             type="text"
                             value={kd.pekerjaan ?? ''}
                             onChange={(e) => updateKuasaDetail({ pekerjaan: e.target.value })}
                             placeholder="PENSIUNAN"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                            className="input-airy w-full px-2.5 py-1.5"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-600 mb-1">Tempat Lahir</label>
+                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Tempat Lahir</label>
                           <input
                             type="text"
                             value={kd.tempat_lahir ?? ''}
                             onChange={(e) => updateKuasaDetail({ tempat_lahir: e.target.value })}
                             placeholder="Boyolali"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                            className="input-airy w-full px-2.5 py-1.5"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-600 mb-1">Tanggal Lahir</label>
+                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Tanggal Lahir</label>
                           <DateInputId
                             allowEmpty
                             value={kd.tanggal_lahir ?? ''}
                             onChange={(val) => updateKuasaDetail({ tanggal_lahir: val })}
                             placeholder="DD-MM-YYYY"
                             ariaLabel="Tanggal lahir kuasa BPN"
-                            className="py-1.5 px-2.5 rounded-md"
+                            className="py-1.5 px-2.5"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-600 mb-1">Dukuh / Jalan</label>
+                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Dukuh / Jalan</label>
                           <input
                             type="text"
                             value={kd.alamat_jalan ?? ''}
                             onChange={(e) => updateKuasaDetail({ alamat_jalan: e.target.value })}
                             placeholder="Dukuhrejo"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                            className="input-airy w-full px-2.5 py-1.5"
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-1.5">
                           <div>
-                            <label className="block text-slate-600 mb-1">RT</label>
+                            <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">RT</label>
                             <input
                               type="text"
                               value={kd.rt ?? ''}
                               onChange={(e) => updateKuasaDetail({ rt: e.target.value })}
                               placeholder="01"
-                              className="w-full px-2 py-1.5 border border-slate-200 rounded-md bg-white font-mono"
+                              className="input-airy w-full px-2 py-1.5 font-mono"
                             />
                           </div>
                           <div>
-                            <label className="block text-slate-600 mb-1">RW</label>
+                            <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">RW</label>
                             <input
                               type="text"
                               value={kd.rw ?? ''}
                               onChange={(e) => updateKuasaDetail({ rw: e.target.value })}
                               placeholder="02"
-                              className="w-full px-2 py-1.5 border border-slate-200 rounded-md bg-white font-mono"
+                              className="input-airy w-full px-2 py-1.5 font-mono"
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-slate-600 mb-1">Desa / Kelurahan</label>
+                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Desa / Kelurahan</label>
                           <input
                             type="text"
                             value={kd.desa_kelurahan ?? ''}
                             onChange={(e) => updateKuasaDetail({ desa_kelurahan: e.target.value })}
                             placeholder="Donohudan"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                            className="input-airy w-full px-2.5 py-1.5"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-600 mb-1">Kecamatan</label>
+                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Kecamatan</label>
                           <input
                             type="text"
                             value={kd.kecamatan ?? ''}
                             onChange={(e) => updateKuasaDetail({ kecamatan: e.target.value })}
                             placeholder="Ngemplak"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                            className="input-airy w-full px-2.5 py-1.5"
                           />
                         </div>
                         <div className="col-span-2 sm:col-span-3">
-                          <label className="block text-slate-600 mb-1">Kabupaten / Kota</label>
+                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Kabupaten / Kota</label>
                           <input
                             type="text"
                             value={kd.kabupaten ?? ''}
                             onChange={(e) => updateKuasaDetail({ kabupaten: e.target.value })}
                             placeholder="Boyolali"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                            className="input-airy w-full px-2.5 py-1.5"
                           />
                         </div>
                       </div>
-                      <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-[11px] text-slate-600">
-                        <span className="font-semibold text-slate-800">Pratinjau Surat Kuasa:</span>{' '}
-                        Nama: <strong>{akta.nama_kuasa_bpn || '-'}</strong> · Tempat/Tgl.lahir:{' '}
+                      <div className="p-3 rounded-xl bg-white dark:bg-[#071A1D] border border-teal-900/12 dark:border-teal-500/25 text-[11px] text-slate-700 dark:text-teal-100/90 leading-relaxed">
+                        <span className="font-bold text-slate-900 dark:text-white">Pratinjau Surat Kuasa:</span>{' '}
+                        Nama: <strong className="text-slate-900 dark:text-white">{akta.nama_kuasa_bpn || '-'}</strong> · Tempat/Tgl.lahir:{' '}
                         {[kd.tempat_lahir, formatTanggalDDMMYYYY(kd.tanggal_lahir)].filter((x) => x && x !== '-').join(', ') || '-'} · Pekerjaan:{' '}
                         {kd.pekerjaan || '-'} · KTP: {kd.nik || '-'} · Alamat:{' '}
                         {formatPersonShortAddress(kd)}
@@ -3919,18 +4039,18 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 return (
                   <div
                     key={sCfg.num}
-                    className="sm:col-span-2 border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3"
+                    className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200 pb-2">
-                      <h3 className="text-xs font-semibold text-slate-900">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-teal-900/10 dark:border-teal-500/20 pb-2.5">
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-white">
                         Data {sCfg.label}
                       </h3>
                       <div className="flex flex-wrap items-center gap-2">
                         <label
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors whitespace-nowrap ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors whitespace-nowrap ${
                             scanningPersonKey === (sCfg.num === 1 ? 'saksi1' : 'saksi2')
                               ? 'bg-amber-600 text-white'
-                              : 'bg-sky-700 hover:bg-sky-800 text-white'
+                              : 'bg-sky-600 hover:bg-sky-700 text-white shadow-sm'
                           }`}
                         >
                           {scanningPersonKey === (sCfg.num === 1 ? 'saksi1' : 'saksi2') ? (
@@ -3969,7 +4089,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             if (val === '__manual__') return;
                             sCfg.setSaksi(val, findPresetPerson(val, settings.profil_saksi));
                           }}
-                          className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white text-xs font-medium"
+                          className="input-airy px-2.5 py-1.5 text-xs font-semibold"
                         >
                           <option value="__manual__">-- Isi Manual / Custom --</option>
                           {settings.daftar_saksi.map((s) => (
@@ -3983,7 +4103,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                       <div>
-                        <label htmlFor={sCfg.inputId} className="block text-slate-600 mb-1">
+                        <label htmlFor={sCfg.inputId} className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                           Nama Lengkap {sCfg.label}
                         </label>
                         <input
@@ -3994,116 +4114,116 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             updateSaksiField({ nama: e.target.value.toUpperCase() })
                           }
                           placeholder="SALIMIN"
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-medium uppercase"
+                          className="input-airy w-full px-2.5 py-1.5 font-medium uppercase"
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-600 mb-1">Nomor KTP (NIK)</label>
+                        <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Nomor KTP (NIK)</label>
                         <input
                           type="text"
                           value={sd.nik ?? ''}
                           onChange={(e) => updateSaksiField({ nik: e.target.value })}
                           placeholder="3309110307730005"
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white font-mono"
+                          className="input-airy w-full px-2.5 py-1.5 font-mono"
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-600 mb-1">Pekerjaan</label>
+                        <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Pekerjaan</label>
                         <input
                           type="text"
                           value={sd.pekerjaan ?? ''}
                           onChange={(e) => updateSaksiField({ pekerjaan: e.target.value })}
                           placeholder="Perangkat Desa"
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                          className="input-airy w-full px-2.5 py-1.5"
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-600 mb-1">Tempat Lahir</label>
+                        <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Tempat Lahir</label>
                         <input
                           type="text"
                           value={sd.tempat_lahir ?? ''}
                           onChange={(e) => updateSaksiField({ tempat_lahir: e.target.value })}
                           placeholder="Boyolali"
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                          className="input-airy w-full px-2.5 py-1.5"
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-600 mb-1">Tanggal Lahir</label>
+                        <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Tanggal Lahir</label>
                         <DateInputId
                           allowEmpty
                           value={sd.tanggal_lahir ?? ''}
                           onChange={(val) => updateSaksiField({ tanggal_lahir: val })}
                           placeholder="DD-MM-YYYY"
                           ariaLabel={`Tanggal lahir ${sCfg.label}`}
-                          className="py-1.5 px-2.5 rounded-md"
+                          className="py-1.5 px-2.5"
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-600 mb-1">Dukuh / Jalan</label>
+                        <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Dukuh / Jalan</label>
                         <input
                           type="text"
                           value={sd.alamat_jalan ?? ''}
                           onChange={(e) => updateSaksiField({ alamat_jalan: e.target.value })}
                           placeholder="Gunungan"
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                          className="input-airy w-full px-2.5 py-1.5"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-1.5">
                         <div>
-                          <label className="block text-slate-600 mb-1">RT</label>
+                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">RT</label>
                           <input
                             type="text"
                             value={sd.rt ?? ''}
                             onChange={(e) => updateSaksiField({ rt: e.target.value })}
                             placeholder="005"
-                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md bg-white font-mono"
+                            className="input-airy w-full px-2 py-1.5 font-mono"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-600 mb-1">RW</label>
+                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">RW</label>
                           <input
                             type="text"
                             value={sd.rw ?? ''}
                             onChange={(e) => updateSaksiField({ rw: e.target.value })}
                             placeholder="008"
-                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md bg-white font-mono"
+                            className="input-airy w-full px-2 py-1.5 font-mono"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-slate-600 mb-1">Desa / Kelurahan</label>
+                        <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Desa / Kelurahan</label>
                         <input
                           type="text"
                           value={sd.desa_kelurahan ?? ''}
                           onChange={(e) => updateSaksiField({ desa_kelurahan: e.target.value })}
                           placeholder="Giriroto"
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                          className="input-airy w-full px-2.5 py-1.5"
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-600 mb-1">Kecamatan</label>
+                        <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Kecamatan</label>
                         <input
                           type="text"
                           value={sd.kecamatan ?? ''}
                           onChange={(e) => updateSaksiField({ kecamatan: e.target.value })}
                           placeholder="Ngemplak"
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                          className="input-airy w-full px-2.5 py-1.5"
                         />
                       </div>
                       <div className="col-span-2 sm:col-span-3">
-                        <label className="block text-slate-600 mb-1">Kabupaten / Kota</label>
+                        <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Kabupaten / Kota</label>
                         <input
                           type="text"
                           value={sd.kabupaten ?? ''}
                           onChange={(e) => updateSaksiField({ kabupaten: e.target.value })}
                           placeholder="Kabupaten Boyolali"
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md bg-white"
+                          className="input-airy w-full px-2.5 py-1.5"
                         />
                       </div>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
-                      <span className="font-semibold text-slate-800">Pratinjau Kalimat Akta:</span>{' '}
-                      {sCfg.num}. <strong>{resolved.nama}</strong>, Warga Negara Indonesia, lahir di{' '}
+                    <div className="p-3 rounded-xl bg-white dark:bg-[#071A1D] border border-teal-900/12 dark:border-teal-500/25 text-[11px] text-slate-700 dark:text-teal-100/90 leading-relaxed">
+                      <span className="font-bold text-slate-900 dark:text-white">Pratinjau Kalimat Akta:</span>{' '}
+                      {sCfg.num}. <strong className="text-slate-900 dark:text-white">{resolved.nama}</strong>, Warga Negara Indonesia, lahir di{' '}
                       {resolved.tempat_lahir}, tanggal {formatTanggalDDMMYYYY(resolved.tanggal_lahir)}, Pekerjaan{' '}
                       {resolved.pekerjaan}, bertempat tinggal di{' '}
                       {formatPersonFullAddress(sd) !== '-' ? formatPersonFullAddress(sd) : resolved.alamat}. Pemegang Kartu Tanda Penduduk Nomor : {resolved.nik}.
@@ -4114,7 +4234,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
               <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="akta-pengantar" className="block text-slate-600 font-medium mb-1">
+                  <label htmlFor="akta-pengantar" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Nomor Surat Pengantar BPN (Lampiran F4)
                   </label>
                   <input
@@ -4125,11 +4245,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       setAkta({ ...akta, nomor_pengantar: e.target.value })
                     }
                     placeholder="Misal: 01/XI/2026"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono"
+                    className="input-airy w-full px-3 py-2 font-mono"
                   />
                 </div>
                 <div>
-                  <label htmlFor="akta-catatan" className="block text-slate-600 font-medium mb-1">
+                  <label htmlFor="akta-catatan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Catatan Loket / Kelengkapan
                   </label>
                   <input
@@ -4138,7 +4258,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     value={akta.catatan_loket}
                     onChange={(e) => setAkta({ ...akta, catatan_loket: e.target.value })}
                     placeholder="Misal: Sertipikat asli sudah diverifikasi."
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                    className="input-airy w-full px-3 py-2"
                   />
                 </div>
               </div>
@@ -4149,7 +4269,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700"
+              className="btn-3d btn-3d-light inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Kembali ke Langkah 2</span>
@@ -4157,7 +4277,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             <button
               type="button"
               onClick={() => setStep(4)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-sm font-medium"
+              className="btn-3d btn-3d-teal inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold"
             >
               <span>Lanjut ke Generate Bundel .DOCX</span>
               <ArrowRight className="w-4 h-4" />
@@ -4168,21 +4288,21 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
       {/* STEP 4 */}
       {step === 4 && (
-        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-4">
+        <div className="bento-card p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 dark:border-teal-400/15 pb-4">
             <div>
-              <h2 className="font-display text-lg font-semibold text-slate-900">
+              <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
                 {isAkta
                   ? 'Siap Generate Dokumen Akta (A4) & Bundel Lampiran Lengkap (F4)'
                   : `Siap Review & Unduh Bundel Non-Akta (${layanan} · Kertas F4)`}
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-600 dark:text-teal-200/75 mt-0.5">
                 {isAkta
                   ? 'Blangko Akta utama dicetak dalam format A4 (210 × 297 mm) dan seluruh lampiran bundel BPN (Hal. 1–9) digabung utuh dalam satu file F4 (215 × 330 mm). Data otomatis disimpan ke Buku Register Akta.'
                   : 'Berkas Non-Akta hanya menerbitkan 1 file bundel Word ukuran F4 (215 × 330 mm) tanpa Akta A4 dan tidak dicatat ke dalam Laporan Bulanan PPATS.'}
               </p>
             </div>
-            <div className="font-mono text-xs text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg">
+            <div className="font-mono text-xs font-semibold text-teal-900 dark:text-teal-100 bg-teal-50 dark:bg-[#0A2226] border border-teal-900/10 dark:border-teal-500/25 px-3 py-1.5 rounded-xl shrink-0">
               {isAkta
                 ? `${akta.nomor_akta || 'No. Akta Belum Diisi'} · ${layanan}`
                 : `Non-Akta (F4 Only) · ${layanan}`}
@@ -4206,21 +4326,21 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               return (
                 <div
                   key={meta.key}
-                  className="p-4 rounded-xl border border-slate-200 flex flex-col justify-between gap-3"
+                  className="p-4 rounded-2xl border border-teal-900/12 dark:border-teal-500/20 bg-[#F6FBFA]/70 dark:bg-[#0A2226] flex flex-col justify-between gap-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-mono text-xs font-semibold text-slate-900">
+                      <p className="font-mono text-xs font-bold text-slate-900 dark:text-white">
                         {displayFileName}{' '}
-                        <span className="font-sans font-medium text-sky-800">
+                        <span className="font-sans font-semibold text-sky-700 dark:text-sky-300">
                           · {paperInfo}
                         </span>
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">{displayDesc}</p>
+                      <p className="text-xs text-slate-600 dark:text-teal-200/75 mt-1">{displayDesc}</p>
                     </div>
                     <span
-                      className={`text-xs font-medium shrink-0 ${
-                        hasCustom ? 'text-emerald-700' : 'text-slate-500'
+                      className={`text-xs font-semibold shrink-0 ${
+                        hasCustom ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-500 dark:text-teal-300/70'
                       }`}
                     >
                       {hasCustom ? 'Template Kustom' : 'Template Bawaan'}
@@ -4235,10 +4355,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         );
                         setShowReview(true);
                       }}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors whitespace-nowrap ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors whitespace-nowrap ${
                         showReview && (reviewDocKey === meta.key || !isAkta)
-                          ? 'border-[#0f172a] bg-[#0f172a] text-white'
-                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                          ? 'border-teal-600 bg-teal-600 text-white shadow-sm'
+                          : 'border-teal-900/15 dark:border-teal-500/25 bg-white dark:bg-[#081E22] hover:bg-teal-50 dark:hover:bg-[#103036] text-slate-700 dark:text-teal-100'
                       }`}
                     >
                       <Eye className="w-3.5 h-3.5" />
@@ -4248,7 +4368,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       type="button"
                       onClick={() => handleDownloadSingle(meta.key)}
                       disabled={generatingBundle}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-medium text-slate-800 disabled:opacity-60 whitespace-nowrap"
+                      className="btn-3d btn-3d-light inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60 whitespace-nowrap"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Unduh {meta.paperSize} (.DOCX)</span>
@@ -4261,8 +4381,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
           {/* Toggle & Live Review Dokumen Sebelum Generate */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-600">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-slate-600 dark:text-teal-200/80">
                 {isAkta
                   ? 'Periksa kembali isi naskah Akta (A4) dan seluruh halaman Lampiran Bundel (F4) sebelum mengunduh file Word.'
                   : `Periksa kembali seluruh halaman bundel Non-Akta (${layanan}) ukuran F4 beserta pengesahannya sebelum mengunduh file Word.`}
@@ -4270,7 +4390,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               <button
                 type="button"
                 onClick={() => setShowReview((v) => !v)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-900/15 dark:border-teal-500/25 bg-white dark:bg-[#0D2B30] hover:bg-teal-50 dark:hover:bg-[#12383F] text-xs font-semibold text-slate-700 dark:text-teal-100 whitespace-nowrap shrink-0 transition-colors"
               >
                 <Eye className="w-3.5 h-3.5" />
                 <span>{showReview ? 'Sembunyikan Review' : 'Tampilkan Review Dokumen'}</span>
@@ -4289,12 +4409,12 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-slate-200">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-teal-900/10 dark:border-teal-400/15">
+            <div className="flex flex-wrap items-center gap-2.5">
               <button
                 type="button"
                 onClick={() => setStep(3)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700"
+                className="btn-3d btn-3d-light inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Kembali</span>
@@ -4302,7 +4422,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               <button
                 type="button"
                 onClick={() => onPrintReceipt(buildCurrentRecord())}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium text-slate-700"
+                className="btn-3d btn-3d-light inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
               >
                 <Printer className="w-4 h-4" />
                 <span>Cetak Tanda Terima</span>
@@ -4313,7 +4433,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               <button
                 type="button"
                 onClick={handleSaveOnly}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-sm font-medium text-slate-800"
+                className="btn-3d btn-3d-light inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
               >
                 <Save className="w-4 h-4" />
                 <span>Simpan ke Register Saja</span>
@@ -4323,7 +4443,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 type="button"
                 onClick={handleGenerateZipAndSave}
                 disabled={generatingBundle || finishingAction !== null}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-sm font-medium transition-colors disabled:opacity-60"
+                className="btn-3d btn-3d-teal inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60"
               >
                 {generatingBundle ? (
                   <>
@@ -4332,7 +4452,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   </>
                 ) : (
                   <>
-                    <FileArchive className="w-4 h-4 text-amber-400" />
+                    <FileArchive className="w-4 h-4 text-amber-200" />
                     <span>Generate Bundel .ZIP &amp; Simpan Register</span>
                   </>
                 )}
@@ -4342,22 +4462,26 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
           {/* Panel Penyelesaian Berkas */}
           <div
-            className={`rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-colors ${
+            className={`rounded-2xl border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-colors ${
               bundleFinished
-                ? 'bg-emerald-50 border-emerald-300'
-                : 'bg-slate-50 border-slate-200'
+                ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-700/60'
+                : 'bg-[#F4FAF8] dark:bg-[#092024] border-teal-900/12 dark:border-teal-400/20'
             }`}
           >
             <div className="flex items-start gap-2.5">
               <CheckCircle2
                 className={`w-5 h-5 mt-0.5 shrink-0 ${
-                  bundleFinished ? 'text-emerald-600' : 'text-slate-500'
+                  bundleFinished
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-teal-600 dark:text-teal-400'
                 }`}
               />
               <div>
                 <p
-                  className={`text-sm font-semibold ${
-                    bundleFinished ? 'text-emerald-900' : 'text-slate-800'
+                  className={`text-sm font-bold ${
+                    bundleFinished
+                      ? 'text-emerald-900 dark:text-emerald-100'
+                      : 'text-slate-800 dark:text-white'
                   }`}
                 >
                   {bundleFinished
@@ -4366,7 +4490,9 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 </p>
                 <p
                   className={`text-xs mt-0.5 ${
-                    bundleFinished ? 'text-emerald-800' : 'text-slate-600'
+                    bundleFinished
+                      ? 'text-emerald-800 dark:text-emerald-200/85'
+                      : 'text-slate-600 dark:text-teal-200/75'
                   }`}
                 >
                   Pilih <strong>Selesai</strong> untuk kembali ke Dashboard, atau{' '}
@@ -4375,12 +4501,12 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
               <button
                 type="button"
                 onClick={() => void handleFinishWizard('dashboard')}
                 disabled={generatingBundle || finishingAction !== null}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors disabled:opacity-60 whitespace-nowrap"
+                className="btn-3d btn-3d-emerald inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60 whitespace-nowrap"
               >
                 {finishingAction === 'dashboard' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -4394,7 +4520,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 type="button"
                 onClick={() => void handleFinishWizard('new')}
                 disabled={generatingBundle || finishingAction !== null}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-sky-600 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition-colors disabled:opacity-60 whitespace-nowrap"
+                className="btn-3d btn-3d-sky inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60 whitespace-nowrap"
               >
                 {finishingAction === 'new' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

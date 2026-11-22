@@ -268,16 +268,16 @@ export const BphtbPreviewPanel: React.FC<BphtbPreviewPanelProps> = ({
     zoomPct === 85 ? 650 : zoomPct === 115 ? 880 : 760;
 
   return (
-    <div className="border border-slate-200 rounded-xl bg-white overflow-hidden">
+    <div className="border border-teal-900/12 dark:border-teal-500/20 rounded-2xl bg-white dark:bg-[#0A2226] overflow-hidden">
       {/* Toolbar */}
-      <div className="px-4 py-3.5 border-b border-slate-200 bg-slate-50 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      <div className="px-4 py-3.5 border-b border-teal-900/10 dark:border-teal-500/20 bg-[#F4FAF8] dark:bg-[#0D2B30] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div className="flex items-start gap-2.5">
-          <Eye className="w-4.5 h-4.5 text-sky-700 mt-0.5 shrink-0" />
+          <Eye className="w-4.5 h-4.5 text-sky-700 dark:text-sky-300 mt-0.5 shrink-0" />
           <div>
-            <h3 className="font-display text-sm font-semibold text-slate-900">
+            <h3 className="font-display text-sm font-bold text-slate-900 dark:text-white">
               Review Berkas Pengajuan BPHTB (Format Resmi F4)
             </h3>
-            <p className="text-xs text-slate-600 mt-0.5">
+            <p className="text-xs text-slate-600 dark:text-teal-200/80 mt-0.5">
               Periksa susunan teks, nama, NIK, NOP, NPOP, dan kolom tanda tangan sebelum mengunduh atau mengajukan ke SIPAD Boyolali.
             </p>
           </div>
@@ -287,7 +287,7 @@ export const BphtbPreviewPanel: React.FC<BphtbPreviewPanelProps> = ({
           <button
             type="button"
             onClick={onBackToForm}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 whitespace-nowrap"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-900/15 dark:border-teal-500/30 bg-white dark:bg-[#081E22] hover:bg-teal-50 dark:hover:bg-teal-900/50 text-xs font-semibold text-slate-700 dark:text-teal-100 whitespace-nowrap"
           >
             <Edit3 className="w-3.5 h-3.5" />
             <span>Kembali Edit Formulir</span>
@@ -297,23 +297,23 @@ export const BphtbPreviewPanel: React.FC<BphtbPreviewPanelProps> = ({
             type="button"
             onClick={() => setRefreshTick((n) => n + 1)}
             title="Segarkan pratinjau"
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-teal-900/15 dark:border-teal-500/30 bg-white dark:bg-[#081E22] hover:bg-teal-50 dark:hover:bg-teal-900/50 text-xs font-medium text-slate-700 dark:text-teal-100"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
 
           {/* Zoom Controls */}
-          <div className="inline-flex items-center border border-slate-200 rounded-lg bg-white overflow-hidden">
+          <div className="inline-flex items-center border border-teal-900/15 dark:border-teal-500/30 rounded-lg bg-white dark:bg-[#081E22] overflow-hidden">
             <button
               type="button"
               onClick={() => setZoomPct(zoomPct === 115 ? 100 : 85)}
               disabled={zoomPct === 85}
               aria-label="Perkecil pratinjau"
-              className="px-2 py-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              className="px-2 py-1.5 text-slate-600 dark:text-teal-200 hover:bg-teal-50 dark:hover:bg-teal-900/50 disabled:opacity-40"
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <span className="px-2 text-xs font-mono tabular-nums text-slate-700 border-x border-slate-200">
+            <span className="px-2 text-xs font-mono tabular-nums text-slate-700 dark:text-teal-100 border-x border-teal-900/15 dark:border-teal-500/30">
               {zoomPct}%
             </span>
             <button
@@ -321,7 +321,7 @@ export const BphtbPreviewPanel: React.FC<BphtbPreviewPanelProps> = ({
               onClick={() => setZoomPct(zoomPct === 85 ? 100 : 115)}
               disabled={zoomPct === 115}
               aria-label="Perbesar pratinjau"
-              className="px-2 py-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              className="px-2 py-1.5 text-slate-600 dark:text-teal-200 hover:bg-teal-50 dark:hover:bg-teal-900/50 disabled:opacity-40"
             >
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
@@ -330,7 +330,7 @@ export const BphtbPreviewPanel: React.FC<BphtbPreviewPanelProps> = ({
       </div>
 
       {/* Document Tabs + Active Download */}
-      <div className="px-4 py-2.5 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+      <div className="px-4 py-2.5 border-b border-teal-900/10 dark:border-teal-500/20 bg-white dark:bg-[#0A2226] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
         <div
           role="tablist"
           aria-label="Pilih berkas BPHTB untuk direview"
@@ -347,8 +347,8 @@ export const BphtbPreviewPanel: React.FC<BphtbPreviewPanelProps> = ({
                 onClick={() => onSelectDocKey(doc.key)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
                   active
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    ? 'bg-teal-600 text-white shadow-xs'
+                    : 'bg-teal-900/6 dark:bg-[#081E22] text-slate-700 dark:text-teal-200/85 hover:bg-teal-900/12 dark:hover:bg-teal-900/50'
                 }`}
               >
                 <span className="font-mono text-[10px] opacity-80">0{idx + 1}</span>
@@ -362,7 +362,7 @@ export const BphtbPreviewPanel: React.FC<BphtbPreviewPanelProps> = ({
           type="button"
           disabled={busyKey !== null}
           onClick={() => onDownloadSingle(activeMeta.key, activeMeta.label)}
-          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-900 text-xs font-semibold transition-colors disabled:opacity-50 whitespace-nowrap shrink-0"
+          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-200 dark:border-sky-500/35 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 text-sky-900 dark:text-sky-100 text-xs font-semibold transition-colors disabled:opacity-50 whitespace-nowrap shrink-0"
         >
           {busyKey === activeMeta.key ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -374,7 +374,7 @@ export const BphtbPreviewPanel: React.FC<BphtbPreviewPanelProps> = ({
       </div>
 
       {/* Paper Sheet Viewport */}
-      <div className="bg-slate-100/90 p-4 sm:p-6 max-h-[720px] overflow-y-auto overflow-x-auto space-y-5">
+      <div className="bg-[#EAF2F0] dark:bg-[#061619] p-4 sm:p-6 max-h-[720px] overflow-y-auto overflow-x-auto space-y-5">
         {loading && (
           <div className="mx-auto bg-white border border-slate-200 rounded-md p-8 max-w-[760px] space-y-3 animate-pulse">
             <div className="h-5 w-1/2 bg-slate-200 rounded mx-auto" />
@@ -387,9 +387,9 @@ export const BphtbPreviewPanel: React.FC<BphtbPreviewPanelProps> = ({
         {error && !loading && (
           <div
             role="alert"
-            className="mx-auto max-w-[760px] p-4 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-800 flex items-start gap-2.5"
+            className="mx-auto max-w-[760px] p-4 rounded-xl border border-rose-200 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/60 text-xs text-rose-800 dark:text-rose-200 flex items-start gap-2.5"
           >
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
             <div>
               <p className="font-semibold">Gagal Memuat Pratinjau Berkas BPHTB</p>
               <p className="mt-0.5">{error}</p>
@@ -405,9 +405,9 @@ export const BphtbPreviewPanel: React.FC<BphtbPreviewPanelProps> = ({
               className="mx-auto"
               style={{ maxWidth: `${paperMaxWidthPx}px` }}
             >
-              <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1.5 px-1">
-                <span className="inline-flex items-center gap-1.5 font-medium text-slate-700">
-                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+              <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-teal-200/80 mb-1.5 px-1">
+                <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700 dark:text-teal-100">
+                  <FileText className="w-3.5 h-3.5 text-teal-600 dark:text-teal-300" />
                   <span>{activeMeta.label}</span>
                 </span>
                 <span className="font-mono tabular-nums">
@@ -416,7 +416,7 @@ export const BphtbPreviewPanel: React.FC<BphtbPreviewPanelProps> = ({
               </div>
 
               <div
-                className="bg-white border border-slate-300 shadow-xs rounded-[2px] text-slate-900"
+                className="bg-white border border-slate-300 shadow-sm rounded-[2px] text-slate-900"
                 style={{
                   fontFamily:
                     '"Bookman Old Style", "URW Bookman", Georgia, "Times New Roman", serif',

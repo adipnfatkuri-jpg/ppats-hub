@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ClipboardList, FileSpreadsheet, Printer } from 'lucide-react';
+import { ClipboardList, FileBarChart2, FileSpreadsheet, Printer } from 'lucide-react';
 import { BerkasRecord, OfficeSettings } from '../types/ppats';
 import {
   BULAN_ID,
@@ -12,6 +12,7 @@ import {
   exportMonthlyReportXlsx,
   filterRecordsByMonthYear,
 } from '../utils/reportGenerator';
+import { GlossyIcon3D } from './TactileUI';
 
 interface ReportModuleProps {
   records: BerkasRecord[];
@@ -85,20 +86,25 @@ export const ReportModule: React.FC<ReportModuleProps> = ({
       {/* Header & Controls */}
       <div className="no-print space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900">
-              Laporan Bulanan PPATS
-            </h1>
-            <p className="text-sm text-slate-600 mt-1">
-              Format resmi pelaporan pembuatan akta bulanan untuk Kepala Kantor Pertanahan (BPN) dan Bapenda. Hanya mencakup Akta PPATS (AJB, APHB, Akta Hibah); berkas Non-Akta (Turun Waris, Pemecahan, Ukur Ulang, Ralat Data) otomatis dikecualikan.
-            </p>
+          <div className="flex items-start gap-3.5">
+            <GlossyIcon3D tone="emerald" size="md">
+              <FileBarChart2 className="w-5 h-5" />
+            </GlossyIcon3D>
+            <div>
+              <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-teal-50">
+                Laporan Bulanan PPATS
+              </h1>
+              <p className="text-sm text-slate-600 dark:text-teal-200/75 mt-1">
+                Format resmi pelaporan pembuatan akta bulanan untuk Kepala Kantor Pertanahan (BPN) dan Bapenda. Hanya mencakup Akta PPATS (AJB, APHB, Akta Hibah); berkas Non-Akta (Turun Waris, Pemecahan, Ukur Ulang, Ralat Data) otomatis dikecualikan.
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
               type="button"
               onClick={handleExportExcel}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-medium transition-colors whitespace-nowrap"
+              className="btn-3d btn-3d-emerald inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap"
             >
               <FileSpreadsheet className="w-4 h-4" />
               <span>Export Laporan Bulanan (.XLSX)</span>
@@ -107,7 +113,7 @@ export const ReportModule: React.FC<ReportModuleProps> = ({
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-sm font-medium transition-colors whitespace-nowrap"
+              className="btn-3d btn-3d-teal inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap"
             >
               <Printer className="w-4 h-4" />
               <span>Cetak / Simpan PDF</span>
@@ -115,17 +121,19 @@ export const ReportModule: React.FC<ReportModuleProps> = ({
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-4">
-          <span className="text-xs font-semibold text-slate-600">Periode Pelaporan:</span>
+        <div className="bento-card px-4 py-3.5 flex flex-wrap items-center gap-4">
+          <span className="text-xs font-semibold text-slate-600 dark:text-teal-200/80">
+            Periode Pelaporan:
+          </span>
           <div className="flex items-center gap-2">
-            <label htmlFor="report-month" className="text-xs font-medium text-slate-500">
+            <label htmlFor="report-month" className="text-xs font-medium text-slate-500 dark:text-teal-300/75">
               Bulan
             </label>
             <select
               id="report-month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="text-sm font-medium text-slate-900 border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy text-sm font-medium px-3 py-1.5"
             >
               {BULAN_ID.map((name, idx) => (
                 <option key={name} value={idx + 1}>
@@ -136,14 +144,14 @@ export const ReportModule: React.FC<ReportModuleProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <label htmlFor="report-year" className="text-xs font-medium text-slate-500">
+            <label htmlFor="report-year" className="text-xs font-medium text-slate-500 dark:text-teal-300/75">
               Tahun
             </label>
             <select
               id="report-year"
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="text-sm font-medium text-slate-900 border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono tabular-nums"
+              className="input-airy text-sm font-medium px-3 py-1.5 font-mono tabular-nums"
             >
               {yearOptions.map((y) => (
                 <option key={y} value={y}>
@@ -157,17 +165,17 @@ export const ReportModule: React.FC<ReportModuleProps> = ({
             <button
               type="button"
               onClick={onOpenNonAktaRekap}
-              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-200 bg-sky-50 hover:bg-sky-100 text-xs font-medium text-sky-800 transition-colors whitespace-nowrap"
+              className="btn-3d btn-3d-light ml-auto inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
             >
-              <ClipboardList className="w-3.5 h-3.5" />
+              <ClipboardList className="w-3.5 h-3.5 text-teal-600 dark:text-teal-300" />
               <span>Buka Rekap &amp; Tracking Non-Akta</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Printable Official Preview Sheet */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 sm:p-8 space-y-6">
+      {/* Printable Official Preview Sheet (intentionally crisp white paper for print fidelity) */}
+      <div className="bg-white text-slate-900 border border-teal-900/10 dark:border-teal-400/20 rounded-2xl shadow-[0_14px_30px_-8px_rgba(15,61,62,0.12)] p-6 sm:p-8 space-y-6">
         <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
             Pemerintah {settings.nama_kabupaten}

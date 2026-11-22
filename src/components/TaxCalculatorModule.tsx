@@ -4,15 +4,18 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Coins,
   ExternalLink,
   FilePlus2,
   FolderCheck,
   Landmark,
   Pencil,
   Printer,
+  Receipt,
   RotateCcw,
   Save,
   Search,
+  Sparkles,
 } from 'lucide-react';
 import {
   BerkasRecord,
@@ -46,6 +49,7 @@ import {
   BphtbGeneratedState,
   BphtbSubmissionSection,
 } from './BphtbSubmissionSection';
+import { GlossyIcon3D } from './TactileUI';
 
 interface TaxCalculatorModuleProps {
   records: BerkasRecord[];
@@ -286,19 +290,19 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
       {/* Screen Header & Controls */}
       <div className="no-print flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="font-display text-2xl sm:text-[26px] font-bold tracking-tight text-slate-900 dark:text-white">
             Perhitungan Pajak (BPHTB &amp; PPh Final)
           </h1>
-          <p className="text-sm text-slate-600 mt-1">
+          <p className="text-sm text-slate-600 dark:text-teal-200/75 mt-1">
             Jalur khusus perhitungan BPHTB (5%) dan PPh Final (2,5%), terpisah dari alur pembuatan berkas akta.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
             type="button"
             onClick={handleResetStandalone}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 whitespace-nowrap"
+            className="btn-3d btn-3d-light inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Simulasi</span>
@@ -306,7 +310,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 whitespace-nowrap"
+            className="btn-3d btn-3d-light inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Cetak Rincian Pajak</span>
@@ -315,21 +319,21 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
       </div>
 
       {/* Mode Switcher Bar */}
-      <div className="no-print bg-white border border-slate-200 rounded-xl p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      <div className="no-print bento-card p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div
           role="tablist"
           aria-label="Mode jalur perhitungan pajak"
-          className="inline-flex items-center p-1 bg-slate-100 rounded-lg w-fit"
+          className="inline-flex items-center gap-1 p-1.5 bg-[#EAF3F1] dark:bg-[#081F22] rounded-2xl border border-teal-900/8 dark:border-teal-400/15 shadow-inner w-fit"
         >
           <button
             type="button"
             role="tab"
             aria-selected={mode === 'standalone'}
             onClick={() => handleModeChange('standalone')}
-            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap ${
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 whitespace-nowrap ${
               mode === 'standalone'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-gradient-to-b from-teal-400 to-teal-600 text-white border-b-2 border-teal-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_6px_14px_-4px_rgba(13,148,136,0.5)]'
+                : 'text-slate-600 dark:text-teal-200/75 hover:text-teal-900 dark:hover:text-white'
             }`}
           >
             Simulasi Mandiri (Baru)
@@ -340,10 +344,10 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
             aria-selected={mode === 'linked'}
             onClick={() => handleModeChange('linked')}
             disabled={records.length === 0}
-            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap disabled:opacity-50 ${
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 whitespace-nowrap disabled:opacity-50 ${
               mode === 'linked'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-gradient-to-b from-teal-400 to-teal-600 text-white border-b-2 border-teal-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_6px_14px_-4px_rgba(13,148,136,0.5)]'
+                : 'text-slate-600 dark:text-teal-200/75 hover:text-teal-900 dark:hover:text-white'
             }`}
           >
             Kaitkan ke Berkas Terdaftar ({records.length})
@@ -354,7 +358,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1 lg:max-w-xl">
             <label
               htmlFor="tax-linked-record"
-              className="text-xs font-medium text-slate-600 whitespace-nowrap"
+              className="text-xs font-semibold text-slate-600 dark:text-teal-200 whitespace-nowrap"
             >
               Pilih Berkas:
             </label>
@@ -362,7 +366,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
               id="tax-linked-record"
               value={selectedRecordId}
               onChange={(e) => handleSelectLinkedRecord(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3.5 py-2 text-xs font-medium"
             >
               {records
                 .slice()
@@ -387,16 +391,18 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
       {/* Main 2-Column Calculator Workspace */}
       <div className="no-print grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Input Parameter Tanah, NJOP, Kesepakatan, NPOPTKP */}
-        <div className="lg:col-span-6 bg-white border border-slate-200 rounded-xl p-6 space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <div className="flex items-center gap-2">
-              <Calculator className="w-4 h-4 text-slate-700" />
-              <h2 className="font-display text-base font-semibold text-slate-900">
+        <div className="lg:col-span-6 bento-card p-6 space-y-5">
+          <div className="flex items-center justify-between border-b border-teal-900/10 dark:border-teal-400/15 pb-3.5">
+            <div className="flex items-center gap-3">
+              <GlossyIcon3D tone="teal" size="xs">
+                <Calculator className="w-4 h-4" />
+              </GlossyIcon3D>
+              <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
                 Parameter Objek &amp; Nilai Transaksi
               </h2>
             </div>
             {mode === 'linked' && selectedRecord && (
-              <span className="font-mono text-xs font-semibold text-sky-800 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-md">
+              <span className="font-mono text-xs font-semibold text-teal-800 dark:text-teal-200 bg-teal-50 dark:bg-teal-950/70 border border-teal-200 dark:border-teal-700/60 px-2.5 py-1 rounded-xl">
                 {selectedRecord.kode_berkas}
               </span>
             )}
@@ -404,10 +410,10 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
 
           <div className="space-y-4 text-xs">
             <div>
-              <label className="block text-slate-600 font-medium mb-1.5">
+              <label className="block text-slate-600 dark:text-teal-200/85 font-semibold mb-2">
                 Jenis Layanan Peralihan Hak
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {SERVICE_TYPES.map((type) => {
                   const active = form.layanan === type;
                   return (
@@ -415,10 +421,10 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                       key={type}
                       type="button"
                       onClick={() => handleServiceChange(type)}
-                      className={`px-3 py-2 rounded-lg border text-xs font-semibold text-left transition-colors ${
+                      className={`px-3 py-2.5 rounded-xl border text-xs font-semibold text-left transition-all duration-150 ${
                         active
-                          ? 'border-sky-600 bg-sky-50 text-sky-900'
-                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                          ? 'border-teal-500 border-b-4 border-b-teal-700 bg-gradient-to-br from-teal-50 to-emerald-50/80 dark:from-teal-900/70 dark:to-emerald-950/70 text-teal-950 dark:text-teal-100 shadow-sm -translate-y-0.5'
+                          : 'border-teal-900/12 dark:border-teal-400/15 bg-white dark:bg-[#091F22] hover:bg-teal-50/50 dark:hover:bg-teal-900/35 text-slate-700 dark:text-teal-100/85'
                       }`}
                     >
                       {type}
@@ -432,7 +438,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
               <div>
                 <label
                   htmlFor="tax-luas"
-                  className="block text-slate-600 font-medium mb-1"
+                  className="block text-slate-600 dark:text-teal-200/85 font-semibold mb-1.5"
                 >
                   Luas Bidang Tanah (m²)
                 </label>
@@ -444,9 +450,9 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                   onChange={(e) =>
                     setForm({ ...form, luas_m2: Number(e.target.value) || 0 })
                   }
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono tabular-nums focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="input-airy w-full px-3.5 py-2.5 font-mono tabular-nums text-sm"
                 />
-                <p className="text-[11px] text-slate-500 mt-1 italic">
+                <p className="text-[11px] text-slate-500 dark:text-teal-200/65 mt-1 italic">
                   {terbilangLuas(form.luas_m2)}
                 </p>
               </div>
@@ -454,7 +460,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
               <div>
                 <label
                   htmlFor="tax-njop-bumi-m2"
-                  className="block text-slate-600 font-medium mb-1"
+                  className="block text-slate-600 dark:text-teal-200/85 font-semibold mb-1.5"
                 >
                   NJOP Bumi per m² (Rp)
                 </label>
@@ -469,14 +475,14 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                       njop_bumi_m2: Number(e.target.value) || 0,
                     })
                   }
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono tabular-nums focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="input-airy w-full px-3.5 py-2.5 font-mono tabular-nums text-sm"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="tax-njop-bangunan"
-                  className="block text-slate-600 font-medium mb-1"
+                  className="block text-slate-600 dark:text-teal-200/85 font-semibold mb-1.5"
                 >
                   Total NJOP Bangunan (Rp)
                 </label>
@@ -491,14 +497,14 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                       njop_bangunan: Number(e.target.value) || 0,
                     })
                   }
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono tabular-nums focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="input-airy w-full px-3.5 py-2.5 font-mono tabular-nums text-sm"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="tax-harga-m2"
-                  className="block text-slate-600 font-medium mb-1"
+                  className="block text-slate-600 dark:text-teal-200/85 font-semibold mb-1.5"
                 >
                   Harga Kesepakatan per m² (Rp)
                 </label>
@@ -513,14 +519,14 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                       harga_per_m2: Number(e.target.value) || 0,
                     })
                   }
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono tabular-nums focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="input-airy w-full px-3.5 py-2.5 font-mono tabular-nums text-sm"
                 />
               </div>
 
               <div className="sm:col-span-2">
                 <label
                   htmlFor="tax-override"
-                  className="block text-slate-600 font-medium mb-1"
+                  className="block text-slate-600 dark:text-teal-200/85 font-semibold mb-1.5"
                 >
                   Total Kesepakatan Manual (Opsional · kosongkan untuk otomatis Luas × Harga/m²)
                 </label>
@@ -537,15 +543,15 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                     })
                   }
                   placeholder="Otomatis dari Luas × Harga per m²"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono tabular-nums focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="input-airy w-full px-3.5 py-2.5 font-mono tabular-nums text-sm"
                 />
               </div>
 
               <div className="sm:col-span-2">
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-1.5">
                   <label
                     htmlFor="tax-npoptkp"
-                    className="text-slate-600 font-medium"
+                    className="text-slate-600 dark:text-teal-200/85 font-semibold"
                   >
                     NPOPTKP (Rp · Default{' '}
                     {form.layanan === 'Turun Waris'
@@ -561,7 +567,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                         npoptkp: getDefaultNpoptkp(form.layanan, settings),
                       })
                     }
-                    className="text-sky-700 hover:underline font-medium"
+                    className="text-teal-700 dark:text-teal-300 hover:underline font-semibold"
                   >
                     Reset Default
                   </button>
@@ -574,7 +580,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                   onChange={(e) =>
                     setForm({ ...form, npoptkp: Number(e.target.value) || 0 })
                   }
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono tabular-nums focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="input-airy w-full px-3.5 py-2.5 font-mono tabular-nums text-sm"
                 />
               </div>
             </div>
@@ -582,126 +588,172 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
         </div>
 
         {/* Right: Hasil Perhitungan BPHTB & PPh Final */}
-        <div className="lg:col-span-6 bg-white border border-slate-200 rounded-xl p-6 flex flex-col justify-between space-y-5">
+        <div className="lg:col-span-6 bento-card p-6 flex flex-col justify-between space-y-5">
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <h2 className="font-display text-base font-semibold text-slate-900">
+            <div className="flex items-center justify-between border-b border-teal-900/10 dark:border-teal-400/15 pb-3.5">
+              <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
                 Rincian BPHTB &amp; PPh Final
               </h2>
-              <span className="text-xs font-medium text-slate-500">
-                Basis NPOP: <strong className="text-slate-800">{taxSummary.dasar_npop_sumber}</strong>
+              <span className="text-xs font-medium text-slate-500 dark:text-teal-200/75">
+                Basis NPOP:{' '}
+                <strong className="text-teal-900 dark:text-teal-200">
+                  {taxSummary.dasar_npop_sumber}
+                </strong>
               </span>
             </div>
 
-            <div className="divide-y divide-slate-200 text-xs border border-slate-200 rounded-xl overflow-hidden">
-              <div className="px-4 py-2.5 bg-slate-50/70 flex items-center justify-between gap-2">
-                <span className="text-slate-600">NJOP Bumi Total ({formatNumberId(form.luas_m2)} m² × {formatRupiah(form.njop_bumi_m2)})</span>
-                <span className="font-mono font-medium text-slate-900 tabular-nums whitespace-nowrap">
+            <div className="divide-y divide-teal-900/10 dark:divide-teal-400/15 text-xs border border-teal-900/10 dark:border-teal-400/15 rounded-2xl overflow-hidden">
+              <div className="px-4 py-2.5 bg-[#F4FAF8] dark:bg-[#092024] flex items-center justify-between gap-2">
+                <span className="text-slate-600 dark:text-teal-200/80">
+                  NJOP Bumi Total ({formatNumberId(form.luas_m2)} m² ×{' '}
+                  {formatRupiah(form.njop_bumi_m2)})
+                </span>
+                <span className="font-mono font-medium text-slate-900 dark:text-teal-50 tabular-nums whitespace-nowrap">
                   {formatRupiah(taxResult.njop_bumi_total)}
                 </span>
               </div>
-              <div className="px-4 py-2.5 flex items-center justify-between gap-2">
-                <span className="text-slate-600">Total NJOP PBB (Bumi + Bangunan)</span>
-                <span className="font-mono font-medium text-slate-900 tabular-nums whitespace-nowrap">
+              <div className="px-4 py-2.5 bg-white dark:bg-[#0D262A] flex items-center justify-between gap-2">
+                <span className="text-slate-600 dark:text-teal-200/80">
+                  Total NJOP PBB (Bumi + Bangunan)
+                </span>
+                <span className="font-mono font-medium text-slate-900 dark:text-teal-50 tabular-nums whitespace-nowrap">
                   {formatRupiah(taxResult.njop_total)}
                 </span>
               </div>
-              <div className="px-4 py-2.5 bg-slate-50/70 space-y-0.5">
+              <div className="px-4 py-2.5 bg-[#F4FAF8] dark:bg-[#092024] space-y-0.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-600">Nilai Kesepakatan Transaksi</span>
-                  <span className="font-mono font-semibold text-slate-900 tabular-nums whitespace-nowrap">
+                  <span className="text-slate-600 dark:text-teal-200/80">
+                    Nilai Kesepakatan Transaksi
+                  </span>
+                  <span className="font-mono font-semibold text-slate-900 dark:text-white tabular-nums whitespace-nowrap">
                     {formatRupiah(taxResult.nilai_kesepakatan)}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 italic">
+                <p className="text-[11px] text-slate-500 dark:text-teal-200/65 italic">
                   Terbilang: {terbilangRupiah(taxResult.nilai_kesepakatan)}
                 </p>
               </div>
-              <div className="px-4 py-2.5 flex items-center justify-between gap-2">
-                <span className="font-semibold text-slate-800">
+              <div className="px-4 py-2.5 bg-white dark:bg-[#0D262A] flex items-center justify-between gap-2">
+                <span className="font-semibold text-slate-800 dark:text-teal-100">
                   NPOP (Nilai Tertinggi Kesepakatan vs NJOP)
                 </span>
-                <span className="font-mono font-bold text-slate-900 tabular-nums whitespace-nowrap">
+                <span className="font-mono font-bold text-slate-900 dark:text-white tabular-nums whitespace-nowrap">
                   {formatRupiah(taxResult.npop)}
                 </span>
               </div>
-              <div className="px-4 py-2.5 bg-slate-50/70 flex items-center justify-between gap-2">
-                <span className="text-slate-600">Pengurang NPOPTKP</span>
-                <span className="font-mono font-medium text-slate-700 tabular-nums whitespace-nowrap">
+              <div className="px-4 py-2.5 bg-[#F4FAF8] dark:bg-[#092024] flex items-center justify-between gap-2">
+                <span className="text-slate-600 dark:text-teal-200/80">Pengurang NPOPTKP</span>
+                <span className="font-mono font-medium text-slate-700 dark:text-teal-200 tabular-nums whitespace-nowrap">
                   − {formatRupiah(taxResult.npoptkp)}
                 </span>
               </div>
-              <div className="px-4 py-2.5 flex items-center justify-between gap-2">
-                <span className="font-semibold text-slate-800">
+              <div className="px-4 py-2.5 bg-white dark:bg-[#0D262A] flex items-center justify-between gap-2">
+                <span className="font-semibold text-slate-800 dark:text-teal-100">
                   NPOPKP (Dasar Hitung BPHTB)
                 </span>
-                <span className="font-mono font-semibold text-slate-900 tabular-nums whitespace-nowrap">
+                <span className="font-mono font-semibold text-slate-900 dark:text-white tabular-nums whitespace-nowrap">
                   {formatRupiah(taxResult.npopkp)}
                 </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-4 rounded-xl border border-sky-200 bg-sky-50/70 space-y-1.5">
-                <p className="font-semibold text-sky-900">
-                  BPHTB Terutang (5% × NPOPKP)
-                </p>
-                <p className="font-mono text-lg font-bold text-sky-950 tabular-nums">
+            {/* Raised 3D Sky BPHTB & 3D Amber PPh Final Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+              <div className="p-4 rounded-2xl border border-sky-200/90 dark:border-sky-700/60 border-t-2 border-t-white dark:border-t-sky-400/30 border-b-4 border-b-sky-300/80 dark:border-b-sky-950 bg-gradient-to-br from-sky-50 via-white to-cyan-50/70 dark:from-sky-950/75 dark:via-[#0D2936] dark:to-cyan-950/70 shadow-[0_10px_22px_-8px_rgba(14,165,233,0.28)] space-y-2 transition-transform duration-150 hover:-translate-y-0.5">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-bold text-sky-900 dark:text-sky-200 leading-snug">
+                    BPHTB Terutang
+                    <span className="block text-[11px] font-medium text-sky-700/80 dark:text-sky-300/75">
+                      5% × NPOPKP
+                    </span>
+                  </p>
+                  <GlossyIcon3D tone="sky" size="xs">
+                    <Receipt className="w-4 h-4" />
+                  </GlossyIcon3D>
+                </div>
+                <p className="font-mono text-xl font-bold text-sky-950 dark:text-white tabular-nums">
                   {formatRupiah(taxResult.bphtb)}
                 </p>
-                <p className="text-[11px] text-sky-800 italic">
+                <p className="text-[11px] text-sky-800/90 dark:text-sky-200/80 italic">
                   {terbilangRupiah(taxResult.bphtb)}
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/70 space-y-1.5">
-                <p className="font-semibold text-amber-900">
-                  PPh Final (2,5% × NPOP)
-                </p>
-                <p className="font-mono text-lg font-bold text-amber-950 tabular-nums">
+              <div className="p-4 rounded-2xl border border-amber-200/90 dark:border-amber-700/60 border-t-2 border-t-white dark:border-t-amber-400/30 border-b-4 border-b-amber-300/80 dark:border-b-amber-950 bg-gradient-to-br from-amber-50 via-white to-orange-50/70 dark:from-amber-950/65 dark:via-[#261E0D] dark:to-orange-950/60 shadow-[0_10px_22px_-8px_rgba(245,158,11,0.28)] space-y-2 transition-transform duration-150 hover:-translate-y-0.5">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-bold text-amber-900 dark:text-amber-200 leading-snug">
+                    PPh Final
+                    <span className="block text-[11px] font-medium text-amber-700/85 dark:text-amber-300/75">
+                      2,5% × NPOP
+                    </span>
+                  </p>
+                  <GlossyIcon3D tone="amber" size="xs">
+                    <Coins className="w-4 h-4" />
+                  </GlossyIcon3D>
+                </div>
+                <p className="font-mono text-xl font-bold text-amber-950 dark:text-white tabular-nums">
                   {formatRupiah(taxResult.pph)}
                 </p>
-                <p className="text-[11px] text-amber-800 italic">
+                <p className="text-[11px] text-amber-800/90 dark:text-amber-200/80 italic">
                   {terbilangRupiah(taxResult.pph)}
                 </p>
               </div>
             </div>
 
-            <div className="px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-700">
-                Total Estimasi Pajak (BPHTB + PPh Final)
-              </span>
-              <span className="font-mono text-base font-bold text-slate-900 tabular-nums">
-                {formatRupiah(taxSummary.total_pajak)}
-              </span>
+            {/* Exclusive Deep Teal 3D Highlight Card: Total Estimasi Pajak */}
+            <div className="relative overflow-hidden px-5 py-4 rounded-2xl bg-gradient-to-br from-[#0F3D3E] via-[#124E52] to-[#134E4A] border border-teal-400/30 border-t-teal-300/40 border-b-4 border-b-[#072122] shadow-[0_18px_36px_-10px_rgba(15,61,62,0.55),inset_0_1px_1px_rgba(255,255,255,0.2)]">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -top-10 -right-10 w-36 h-36 rounded-full bg-teal-300/25 blur-2xl"
+              />
+              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <GlossyIcon3D tone="emerald" size="xs">
+                    <Sparkles className="w-4 h-4" />
+                  </GlossyIcon3D>
+                  <div>
+                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-teal-200/85">
+                      Total Estimasi Pajak
+                    </span>
+                    <span className="block text-xs font-medium text-teal-100/90">
+                      BPHTB (5%) + PPh Final (2,5%)
+                    </span>
+                  </div>
+                </div>
+                <div className="sm:text-right">
+                  <span className="font-mono text-2xl font-bold text-white tracking-tight tabular-nums drop-shadow-xs">
+                    {formatRupiah(taxSummary.total_pajak)}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Menu Pengajuan BPHTB (SIPAD Boyolali) tepat di bawah Total Estimasi Pajak */}
-            <div className="p-4 rounded-xl border border-sky-200 bg-sky-50/50 space-y-3 text-xs">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2.5">
-                <div className="flex items-start gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-sky-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+            <div className="p-4 rounded-2xl border border-sky-200/80 dark:border-sky-700/50 bg-gradient-to-br from-sky-50/75 to-teal-50/55 dark:from-sky-950/45 dark:to-teal-950/45 space-y-3 text-xs">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <GlossyIcon3D tone="sky" size="sm" className="mt-0.5">
                     <Landmark className="w-4 h-4" />
-                  </div>
+                  </GlossyIcon3D>
                   <div>
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <p className="font-semibold text-slate-900">
+                      <p className="font-bold text-slate-900 dark:text-white">
                         Pengajuan BPHTB (SIPAD Boyolali)
                       </p>
                       {isAjbService(form.layanan) && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
-                          + Bukti Transaksi
+                        <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+                          · + Bukti Transaksi
                         </span>
                       )}
                       {isHibahService(form.layanan) && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          + Surat Pernyataan Hibah
+                        <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                          · + Surat Pernyataan Hibah
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-600 mt-0.5">
+                    <p className="text-[11px] text-slate-600 dark:text-teal-200/80 mt-0.5">
                       Buat formulir pengajuan:{' '}
-                      <span className="font-medium text-slate-800">
+                      <span className="font-semibold text-slate-800 dark:text-teal-100">
                         {bphtbDocs.map((d) => d.shortLabel).join(', ')}
                       </span>
                       .
@@ -712,7 +764,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                 <button
                   type="button"
                   onClick={handleToggleBphtbPanel}
-                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-semibold transition-colors whitespace-nowrap shrink-0"
+                  className="btn-3d btn-3d-sky inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0"
                 >
                   <span>
                     {showBphtbPanel ? 'Tutup Formulir BPHTB' : 'Buat Formulir Pengajuan BPHTB'}
@@ -726,9 +778,9 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
               </div>
 
               {bphtbGenerated && (
-                <div className="pt-2.5 border-t border-sky-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 font-medium">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <div className="pt-2.5 border-t border-sky-200/80 dark:border-sky-800/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 dark:text-emerald-300 font-semibold">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span>
                       Berkas selesai dibuat ({bphtbGenerated.docCount} formulir · {bphtbGenerated.generatedAt})
                     </span>
@@ -737,7 +789,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                     href={SIPAD_BOYOLALI_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors whitespace-nowrap"
+                    className="btn-3d btn-3d-emerald inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap"
                   >
                     <span>Ajukan Sekarang</span>
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -748,13 +800,13 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
           </div>
 
           {/* Workflow Bridge Actions */}
-          <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="pt-3.5 border-t border-teal-900/10 dark:border-teal-400/15 flex flex-wrap items-center justify-between gap-2.5">
             {mode === 'linked' && selectedRecord ? (
               <>
                 <button
                   type="button"
                   onClick={() => onEditRecord(selectedRecord)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 whitespace-nowrap"
+                  className="btn-3d btn-3d-light inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                   <span>Buka Berkas di Pembuatan Akta</span>
@@ -763,9 +815,9 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                   type="button"
                   onClick={handleSaveTaxToRecord}
                   disabled={saving}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-semibold transition-colors disabled:opacity-60 whitespace-nowrap"
+                  className="btn-3d btn-3d-teal inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-60 whitespace-nowrap"
                 >
-                  <Save className="w-3.5 h-3.5 text-amber-400" />
+                  <Save className="w-3.5 h-3.5" />
                   <span>
                     {saving
                       ? 'Menyimpan...'
@@ -775,15 +827,15 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
               </>
             ) : (
               <>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-slate-500 dark:text-teal-200/70">
                   Hasil simulasi ini dapat langsung dipakai untuk membuka berkas baru.
                 </span>
                 <button
                   type="button"
                   onClick={() => onCreateBerkasWithTax(form)}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-semibold transition-colors whitespace-nowrap"
+                  className="btn-3d btn-3d-teal inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap"
                 >
-                  <FilePlus2 className="w-3.5 h-3.5 text-amber-400" />
+                  <FilePlus2 className="w-3.5 h-3.5" />
                   <span>Buat Berkas Baru dengan Hasil Pajak Ini</span>
                 </button>
               </>
@@ -836,52 +888,54 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
       )}
 
       {/* Bottom Registered Records Quick Tax Table */}
-      <div className="no-print bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <FolderCheck className="w-4 h-4 text-slate-700" />
+      <div className="no-print bento-card overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-teal-900/10 dark:border-teal-400/15 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <GlossyIcon3D tone="indigo" size="xs">
+              <FolderCheck className="w-4 h-4" />
+            </GlossyIcon3D>
             <div>
-              <h2 className="font-display text-sm font-semibold text-slate-900">
+              <h2 className="font-display text-sm font-bold text-slate-900 dark:text-white">
                 Daftar Pajak Berkas Terdaftar
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-teal-200/70">
                 Klik &ldquo;Hitung / Ubah&rdquo; pada berkas mana saja untuk memuat ulang dan memperbarui pajaknya.
               </p>
             </div>
           </div>
 
           <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-teal-700/60 dark:text-teal-300/70 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari kode berkas, pihak, desa..."
               aria-label="Cari daftar pajak berkas"
-              className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full pl-9 pr-3 py-2 text-xs"
             />
           </div>
         </div>
 
         {filteredRecords.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-500">
+          <div className="p-8 text-center text-xs text-slate-500 dark:text-teal-200/70">
             Tidak ada berkas yang cocok dengan pencarian Anda.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
-                  <th className="py-2.5 px-3 whitespace-nowrap">Kode &amp; Layanan</th>
-                  <th className="py-2.5 px-3">Para Pihak</th>
-                  <th className="py-2.5 px-3 text-right whitespace-nowrap">Luas</th>
-                  <th className="py-2.5 px-3 text-right whitespace-nowrap">NPOP</th>
-                  <th className="py-2.5 px-3 text-right whitespace-nowrap">BPHTB (5%)</th>
-                  <th className="py-2.5 px-3 text-right whitespace-nowrap">PPh (2,5%)</th>
-                  <th className="py-2.5 px-3 text-right whitespace-nowrap">Aksi</th>
+                <tr className="border-b border-teal-900/10 dark:border-teal-400/15 bg-[#F4FAF8] dark:bg-[#092024] font-semibold text-teal-900/75 dark:text-teal-200/80">
+                  <th className="py-3 px-3 whitespace-nowrap">Kode &amp; Layanan</th>
+                  <th className="py-3 px-3">Para Pihak</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">Luas</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">NPOP</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">BPHTB (5%)</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">PPh (2,5%)</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-teal-900/8 dark:divide-teal-400/10">
                 {filteredRecords.map((r) => {
                   const p1 =
                     r.para_pihak
@@ -899,43 +953,43 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                       key={r.id}
                       className={
                         isSelected
-                          ? 'bg-sky-50/70'
-                          : 'hover:bg-slate-50/80 transition-colors'
+                          ? 'bg-teal-50/80 dark:bg-teal-900/40'
+                          : 'hover:bg-teal-50/50 dark:hover:bg-teal-900/25 transition-colors'
                       }
                     >
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <div className="font-mono font-semibold text-slate-900">
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        <div className="font-mono font-semibold text-slate-900 dark:text-white">
                           {r.kode_berkas}
                         </div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-[11px] text-slate-500 dark:text-teal-200/70">
                           {r.layanan}
                         </div>
                       </td>
-                      <td className="py-2.5 px-3 max-w-[200px]">
-                        <div className="truncate text-slate-800" title={p1}>
+                      <td className="py-3 px-3 max-w-[200px]">
+                        <div className="truncate text-slate-800 dark:text-teal-50" title={p1}>
                           I: {p1}
                         </div>
-                        <div className="truncate text-slate-500" title={p2}>
+                        <div className="truncate text-slate-500 dark:text-teal-200/70" title={p2}>
                           II: {p2}
                         </div>
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums whitespace-nowrap">
+                      <td className="py-3 px-3 text-right font-mono tabular-nums whitespace-nowrap text-slate-800 dark:text-teal-100">
                         {formatNumberId(r.tanah.luas_m2)} m²
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums whitespace-nowrap text-slate-900">
+                      <td className="py-3 px-3 text-right font-mono tabular-nums whitespace-nowrap text-slate-900 dark:text-white">
                         {formatRupiah(r.pajak.npop)}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums whitespace-nowrap font-medium text-sky-900">
+                      <td className="py-3 px-3 text-right font-mono tabular-nums whitespace-nowrap font-semibold text-sky-800 dark:text-sky-300">
                         {formatRupiah(r.pajak.bphtb)}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums whitespace-nowrap font-medium text-amber-900">
+                      <td className="py-3 px-3 text-right font-mono tabular-nums whitespace-nowrap font-semibold text-amber-800 dark:text-amber-300">
                         {formatRupiah(r.pajak.pph)}
                       </td>
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                      <td className="py-3 px-3 text-right whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => handleLoadRecordFromTable(r)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-100 text-xs font-medium text-slate-700"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-teal-900/12 dark:border-teal-400/20 bg-white dark:bg-[#113338] hover:bg-teal-50 dark:hover:bg-teal-800/60 text-xs font-semibold text-slate-700 dark:text-teal-100 shadow-xs"
                         >
                           <Calculator className="w-3.5 h-3.5" />
                           <span>Hitung / Ubah</span>

@@ -27,6 +27,7 @@ import { SUPPORTED_TEMPLATE_TAGS } from '../utils/docxTemplates';
 import { scanPersonFromFiles } from '../utils/personScan';
 import { toScanUpperName } from '../utils/scanTextCase';
 import { CloudTeamPanel, type CloudTeamPanelProps } from './CloudTeamPanel';
+import { GlossyIcon3D } from './TactileUI';
 
 interface SettingsModuleProps {
   settings: OfficeSettings;
@@ -359,13 +360,18 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900">
-          Pengaturan Kantor, Cloud Tim & Master Template .DOCX
-        </h1>
-        <p className="text-sm text-slate-600 mt-1">
-          Kelola login akun Google & akses tim bersama, identitas pejabat PPATS, daftar saksi & kuasa tetap, master template Word kantor, serta backup & restore database.
-        </p>
+      <div className="flex items-start gap-3.5">
+        <GlossyIcon3D tone="teal" size="md">
+          <Database className="w-5 h-5" />
+        </GlossyIcon3D>
+        <div>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-teal-50">
+            Pengaturan Kantor, Cloud Tim &amp; Master Template .DOCX
+          </h1>
+          <p className="text-sm text-slate-600 dark:text-teal-200/75 mt-1">
+            Kelola login akun Google &amp; akses tim bersama, identitas pejabat PPATS, daftar saksi &amp; kuasa tetap, master template Word kantor, serta backup &amp; restore database.
+          </p>
+        </div>
       </div>
 
       {/* Section 0: Sinkronisasi Cloud & Akses Tim Kantor */}
@@ -374,21 +380,21 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
       {/* Section 1: Profil Kantor */}
       <form
         onSubmit={handleSubmit}
-        className="bg-white border border-slate-200 rounded-xl p-6 space-y-6"
+        className="bento-card p-6 space-y-6"
       >
-        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 dark:border-teal-500/15 pb-4">
           <div>
-            <h2 className="font-display text-base font-semibold text-slate-900">
-              Profil Kantor & Pejabat PPATS Default
+            <h2 className="font-display text-base font-bold text-slate-900 dark:text-teal-50">
+              Profil Kantor &amp; Pejabat PPATS Default
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-teal-200/75 mt-0.5">
               Otomatis digunakan sebagai nilai bawaan pada Wizard pembuatan akta dan kop laporan bulanan.
             </p>
           </div>
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-sm font-medium transition-colors whitespace-nowrap disabled:opacity-60"
+            className="btn-3d btn-3d-teal inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-60"
           >
             <Save className="w-4 h-4" />
             <span>{saving ? 'Menyimpan...' : 'Simpan Pengaturan'}</span>
@@ -397,7 +403,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="set-kecamatan" className="block text-xs font-medium text-slate-700 mb-1">
+            <label htmlFor="set-kecamatan" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
               Nama Kecamatan
             </label>
             <input
@@ -405,11 +411,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               type="text"
               value={form.nama_kecamatan}
               onChange={(e) => setForm({ ...form, nama_kecamatan: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label htmlFor="set-kabupaten" className="block text-xs font-medium text-slate-700 mb-1">
+            <label htmlFor="set-kabupaten" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
               Nama Kabupaten / Kota
             </label>
             <input
@@ -417,11 +423,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               type="text"
               value={form.nama_kabupaten}
               onChange={(e) => setForm({ ...form, nama_kabupaten: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label htmlFor="set-ppats" className="block text-xs font-medium text-slate-700 mb-1">
+            <label htmlFor="set-ppats" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
               Nama Camat / PPATS Menjabat
             </label>
             <input
@@ -429,11 +435,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               type="text"
               value={form.nama_ppats}
               onChange={(e) => setForm({ ...form, nama_ppats: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label htmlFor="set-jabatan" className="block text-xs font-medium text-slate-700 mb-1">
+            <label htmlFor="set-jabatan" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
               Jabatan PPATS
             </label>
             <input
@@ -441,11 +447,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               type="text"
               value={form.jabatan_ppats}
               onChange={(e) => setForm({ ...form, jabatan_ppats: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label htmlFor="set-nip" className="block text-xs font-medium text-slate-700 mb-1">
+            <label htmlFor="set-nip" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
               NIP PPATS
             </label>
             <input
@@ -453,11 +459,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               type="text"
               value={form.nip_ppats}
               onChange={(e) => setForm({ ...form, nip_ppats: e.target.value })}
-              className="w-full px-3 py-2 text-sm font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3 py-2 text-sm font-mono"
             />
           </div>
           <div>
-            <label htmlFor="set-provinsi" className="block text-xs font-medium text-slate-700 mb-1">
+            <label htmlFor="set-provinsi" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
               Nama Provinsi
             </label>
             <input
@@ -465,11 +471,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               type="text"
               value={form.nama_provinsi ?? ''}
               onChange={(e) => setForm({ ...form, nama_provinsi: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label htmlFor="set-telp" className="block text-xs font-medium text-slate-700 mb-1">
+            <label htmlFor="set-telp" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
               Telepon Kantor
             </label>
             <input
@@ -477,11 +483,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               type="text"
               value={form.telepon_kantor}
               onChange={(e) => setForm({ ...form, telepon_kantor: e.target.value })}
-              className="w-full px-3 py-2 text-sm font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3 py-2 text-sm font-mono"
             />
           </div>
           <div>
-            <label htmlFor="set-sk-nomor" className="block text-xs font-medium text-slate-700 mb-1">
+            <label htmlFor="set-sk-nomor" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
               Nomor SK Pengangkatan PPATS
             </label>
             <input
@@ -490,11 +496,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               value={form.sk_ppats_nomor ?? ''}
               onChange={(e) => setForm({ ...form, sk_ppats_nomor: e.target.value })}
               placeholder="65/SK-33.HP.03.04.PPAT/VI/2026"
-              className="w-full px-3 py-2 text-sm font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3 py-2 text-sm font-mono"
             />
           </div>
           <div>
-            <label htmlFor="set-sk-tanggal" className="block text-xs font-medium text-slate-700 mb-1">
+            <label htmlFor="set-sk-tanggal" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
               Tanggal SK Pengangkatan PPATS
             </label>
             <input
@@ -503,11 +509,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               value={form.sk_ppats_tanggal ?? ''}
               onChange={(e) => setForm({ ...form, sk_ppats_tanggal: e.target.value })}
               placeholder="30 Juni 2026"
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3 py-2 text-sm"
             />
           </div>
           <div className="md:col-span-2">
-            <label htmlFor="set-sk-penerbit" className="block text-xs font-medium text-slate-700 mb-1">
+            <label htmlFor="set-sk-penerbit" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
               Pejabat Penerbit SK PPATS
             </label>
             <input
@@ -516,11 +522,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               value={form.sk_ppats_penerbit ?? ''}
               onChange={(e) => setForm({ ...form, sk_ppats_penerbit: e.target.value })}
               placeholder="Kakanwil Pertanahan Nasional Propinsi Jawa Tengah"
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3 py-2 text-sm"
             />
           </div>
           <div className="md:col-span-2">
-            <label htmlFor="set-alamat" className="block text-xs font-medium text-slate-700 mb-1">
+            <label htmlFor="set-alamat" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
               Alamat Lengkap Kantor Kecamatan / PPATS
             </label>
             <input
@@ -528,11 +534,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               type="text"
               value={form.alamat_kantor}
               onChange={(e) => setForm({ ...form, alamat_kantor: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label htmlFor="set-npoptkp-umum" className="block text-xs font-medium text-slate-700 mb-1">
+            <label htmlFor="set-npoptkp-umum" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
               Default NPOPTKP Umum (AJB / APHB / Hibah) (Rp)
             </label>
             <input
@@ -542,11 +548,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               onChange={(e) =>
                 setForm({ ...form, npoptkp_umum: Number(e.target.value) || 0 })
               }
-              className="w-full px-3 py-2 text-sm font-mono tabular-nums border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3 py-2 text-sm font-mono tabular-nums"
             />
           </div>
           <div>
-            <label htmlFor="set-npoptkp-waris" className="block text-xs font-medium text-slate-700 mb-1">
+            <label htmlFor="set-npoptkp-waris" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
               Default NPOPTKP Turun Waris (Rp)
             </label>
             <input
@@ -556,15 +562,15 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               onChange={(e) =>
                 setForm({ ...form, npoptkp_waris: Number(e.target.value) || 0 })
               }
-              className="w-full px-3 py-2 text-sm font-mono tabular-nums border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="input-airy w-full px-3 py-2 text-sm font-mono tabular-nums"
             />
           </div>
         </div>
 
         {/* Saksi & Kuasa BPN Lists */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-slate-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-teal-900/10 dark:border-teal-500/15">
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-slate-900">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-teal-50">
               Daftar Saksi Akta Tetap
             </h3>
             <div className="flex gap-2">
@@ -580,22 +586,22 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                 }}
                 placeholder="Tambah nama saksi..."
                 aria-label="Tambah nama saksi"
-                className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="input-airy flex-1 px-3 py-1.5 text-sm"
               />
               <button
                 type="button"
                 onClick={() => void addSaksi()}
                 aria-label="Tambah saksi baru"
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-800 whitespace-nowrap"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-teal-900/12 dark:border-teal-500/25 bg-teal-50/70 dark:bg-teal-950/60 hover:bg-teal-100/80 dark:hover:bg-teal-900/60 text-xs font-semibold text-teal-900 dark:text-teal-100 whitespace-nowrap transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Tambah</span>
               </button>
               <label
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap cursor-pointer transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
                   scanningTarget?.kind === 'saksi' && scanningTarget.idx === 'new'
                     ? 'bg-amber-600 text-white'
-                    : 'bg-sky-700 hover:bg-sky-800 text-white'
+                    : 'bg-sky-600 hover:bg-sky-700 text-white'
                 }`}
               >
                 {scanningTarget?.kind === 'saksi' && scanningTarget.idx === 'new' ? (
@@ -619,28 +625,28 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               </label>
             </div>
             {form.daftar_saksi.length === 0 ? (
-              <div className="p-3 rounded-lg border border-dashed border-slate-200 text-xs text-slate-500 text-center">
+              <div className="p-3 rounded-xl border border-dashed border-teal-900/15 dark:border-teal-500/25 bg-[#F6FBFA] dark:bg-[#0A2226] text-xs text-slate-500 dark:text-teal-200/75 text-center">
                 Belum ada daftar saksi tetap. Ketik nama atau klik <strong>Scan KTP</strong> / <strong>+ Tambah</strong> untuk menambahkan saksi baru.
               </div>
             ) : (
-            <ul className="divide-y divide-slate-200 border border-slate-200 rounded-lg">
+            <ul className="divide-y divide-teal-900/10 dark:divide-teal-500/15 border border-teal-900/12 dark:border-teal-500/20 rounded-xl bg-[#F6FBFA]/60 dark:bg-[#0A2226]">
               {form.daftar_saksi.map((s, idx) => {
                 const prof = form.profil_saksi?.[idx] ?? { nama: s };
                 const isOpen = expandedSaksiIdx === idx;
                 return (
-                  <li key={`saksi-${idx}`} className="px-3 py-2 text-sm text-slate-800 space-y-2">
+                  <li key={`saksi-${idx}`} className="px-3 py-2.5 text-sm text-slate-800 dark:text-teal-50 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <span className="font-medium text-slate-900">{s}</span>
+                        <span className="font-semibold text-slate-900 dark:text-white">{s}</span>
                         {prof.nik && (
-                          <span className="text-xs text-slate-500 font-mono ml-2">
+                          <span className="text-xs text-slate-500 dark:text-teal-200/75 font-mono ml-2">
                             · {prof.nik}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <label
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-sky-200 bg-sky-50 hover:bg-sky-100 text-[11px] font-medium text-sky-800 cursor-pointer whitespace-nowrap"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-sky-200 dark:border-sky-500/35 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 text-[11px] font-semibold text-sky-800 dark:text-sky-200 cursor-pointer whitespace-nowrap"
                           title="Scan ulang KTP/KK untuk mengisi otomatis profil saksi ini"
                         >
                           {scanningTarget?.kind === 'saksi' && scanningTarget.idx === idx ? (
@@ -665,7 +671,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                         <button
                           type="button"
                           onClick={() => setExpandedSaksiIdx(isOpen ? null : idx)}
-                          className="text-xs text-sky-700 hover:underline font-medium"
+                          className="text-xs text-teal-700 dark:text-teal-300 hover:underline font-semibold"
                         >
                           {isOpen ? 'Tutup Detail' : 'Detail Akta'}
                         </button>
@@ -673,129 +679,129 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                           type="button"
                           onClick={() => removeSaksi(idx)}
                           aria-label={`Hapus saksi ${s}`}
-                          className="text-slate-400 hover:text-rose-600 p-1"
+                          className="text-slate-400 dark:text-teal-300/70 hover:text-rose-600 dark:hover:text-rose-400 p-1"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
                     {isOpen && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-xs">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2.5 border-t border-teal-900/10 dark:border-teal-500/15 text-xs">
                         <div className="col-span-2 sm:col-span-1">
-                          <label className="block text-slate-500 mb-0.5">Nama Lengkap</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Nama Lengkap</label>
                           <input
                             type="text"
                             value={prof.nama ?? ''}
                             onChange={(e) => updateSaksiProfile(idx, { nama: e.target.value })}
                             placeholder="Nama sesuai KTP"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">NIK (16 digit)</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">NIK (16 digit)</label>
                           <input
                             type="text"
                             value={prof.nik ?? ''}
                             onChange={(e) => updateSaksiProfile(idx, { nik: e.target.value })}
                             placeholder="3309..."
-                            className="w-full px-2 py-1 border border-slate-200 rounded font-mono"
+                            className="input-airy w-full px-2 py-1 rounded-lg font-mono"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">Pekerjaan</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Pekerjaan</label>
                           <input
                             type="text"
                             value={prof.pekerjaan ?? ''}
                             onChange={(e) => updateSaksiProfile(idx, { pekerjaan: e.target.value })}
                             placeholder="Perangkat Desa / Wiraswasta"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">Tempat Lahir</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Tempat Lahir</label>
                           <input
                             type="text"
                             value={prof.tempat_lahir ?? ''}
                             onChange={(e) => updateSaksiProfile(idx, { tempat_lahir: e.target.value })}
                             placeholder="Boyolali"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">Tanggal Lahir</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Tanggal Lahir</label>
                           <input
                             type="text"
                             value={prof.tanggal_lahir ?? ''}
                             onChange={(e) => updateSaksiProfile(idx, { tanggal_lahir: e.target.value })}
                             placeholder="DD-MM-YYYY"
-                            className="w-full px-2 py-1 border border-slate-200 rounded font-mono"
+                            className="input-airy w-full px-2 py-1 rounded-lg font-mono"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">Dukuh / Jalan</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Dukuh / Jalan</label>
                           <input
                             type="text"
                             value={prof.alamat_jalan ?? ''}
                             onChange={(e) => updateSaksiProfile(idx, { alamat_jalan: e.target.value })}
                             placeholder="Gunungan / Dukuhrejo"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">RT</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">RT</label>
                           <input
                             type="text"
                             value={prof.rt ?? ''}
                             onChange={(e) => updateSaksiProfile(idx, { rt: e.target.value })}
                             placeholder="005"
-                            className="w-full px-2 py-1 border border-slate-200 rounded font-mono"
+                            className="input-airy w-full px-2 py-1 rounded-lg font-mono"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">RW</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">RW</label>
                           <input
                             type="text"
                             value={prof.rw ?? ''}
                             onChange={(e) => updateSaksiProfile(idx, { rw: e.target.value })}
                             placeholder="008"
-                            className="w-full px-2 py-1 border border-slate-200 rounded font-mono"
+                            className="input-airy w-full px-2 py-1 rounded-lg font-mono"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">Desa / Kelurahan</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Desa / Kelurahan</label>
                           <input
                             type="text"
                             value={prof.desa_kelurahan ?? ''}
                             onChange={(e) => updateSaksiProfile(idx, { desa_kelurahan: e.target.value })}
                             placeholder="Giriroto"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">Kecamatan</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Kecamatan</label>
                           <input
                             type="text"
                             value={prof.kecamatan ?? ''}
                             onChange={(e) => updateSaksiProfile(idx, { kecamatan: e.target.value })}
                             placeholder="Ngemplak"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div className="col-span-2 sm:col-span-2">
-                          <label className="block text-slate-500 mb-0.5">Kabupaten / Kota</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Kabupaten / Kota</label>
                           <input
                             type="text"
                             value={prof.kabupaten ?? ''}
                             onChange={(e) => updateSaksiProfile(idx, { kabupaten: e.target.value })}
                             placeholder="Kabupaten Boyolali"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div className="col-span-2 sm:col-span-3 flex justify-end pt-1">
                           <button
                             type="submit"
                             disabled={saving}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-medium"
+                            className="btn-3d btn-3d-teal inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
                           >
                             <Save className="w-3 h-3" />
                             <span>Simpan Detail Saksi</span>
@@ -811,7 +817,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-slate-900">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-teal-50">
               Daftar Staf Kuasa Pengurusan BPN
             </h3>
             <div className="flex gap-2">
@@ -827,22 +833,22 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                 }}
                 placeholder="Tambah nama staf kuasa BPN..."
                 aria-label="Tambah nama staf kuasa BPN"
-                className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="input-airy flex-1 px-3 py-1.5 text-sm"
               />
               <button
                 type="button"
                 onClick={() => void addKuasa()}
                 aria-label="Tambah staf kuasa BPN baru"
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-800 whitespace-nowrap"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-teal-900/12 dark:border-teal-500/25 bg-teal-50/70 dark:bg-teal-950/60 hover:bg-teal-100/80 dark:hover:bg-teal-900/60 text-xs font-semibold text-teal-900 dark:text-teal-100 whitespace-nowrap transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Tambah</span>
               </button>
               <label
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap cursor-pointer transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
                   scanningTarget?.kind === 'kuasa' && scanningTarget.idx === 'new'
                     ? 'bg-amber-600 text-white'
-                    : 'bg-sky-700 hover:bg-sky-800 text-white'
+                    : 'bg-sky-600 hover:bg-sky-700 text-white'
                 }`}
               >
                 {scanningTarget?.kind === 'kuasa' && scanningTarget.idx === 'new' ? (
@@ -866,28 +872,28 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               </label>
             </div>
             {form.daftar_kuasa_bpn.length === 0 ? (
-              <div className="p-3 rounded-lg border border-dashed border-slate-200 text-xs text-slate-500 text-center">
+              <div className="p-3 rounded-xl border border-dashed border-teal-900/15 dark:border-teal-500/25 bg-[#F6FBFA] dark:bg-[#0A2226] text-xs text-slate-500 dark:text-teal-200/75 text-center">
                 Belum ada daftar staf kuasa BPN. Ketik nama atau klik <strong>Scan KTP</strong> / <strong>+ Tambah</strong> untuk menambahkan staf baru.
               </div>
             ) : (
-            <ul className="divide-y divide-slate-200 border border-slate-200 rounded-lg">
+            <ul className="divide-y divide-teal-900/10 dark:divide-teal-500/15 border border-teal-900/12 dark:border-teal-500/20 rounded-xl bg-[#F6FBFA]/60 dark:bg-[#0A2226]">
               {form.daftar_kuasa_bpn.map((k, idx) => {
                 const prof = form.profil_kuasa?.[idx] ?? { nama: k };
                 const isOpen = expandedKuasaIdx === idx;
                 return (
-                  <li key={`kuasa-${idx}`} className="px-3 py-2 text-sm text-slate-800 space-y-2">
+                  <li key={`kuasa-${idx}`} className="px-3 py-2.5 text-sm text-slate-800 dark:text-teal-50 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <span className="font-medium text-slate-900">{k}</span>
+                        <span className="font-semibold text-slate-900 dark:text-white">{k}</span>
                         {prof.nik && (
-                          <span className="text-xs text-slate-500 font-mono ml-2">
+                          <span className="text-xs text-slate-500 dark:text-teal-200/75 font-mono ml-2">
                             · {prof.nik}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <label
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-sky-200 bg-sky-50 hover:bg-sky-100 text-[11px] font-medium text-sky-800 cursor-pointer whitespace-nowrap"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-sky-200 dark:border-sky-500/35 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 text-[11px] font-semibold text-sky-800 dark:text-sky-200 cursor-pointer whitespace-nowrap"
                           title="Scan ulang KTP/KK untuk mengisi otomatis profil kuasa BPN ini"
                         >
                           {scanningTarget?.kind === 'kuasa' && scanningTarget.idx === idx ? (
@@ -912,7 +918,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                         <button
                           type="button"
                           onClick={() => setExpandedKuasaIdx(isOpen ? null : idx)}
-                          className="text-xs text-sky-700 hover:underline font-medium"
+                          className="text-xs text-teal-700 dark:text-teal-300 hover:underline font-semibold"
                         >
                           {isOpen ? 'Tutup Detail' : 'Detail Kuasa'}
                         </button>
@@ -920,129 +926,129 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                           type="button"
                           onClick={() => removeKuasa(idx)}
                           aria-label={`Hapus kuasa BPN ${k}`}
-                          className="text-slate-400 hover:text-rose-600 p-1"
+                          className="text-slate-400 dark:text-teal-300/70 hover:text-rose-600 dark:hover:text-rose-400 p-1"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
                     {isOpen && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-xs">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2.5 border-t border-teal-900/10 dark:border-teal-500/15 text-xs">
                         <div className="col-span-2 sm:col-span-1">
-                          <label className="block text-slate-500 mb-0.5">Nama Lengkap</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Nama Lengkap</label>
                           <input
                             type="text"
                             value={prof.nama ?? ''}
                             onChange={(e) => updateKuasaProfile(idx, { nama: e.target.value })}
                             placeholder="Nama sesuai KTP"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">NIK (16 digit)</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">NIK (16 digit)</label>
                           <input
                             type="text"
                             value={prof.nik ?? ''}
                             onChange={(e) => updateKuasaProfile(idx, { nik: e.target.value })}
                             placeholder="3309..."
-                            className="w-full px-2 py-1 border border-slate-200 rounded font-mono"
+                            className="input-airy w-full px-2 py-1 rounded-lg font-mono"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">Pekerjaan</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Pekerjaan</label>
                           <input
                             type="text"
                             value={prof.pekerjaan ?? ''}
                             onChange={(e) => updateKuasaProfile(idx, { pekerjaan: e.target.value })}
                             placeholder="PENSIUNAN / Staf"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">Tempat Lahir</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Tempat Lahir</label>
                           <input
                             type="text"
                             value={prof.tempat_lahir ?? ''}
                             onChange={(e) => updateKuasaProfile(idx, { tempat_lahir: e.target.value })}
                             placeholder="Boyolali"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">Tanggal Lahir</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Tanggal Lahir</label>
                           <input
                             type="text"
                             value={prof.tanggal_lahir ?? ''}
                             onChange={(e) => updateKuasaProfile(idx, { tanggal_lahir: e.target.value })}
                             placeholder="DD-MM-YYYY"
-                            className="w-full px-2 py-1 border border-slate-200 rounded font-mono"
+                            className="input-airy w-full px-2 py-1 rounded-lg font-mono"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">Dukuh / Jalan</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Dukuh / Jalan</label>
                           <input
                             type="text"
                             value={prof.alamat_jalan ?? ''}
                             onChange={(e) => updateKuasaProfile(idx, { alamat_jalan: e.target.value })}
                             placeholder="Dukuhrejo"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">RT</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">RT</label>
                           <input
                             type="text"
                             value={prof.rt ?? ''}
                             onChange={(e) => updateKuasaProfile(idx, { rt: e.target.value })}
                             placeholder="01"
-                            className="w-full px-2 py-1 border border-slate-200 rounded font-mono"
+                            className="input-airy w-full px-2 py-1 rounded-lg font-mono"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">RW</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">RW</label>
                           <input
                             type="text"
                             value={prof.rw ?? ''}
                             onChange={(e) => updateKuasaProfile(idx, { rw: e.target.value })}
                             placeholder="02"
-                            className="w-full px-2 py-1 border border-slate-200 rounded font-mono"
+                            className="input-airy w-full px-2 py-1 rounded-lg font-mono"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">Desa / Kelurahan</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Desa / Kelurahan</label>
                           <input
                             type="text"
                             value={prof.desa_kelurahan ?? ''}
                             onChange={(e) => updateKuasaProfile(idx, { desa_kelurahan: e.target.value })}
                             placeholder="Donohudan"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-500 mb-0.5">Kecamatan</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Kecamatan</label>
                           <input
                             type="text"
                             value={prof.kecamatan ?? ''}
                             onChange={(e) => updateKuasaProfile(idx, { kecamatan: e.target.value })}
                             placeholder="Ngemplak"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div className="col-span-2 sm:col-span-2">
-                          <label className="block text-slate-500 mb-0.5">Kabupaten / Kota</label>
+                          <label className="block text-slate-600 dark:text-teal-200/85 mb-0.5">Kabupaten / Kota</label>
                           <input
                             type="text"
                             value={prof.kabupaten ?? ''}
                             onChange={(e) => updateKuasaProfile(idx, { kabupaten: e.target.value })}
                             placeholder="Boyolali"
-                            className="w-full px-2 py-1 border border-slate-200 rounded"
+                            className="input-airy w-full px-2 py-1 rounded-lg"
                           />
                         </div>
                         <div className="col-span-2 sm:col-span-3 flex justify-end pt-1">
                           <button
                             type="submit"
                             disabled={saving}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-medium"
+                            className="btn-3d btn-3d-teal inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
                           >
                             <Save className="w-3 h-3" />
                             <span>Simpan Detail Kuasa BPN</span>
@@ -1060,17 +1066,17 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
       </form>
 
       {/* Section 2: Manajemen Master Template .DOCX */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
+      <div className="bento-card p-6 space-y-5">
         <div>
-          <h2 className="font-display text-base font-semibold text-slate-900">
+          <h2 className="font-display text-base font-bold text-slate-900 dark:text-teal-50">
             Manajemen Master Template .DOCX (Akta A4 &amp; 1 File Bundel Lampiran F4)
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-teal-200/75 mt-0.5">
             Unggah file Microsoft Word (.docx) dengan kop surat, margin, dan tabel asli kantor Anda. Template bawaan mengikuti format resmi PPATS (Akta ukuran A4 210 × 297 mm; seluruh lampiran bundel digabung dalam 1 file ukuran F4 215 × 330 mm).
           </p>
         </div>
 
-        <div className="divide-y divide-slate-200 border border-slate-200 rounded-xl overflow-hidden">
+        <div className="divide-y divide-teal-900/10 dark:divide-teal-500/15 border border-teal-900/10 dark:border-teal-500/20 rounded-2xl overflow-hidden">
           {TEMPLATE_DOCS_META.map((meta) => {
             const custom = customTemplates[meta.key];
             const paperLabel =
@@ -1080,29 +1086,29 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
             return (
               <div
                 key={meta.key}
-                className="p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 bg-white hover:bg-slate-50/70"
+                className="p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 bg-white/80 dark:bg-teal-950/35 hover:bg-teal-50/40 dark:hover:bg-teal-900/25 transition-colors"
               >
                 <div className="flex items-start gap-3">
-                  <FileText className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />
+                  <FileText className="w-5 h-5 text-teal-600 dark:text-teal-300 shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-medium text-sm text-slate-900">
+                    <div className="font-semibold text-sm text-slate-900 dark:text-teal-50">
                       {meta.label}{' '}
-                      <span className="font-mono text-xs text-slate-500">
+                      <span className="font-mono text-xs text-slate-500 dark:text-teal-300/70">
                         ({meta.fileName})
                       </span>
-                      <span className="text-xs font-medium text-sky-800 ml-1.5">
+                      <span className="text-xs font-semibold text-teal-700 dark:text-teal-300 ml-1.5">
                         · {paperLabel}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">{meta.description}</p>
+                    <p className="text-xs text-slate-500 dark:text-teal-200/75 mt-0.5">{meta.description}</p>
                     <div className="text-xs mt-1 flex items-center gap-1.5">
                       {custom ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                        <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-semibold">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           Template Kustom Aktif: {custom.fileName}
                         </span>
                       ) : (
-                        <span className="text-slate-500">
+                        <span className="text-slate-500 dark:text-teal-300/70">
                           Menggunakan Template Bawaan Sistem ({meta.paperSize})
                         </span>
                       )}
@@ -1114,13 +1120,13 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                   <button
                     type="button"
                     onClick={() => downloadDefaultTemplateDocx(meta.key, meta.fileName)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-medium text-slate-700 transition-colors whitespace-nowrap"
+                    className="btn-3d btn-3d-light inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Unduh Contoh Template .DOCX Bawaan</span>
                   </button>
 
-                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-medium transition-colors cursor-pointer whitespace-nowrap">
+                  <label className="btn-3d btn-3d-teal inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer whitespace-nowrap">
                     <Upload className="w-3.5 h-3.5" />
                     <span>Upload .DOCX Kustom</span>
                     <input
@@ -1136,7 +1142,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                       type="button"
                       onClick={() => onDeleteTemplate(meta.key)}
                       aria-label={`Hapus template kustom ${meta.fileName}`}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-medium"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-xs font-semibold"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Reset Bawaan</span>
@@ -1150,28 +1156,28 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
 
         {/* Supported Tags Reference Table */}
         <div className="pt-2 space-y-3">
-          <h3 className="text-sm font-semibold text-slate-900">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-teal-50">
             Panduan Lengkap Tag Variabel {'{{...}}'} yang Didukung
           </h3>
-          <div className="border border-slate-200 rounded-xl overflow-hidden max-h-80 overflow-y-auto">
+          <div className="border border-teal-900/10 dark:border-teal-500/20 rounded-xl overflow-hidden max-h-80 overflow-y-auto">
             <table className="w-full text-left border-collapse text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+              <thead className="bg-teal-50/70 dark:bg-teal-950/80 border-b border-teal-900/10 dark:border-teal-500/20 sticky top-0">
                 <tr>
-                  <th className="py-2.5 px-3 font-semibold text-slate-700 w-72">
+                  <th className="py-2.5 px-3 font-semibold text-teal-950 dark:text-teal-100 w-72">
                     Tag Template
                   </th>
-                  <th className="py-2.5 px-3 font-semibold text-slate-700">
+                  <th className="py-2.5 px-3 font-semibold text-teal-950 dark:text-teal-100">
                     Keterangan Variabel
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-teal-900/10 dark:divide-teal-500/15">
                 {SUPPORTED_TEMPLATE_TAGS.map((item) => (
-                  <tr key={item.tag} className="hover:bg-slate-50">
-                    <td className="py-2 px-3 font-mono text-sky-800 font-medium">
+                  <tr key={item.tag} className="hover:bg-teal-50/40 dark:hover:bg-teal-900/25">
+                    <td className="py-2 px-3 font-mono text-teal-700 dark:text-teal-300 font-semibold">
                       {item.tag}
                     </td>
-                    <td className="py-2 px-3 text-slate-700">{item.desc}</td>
+                    <td className="py-2 px-3 text-slate-700 dark:text-teal-100/85">{item.desc}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1181,14 +1187,16 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
       </div>
 
       {/* Section 3: Backup & Restore Database */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <Database className="w-5 h-5 text-slate-700 shrink-0 mt-0.5" />
+      <div className="bento-card p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-start gap-3.5">
+          <GlossyIcon3D tone="amber" size="sm">
+            <Database className="w-4.5 h-4.5" />
+          </GlossyIcon3D>
           <div>
-            <h2 className="font-display text-base font-semibold text-slate-900">
-              Backup & Restore Database Kantor (.JSON)
+            <h2 className="font-display text-base font-bold text-slate-900 dark:text-teal-50">
+              Backup &amp; Restore Database Kantor (.JSON)
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-teal-200/75 mt-0.5">
               Seluruh data register berkas, pengaturan pejabat PPATS, dan file master template .docx disimpan di IndexedDB browser. Ekspor file .JSON secara berkala untuk pemindahan antar-komputer.
             </p>
           </div>
@@ -1198,7 +1206,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
           <button
             type="button"
             onClick={onExportBackup}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-sm font-medium text-slate-800 transition-colors whitespace-nowrap"
+            className="btn-3d btn-3d-light inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap"
           >
             <Download className="w-4 h-4" />
             <span>Export Backup (.JSON)</span>
@@ -1206,7 +1214,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
           <button
             type="button"
             onClick={() => restoreInputRef.current?.click()}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-sm font-medium transition-colors whitespace-nowrap"
+            className="btn-3d btn-3d-teal inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap"
           >
             <Upload className="w-4 h-4" />
             <span>Restore Database (.JSON)</span>

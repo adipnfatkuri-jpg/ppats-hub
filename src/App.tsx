@@ -59,6 +59,7 @@ import { NonAktaRekapModule } from './components/NonAktaRekapModule';
 import { SettingsModule } from './components/SettingsModule';
 import { ReceiptModal } from './components/ReceiptModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { useTheme } from './hooks/useTheme';
 
 const SIGNED_OUT_SESSION: CloudSessionInfo = {
   status: 'signed_out',
@@ -89,6 +90,7 @@ function formatCloudErrorMessage(err: unknown, fallback: string): string {
 }
 
 export default function App() {
+  const { theme, setTheme } = useTheme();
   const [activeSection, setActiveSection] = useState<NavSection>('dashboard');
   const [records, setRecords] = useState<BerkasRecord[]>([]);
   const [settings, setSettings] = useState<OfficeSettings>(DEFAULT_OFFICE_SETTINGS);
@@ -681,7 +683,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-[#f8fafc] text-slate-900">
+    <div className="min-h-screen flex flex-col lg:flex-row app-canvas text-slate-900 dark:text-teal-50">
       <Sidebar
         activeSection={activeSection}
         onSelectSection={(sec) => {
@@ -707,23 +709,25 @@ export default function App() {
         onSignIn={handleSignIn}
         onSignOut={handleSignOut}
         onReloadCloud={handleReloadCloud}
+        theme={theme}
+        onSetTheme={setTheme}
       />
 
-      <main className="flex-1 min-w-0 p-4 sm:p-6">
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
         {toast && (
           <div
             role="status"
-            className={`no-print mb-5 px-4 py-3 rounded-xl border text-sm flex items-center justify-between gap-3 ${
+            className={`no-print mb-5 px-4 py-3 rounded-2xl border text-sm flex items-center justify-between gap-3 shadow-md ${
               toast.type === 'success'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                : 'bg-rose-50 border-rose-200 text-rose-900'
+                ? 'bg-emerald-50/95 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-700/60 text-emerald-900 dark:text-emerald-100'
+                : 'bg-rose-50/95 dark:bg-rose-950/80 border-rose-200 dark:border-rose-700/60 text-rose-900 dark:text-rose-100'
             }`}
           >
             <div className="flex items-center gap-2.5">
               {toast.type === 'success' ? (
-                <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
+                <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
               ) : (
-                <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
+                <AlertCircle className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400 shrink-0" />
               )}
               <span className="font-medium">{toast.message}</span>
             </div>
@@ -731,7 +735,7 @@ export default function App() {
               type="button"
               onClick={() => setToast(null)}
               aria-label="Tutup notifikasi"
-              className="p-1 rounded hover:bg-black/5"
+              className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
             >
               <X className="w-4 h-4" />
             </button>
@@ -740,12 +744,12 @@ export default function App() {
 
         {loading ? (
           <div className="space-y-4">
-            <div className="h-8 w-64 bg-slate-200 rounded animate-pulse" />
+            <div className="h-8 w-64 bg-teal-900/10 dark:bg-teal-400/10 rounded-xl animate-pulse" />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="h-28 bg-white border border-slate-200 rounded-xl animate-pulse"
+                  className="h-28 bento-card animate-pulse"
                 />
               ))}
             </div>

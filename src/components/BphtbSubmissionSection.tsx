@@ -55,6 +55,7 @@ import {
 } from '../utils/bphtbObjectScan';
 import { BphtbPreviewPanel } from './BphtbPreviewPanel';
 import { DateInputId } from './DateInputId';
+import { GlossyIcon3D } from './TactileUI';
 
 export interface BphtbGeneratedState {
   generatedAt: string;
@@ -169,7 +170,7 @@ const InlineScanControls: React.FC<InlineScanControlsProps> = ({
     <div className="inline-flex items-center gap-1.5 shrink-0">
       <label
         title={`Scan ${label} dari galeri atau file PDF`}
-        className={`relative inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 font-semibold transition-colors whitespace-nowrap select-none ${
+        className={`relative inline-flex items-center gap-1 rounded-lg border border-sky-200 dark:border-sky-400/35 bg-sky-50 dark:bg-sky-950/70 hover:bg-sky-100 dark:hover:bg-sky-900/70 text-sky-800 dark:text-sky-200 font-semibold transition-colors whitespace-nowrap select-none ${
           anyScanning ? 'opacity-50 pointer-events-none' : 'cursor-pointer'
         } ${compact ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1.5 text-[11px]'}`}
       >
@@ -192,7 +193,7 @@ const InlineScanControls: React.FC<InlineScanControlsProps> = ({
       <label
         title={`Foto ${label} langsung dengan kamera`}
         aria-label={`Foto ${label} dengan kamera`}
-        className={`relative inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium transition-colors whitespace-nowrap select-none ${
+        className={`relative inline-flex items-center gap-1 rounded-lg border border-teal-900/15 dark:border-teal-400/25 bg-white dark:bg-[#0D2B30] hover:bg-teal-50 dark:hover:bg-[#12383F] text-slate-700 dark:text-teal-100 font-medium transition-colors whitespace-nowrap select-none ${
           anyScanning ? 'opacity-50 pointer-events-none' : 'cursor-pointer'
         } ${compact ? 'px-2 py-1 text-[11px]' : 'px-2 py-1.5 text-[11px]'}`}
       >
@@ -539,14 +540,14 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
   return (
     <section
       id="bphtb-submission-panel"
-      className="no-print bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs"
+      className="no-print bento-card overflow-hidden"
     >
       {/* Header */}
-      <div className="px-5 py-4 bg-slate-900 text-white flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      <div className="px-5 py-4 bg-gradient-to-r from-[#0F3D3E] via-[#124E52] to-[#0D3338] text-white flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-lg bg-sky-500/20 border border-sky-400/30 flex items-center justify-center shrink-0 mt-0.5">
-            <Landmark className="w-4.5 h-4.5 text-sky-300" />
-          </div>
+          <GlossyIcon3D tone="sky" size="sm">
+            <Landmark className="w-4.5 h-4.5" />
+          </GlossyIcon3D>
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-display text-base font-semibold text-white">
@@ -627,30 +628,30 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
       <div className="p-5 sm:p-6 space-y-6">
         {/* Live Tax Summary Strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          <div className="px-3.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50">
-            <p className="text-[11px] text-slate-500">Luas &amp; NJOP Total</p>
-            <p className="font-mono font-semibold text-slate-900 mt-0.5 tabular-nums">
+          <div className="px-3.5 py-2.5 rounded-xl border border-teal-900/10 dark:border-teal-500/20 bg-teal-50/40 dark:bg-teal-950/50">
+            <p className="text-[11px] text-slate-500 dark:text-teal-300/75">Luas &amp; NJOP Total</p>
+            <p className="font-mono font-semibold text-slate-900 dark:text-teal-50 mt-0.5 tabular-nums">
               {formatNumberId(taxForm.luas_m2)} m² · {formatRupiah(taxResult.njop_total)}
             </p>
           </div>
-          <div className="px-3.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50">
-            <p className="text-[11px] text-slate-500">Nilai Transaksi / NPOP</p>
-            <p className="font-mono font-semibold text-slate-900 mt-0.5 tabular-nums">
+          <div className="px-3.5 py-2.5 rounded-xl border border-teal-900/10 dark:border-teal-500/20 bg-teal-50/40 dark:bg-teal-950/50">
+            <p className="text-[11px] text-slate-500 dark:text-teal-300/75">Nilai Transaksi / NPOP</p>
+            <p className="font-mono font-semibold text-slate-900 dark:text-teal-50 mt-0.5 tabular-nums">
               {formatRupiah(taxResult.npop)}
             </p>
           </div>
-          <div className="px-3.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50">
-            <p className="text-[11px] text-slate-500">NPOPTKP / NPOPKP</p>
-            <p className="font-mono font-semibold text-slate-900 mt-0.5 tabular-nums">
+          <div className="px-3.5 py-2.5 rounded-xl border border-teal-900/10 dark:border-teal-500/20 bg-teal-50/40 dark:bg-teal-950/50">
+            <p className="text-[11px] text-slate-500 dark:text-teal-300/75">NPOPTKP / NPOPKP</p>
+            <p className="font-mono font-semibold text-slate-900 dark:text-teal-50 mt-0.5 tabular-nums">
               {formatRupiah(taxResult.npoptkp)} / {formatRupiah(taxResult.npopkp)}
             </p>
           </div>
-          <div className="px-3.5 py-2.5 rounded-lg border border-sky-200 bg-sky-50">
-            <p className="text-[11px] font-medium text-sky-800">BPHTB Diajukan (5%)</p>
-            <p className="font-mono font-bold text-sky-950 mt-0.5 tabular-nums">
+          <div className="px-3.5 py-2.5 rounded-xl border border-sky-200 dark:border-sky-500/30 bg-gradient-to-br from-sky-50 to-cyan-50/60 dark:from-sky-950/50 dark:to-cyan-950/30">
+            <p className="text-[11px] font-semibold text-sky-800 dark:text-sky-300">BPHTB Diajukan (5%)</p>
+            <p className="font-mono font-bold text-sky-950 dark:text-sky-100 mt-0.5 tabular-nums">
               {formatRupiah(taxResult.bphtb)}
             </p>
-            <p className="text-[10px] text-sky-700 italic truncate" title={terbilangRupiah(taxResult.bphtb)}>
+            <p className="text-[10px] text-sky-700 dark:text-sky-300/80 italic truncate" title={terbilangRupiah(taxResult.bphtb)}>
               {terbilangRupiah(taxResult.bphtb)}
             </p>
           </div>
@@ -660,12 +661,12 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
         {scanNotice && (
           <div
             role={scanNotice.type === 'error' ? 'alert' : 'status'}
-            className={`px-3.5 py-2.5 rounded-lg border text-xs flex items-center justify-between gap-2.5 ${
+            className={`px-3.5 py-2.5 rounded-xl border text-xs flex items-center justify-between gap-2.5 ${
               scanNotice.type === 'error'
-                ? 'border-rose-200 bg-rose-50 text-rose-800'
+                ? 'border-rose-200 dark:border-rose-500/35 bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-200'
                 : scanNotice.type === 'success'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                : 'border-sky-200 bg-sky-50 text-sky-900'
+                ? 'border-emerald-200 dark:border-emerald-500/35 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-100'
+                : 'border-sky-200 dark:border-sky-500/35 bg-sky-50 dark:bg-sky-950/50 text-sky-900 dark:text-sky-100'
             }`}
           >
             <div className="flex items-center gap-2">
@@ -706,21 +707,21 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
         ) : (
           <>
             {/* Document Manifest Strip with Quick Review & Download */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+            <div className="rounded-2xl border border-teal-900/12 dark:border-teal-500/20 bg-[#F6FBFA] dark:bg-[#0A2226] p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-slate-800">
+                <p className="text-xs font-bold text-slate-800 dark:text-teal-50">
                   Kelengkapan Berkas BPHTB (Sesuai Template Resmi Boyolali · Kertas F4):
                 </p>
                 {isHibah ? (
-                  <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 rounded-md">
+                  <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-500/35 px-2.5 py-0.5 rounded-md">
                     Proses Hibah Aktif · Surat Pernyataan Hibah Disertakan
                   </span>
                 ) : isAjb ? (
-                  <span className="text-[11px] font-semibold text-amber-900 bg-amber-100 border border-amber-200 px-2.5 py-0.5 rounded-md">
+                  <span className="text-[11px] font-semibold text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-500/35 px-2.5 py-0.5 rounded-md">
                     Proses AJB (Jual Beli) Aktif · Bukti Transaksi Disertakan
                   </span>
                 ) : (
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-[11px] text-slate-500 dark:text-teal-200/75">
                     Pilih layanan &ldquo;AJB&rdquo; untuk menyertakan Bukti Transaksi atau &ldquo;Akta Hibah&rdquo; untuk Surat Pernyataan Hibah
                   </span>
                 )}
@@ -729,24 +730,24 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                 {docList.map((doc, idx) => (
                   <div
                     key={doc.key}
-                    className={`p-3 rounded-lg border bg-white flex flex-col justify-between gap-2.5 ${
+                    className={`p-3 rounded-xl border flex flex-col justify-between gap-2.5 ${
                       doc.key === 'surat_pernyataan_hibah'
-                        ? 'border-emerald-200 bg-emerald-50/40'
+                        ? 'border-emerald-200 dark:border-emerald-500/35 bg-emerald-50/50 dark:bg-emerald-950/40'
                         : doc.key === 'bukti_transaksi'
-                        ? 'border-amber-200 bg-amber-50/40'
-                        : 'border-slate-200'
+                        ? 'border-amber-200 dark:border-amber-500/35 bg-amber-50/50 dark:bg-amber-950/40'
+                        : 'border-teal-900/10 dark:border-teal-500/20 bg-white dark:bg-[#0D2B30]'
                     }`}
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                        <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-900/8 dark:bg-teal-900/70 text-teal-900 dark:text-teal-100">
                           0{idx + 1}
                         </span>
-                        <span className="text-xs font-semibold text-slate-900">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
                           {doc.shortLabel}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 leading-snug">
+                      <p className="text-[11px] text-slate-500 dark:text-teal-200/75 leading-snug">
                         {doc.description}
                       </p>
                     </div>
@@ -754,7 +755,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                       <button
                         type="button"
                         onClick={() => handleOpenPreview(doc.key)}
-                        className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-md border border-sky-200 bg-sky-50 hover:bg-sky-100 text-[11px] font-semibold text-sky-900"
+                        className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-sky-200 dark:border-sky-500/35 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 text-[11px] font-semibold text-sky-900 dark:text-sky-100 transition-colors"
                       >
                         <Eye className="w-3 h-3" />
                         <span>Review</span>
@@ -763,7 +764,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         type="button"
                         disabled={busyKey !== null}
                         onClick={() => handleDownloadSingle(doc.key, doc.label)}
-                        className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-medium text-slate-700 disabled:opacity-50"
+                        className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-teal-900/12 dark:border-teal-500/25 bg-white dark:bg-[#081E22] hover:bg-teal-50 dark:hover:bg-teal-900/50 text-[11px] font-semibold text-slate-700 dark:text-teal-100 disabled:opacity-50 transition-colors"
                       >
                         {busyKey === doc.key ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -781,9 +782,9 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
             {/* Interactive Form Sections */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 text-xs">
               {/* 1. Wajib Pajak (Penerima Hak) */}
-              <div className="border border-slate-200 rounded-xl p-4 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
-                  <h3 className="font-display text-sm font-semibold text-slate-900">
+              <div className="border border-teal-900/12 dark:border-teal-500/20 bg-[#F6FBFA]/60 dark:bg-[#0A2226] rounded-2xl p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/10 dark:border-teal-500/20 pb-2.5">
+                  <h3 className="font-display text-sm font-bold text-slate-900 dark:text-white">
                     1. Wajib Pajak ({isHibah ? 'Penerima Hibah' : 'Pembeli / Penerima Hak'})
                   </h3>
                   <InlineScanControls
@@ -811,8 +812,8 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="sm:col-span-2">
-                    <label className="block text-slate-600 font-medium mb-1">
-                      Nama Lengkap Wajib Pajak <span className="text-rose-600">*</span>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                      Nama Lengkap Wajib Pajak <span className="text-rose-600 dark:text-rose-400">*</span>
                     </label>
                     <input
                       type="text"
@@ -821,11 +822,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, wp_nama: e.target.value.toUpperCase() }))
                       }
                       placeholder="Nama lengkap sesuai KTP"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg uppercase focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 uppercase"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">NIK (16 Digit)</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">NIK (16 Digit)</label>
                     <input
                       type="text"
                       value={form.wp_nik}
@@ -833,11 +834,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, wp_nik: e.target.value }))
                       }
                       placeholder="3309..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">NPWP (Opsional)</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">NPWP (Opsional)</label>
                     <input
                       type="text"
                       value={form.wp_npwp}
@@ -845,11 +846,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, wp_npwp: e.target.value }))
                       }
                       placeholder="Opsional"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Tempat, Tanggal Lahir</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Tempat, Tanggal Lahir</label>
                     <input
                       type="text"
                       value={form.wp_ttl}
@@ -857,11 +858,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, wp_ttl: e.target.value }))
                       }
                       placeholder="Boyolali, 18-11-1984"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Pekerjaan</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Pekerjaan</label>
                     <input
                       type="text"
                       value={form.wp_pekerjaan}
@@ -869,11 +870,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, wp_pekerjaan: e.target.value }))
                       }
                       placeholder="Guru / Wiraswasta / Karyawan"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">No. Telepon / HP</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">No. Telepon / HP</label>
                     <input
                       type="text"
                       value={form.wp_telepon}
@@ -881,11 +882,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, wp_telepon: e.target.value }))
                       }
                       placeholder="08..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Tanggal Pengajuan</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Tanggal Pengajuan</label>
                     <DateInputId
                       value={form.tanggal_pengajuan}
                       onChange={(next) =>
@@ -896,7 +897,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-slate-600 font-medium mb-1">
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                       Alamat (Dukuh/Jalan &amp; RT/RW)
                     </label>
                     <input
@@ -906,11 +907,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, wp_alamat: e.target.value }))
                       }
                       placeholder="Contoh: NGESREP RT 004 / RW 001"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Desa / Kelurahan</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Desa / Kelurahan</label>
                     <input
                       type="text"
                       value={form.wp_desa}
@@ -918,11 +919,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, wp_desa: e.target.value }))
                       }
                       placeholder="Ngesrep"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Kecamatan</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Kecamatan</label>
                     <input
                       type="text"
                       value={form.wp_kecamatan}
@@ -930,11 +931,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, wp_kecamatan: e.target.value }))
                       }
                       placeholder="Ngemplak"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-slate-600 font-medium mb-1">Kabupaten / Kota</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Kabupaten / Kota</label>
                     <input
                       type="text"
                       value={form.wp_kabupaten}
@@ -942,16 +943,16 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, wp_kabupaten: e.target.value }))
                       }
                       placeholder="Boyolali"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                 </div>
               </div>
 
               {/* 2. Pihak Pengalih Hak (Penjual / Pemberi Hibah / Pewaris) */}
-              <div className="border border-slate-200 rounded-xl p-4 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
-                  <h3 className="font-display text-sm font-semibold text-slate-900">
+              <div className="border border-teal-900/12 dark:border-teal-500/20 bg-[#F6FBFA]/60 dark:bg-[#0A2226] rounded-2xl p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/10 dark:border-teal-500/20 pb-2.5">
+                  <h3 className="font-display text-sm font-bold text-slate-900 dark:text-white">
                     2. Pengalih Hak ({isHibah ? 'Pemberi Hibah' : 'Penjual / Atas Nama Sertipikat'})
                   </h3>
                   <InlineScanControls
@@ -979,9 +980,9 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="sm:col-span-2">
-                    <label className="block text-slate-600 font-medium mb-1">
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                       Nama Lengkap {isHibah ? 'Pemberi Hibah' : 'Pemilik Semula (Atas Nama)'}{' '}
-                      {isHibah && <span className="text-rose-600">*</span>}
+                      {isHibah && <span className="text-rose-600 dark:text-rose-400">*</span>}
                     </label>
                     <input
                       type="text"
@@ -993,11 +994,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         }))
                       }
                       placeholder="Nama lengkap pemilik sertipikat semula"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg uppercase focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 uppercase"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">NIK</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">NIK</label>
                     <input
                       type="text"
                       value={form.pemberi_nik}
@@ -1005,11 +1006,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, pemberi_nik: e.target.value }))
                       }
                       placeholder="3309..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Tempat, Tanggal Lahir</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Tempat, Tanggal Lahir</label>
                     <input
                       type="text"
                       value={form.pemberi_ttl}
@@ -1017,11 +1018,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, pemberi_ttl: e.target.value }))
                       }
                       placeholder="Boyolali, 10-06-1956"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-slate-600 font-medium mb-1">Pekerjaan</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Pekerjaan</label>
                     <input
                       type="text"
                       value={form.pemberi_pekerjaan}
@@ -1029,11 +1030,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, pemberi_pekerjaan: e.target.value }))
                       }
                       placeholder="Buruh Tani / Perkebunan / Wiraswasta"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-slate-600 font-medium mb-1">Alamat Lengkap</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Alamat Lengkap</label>
                     <textarea
                       rows={3}
                       value={form.pemberi_alamat}
@@ -1041,20 +1042,20 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, pemberi_alamat: e.target.value }))
                       }
                       placeholder="Gagaksipat Rt. 01 Rw. 04, Ds. Gagaksipat, Kecamatan Ngemplak, Kabupaten Boyolali"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                 </div>
               </div>
 
               {/* 3. Data Objek Pajak & Sertipikat (DENGAN SCAN SPPT/SERTIPIKAT) */}
-              <div className="border border-slate-200 rounded-xl p-4 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+              <div className="border border-teal-900/12 dark:border-teal-500/20 bg-[#F6FBFA]/60 dark:bg-[#0A2226] rounded-2xl p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/10 dark:border-teal-500/20 pb-2.5">
                   <div>
-                    <h3 className="font-display text-sm font-semibold text-slate-900">
+                    <h3 className="font-display text-sm font-bold text-slate-900 dark:text-white">
                       3. Data Objek Pajak (SPPT PBB &amp; Sertipikat)
                     </h3>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-slate-500 dark:text-teal-200/75">
                       Bisa pilih 1–2 file sekaligus (foto/PDF SPPT PBB &amp; Sertipikat) — otomatis menyinkronkan luas &amp; NJOP kalkulator.
                     </p>
                   </div>
@@ -1069,7 +1070,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">NOP PBB (18 Digit)</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">NOP PBB (18 Digit)</label>
                     <input
                       type="text"
                       value={form.nop}
@@ -1077,11 +1078,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, nop: e.target.value }))
                       }
                       placeholder="33.09.110.004.005.0244.0"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Tahun Pajak SPPT</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Tahun Pajak SPPT</label>
                     <input
                       type="text"
                       value={form.tahun_pajak}
@@ -1089,11 +1090,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, tahun_pajak: e.target.value }))
                       }
                       placeholder="2025"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Jenis Hak</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Jenis Hak</label>
                     <input
                       type="text"
                       value={form.jenis_hak}
@@ -1101,11 +1102,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, jenis_hak: e.target.value }))
                       }
                       placeholder="Hak Milik / SHM"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Nomor Sertipikat / NIBel</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Nomor Sertipikat / NIBel</label>
                     <input
                       type="text"
                       value={form.nomor_sertipikat}
@@ -1113,11 +1114,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, nomor_sertipikat: e.target.value }))
                       }
                       placeholder="Elektronik Nib: 11.17.000023174.0"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Lokasi / Dukuh Objek</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Lokasi / Dukuh Objek</label>
                     <input
                       type="text"
                       value={form.letaknya_jalan}
@@ -1125,11 +1126,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, letaknya_jalan: e.target.value }))
                       }
                       placeholder="Gagaksipat"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">RT / RW Objek Pajak</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">RT / RW Objek Pajak</label>
                     <input
                       type="text"
                       value={form.objek_rt_rw}
@@ -1137,11 +1138,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, objek_rt_rw: e.target.value }))
                       }
                       placeholder="004/01"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Desa / Kelurahan</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Desa / Kelurahan</label>
                     <input
                       type="text"
                       value={form.desa}
@@ -1149,11 +1150,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, desa: e.target.value }))
                       }
                       placeholder="Gagaksipat"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Kecamatan</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Kecamatan</label>
                     <input
                       type="text"
                       value={form.kecamatan}
@@ -1161,11 +1162,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, kecamatan: e.target.value }))
                       }
                       placeholder="Ngemplak"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Kabupaten / Kota</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Kabupaten / Kota</label>
                     <input
                       type="text"
                       value={form.kabupaten}
@@ -1173,11 +1174,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, kabupaten: e.target.value }))
                       }
                       placeholder="Boyolali"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Jenis Tanah</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Jenis Tanah</label>
                     <input
                       list="bphtb-jenis-tanah-list"
                       type="text"
@@ -1186,7 +1187,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, jenis_tanah: e.target.value }))
                       }
                       placeholder="pekarangan / sawah / tegal"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                     <datalist id="bphtb-jenis-tanah-list">
                       {JENIS_TANAH_PRESETS.map((j) => (
@@ -1195,7 +1196,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                     </datalist>
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-slate-600 font-medium mb-1">
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                       Luas Bangunan (m² · untuk SPJM, isi 0 jika tanah kosong)
                     </label>
                     <input
@@ -1208,17 +1209,17 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                           luas_bangunan_m2: Math.max(0, Number(e.target.value) || 0),
                         }))
                       }
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono tabular-nums focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 font-mono tabular-nums"
                     />
                   </div>
                 </div>
               </div>
 
               {/* 4. Penerima Kuasa Pengurusan BPHTB */}
-              <div className="border border-slate-200 rounded-xl p-4 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
-                  <h3 className="font-display text-sm font-semibold text-slate-900 flex items-center gap-1.5">
-                    <UserCheck className="w-4 h-4 text-slate-700" />
+              <div className="border border-teal-900/12 dark:border-teal-500/20 bg-[#F6FBFA]/60 dark:bg-[#0A2226] rounded-2xl p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/10 dark:border-teal-500/20 pb-2.5">
+                  <h3 className="font-display text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <UserCheck className="w-4 h-4 text-teal-600 dark:text-teal-300" />
                     <span>4. Penerima Kuasa BPHTB (Pihak Kedua)</span>
                   </h3>
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -1227,7 +1228,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         aria-label="Pilih profil kuasa dari pengaturan"
                         value=""
                         onChange={(e) => handleSelectKuasaPreset(e.target.value)}
-                        className="px-2 py-1 border border-slate-200 rounded-md bg-slate-50 text-[11px] font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        className="input-airy px-2 py-1 text-[11px] font-medium"
                       >
                         <option value="">Profil Pengaturan...</option>
                         {kuasaOptions.map((name) => (
@@ -1258,7 +1259,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="sm:col-span-2">
-                    <label className="block text-slate-600 font-medium mb-1">Nama Penerima Kuasa</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Nama Penerima Kuasa</label>
                     <input
                       type="text"
                       value={form.kuasa_nama}
@@ -1269,11 +1270,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         }))
                       }
                       placeholder="Nama staf / kuasa pengurusan SIPAD"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 uppercase"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Nomor KTP / NIK</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Nomor KTP / NIK</label>
                     <input
                       type="text"
                       value={form.kuasa_nik}
@@ -1281,11 +1282,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, kuasa_nik: e.target.value }))
                       }
                       placeholder="3309..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Tempat, Tanggal Lahir</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Tempat, Tanggal Lahir</label>
                     <input
                       type="text"
                       value={form.kuasa_ttl}
@@ -1293,11 +1294,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, kuasa_ttl: e.target.value }))
                       }
                       placeholder="Boyolali, 24-11-1991"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">Pekerjaan</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Pekerjaan</label>
                     <input
                       type="text"
                       value={form.kuasa_pekerjaan}
@@ -1305,11 +1306,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, kuasa_pekerjaan: e.target.value }))
                       }
                       placeholder="Wiraswasta / Staf PPATS"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">No. HP Penerima Kuasa</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">No. HP Penerima Kuasa</label>
                     <input
                       type="text"
                       value={form.kuasa_telepon}
@@ -1317,11 +1318,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, kuasa_telepon: e.target.value }))
                       }
                       placeholder="08..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2 font-mono"
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-slate-600 font-medium mb-1">Alamat Lengkap Penerima Kuasa</label>
+                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">Alamat Lengkap Penerima Kuasa</label>
                     <textarea
                       rows={2}
                       value={form.kuasa_alamat}
@@ -1329,7 +1330,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         onChangeForm((prev) => ({ ...prev, kuasa_alamat: e.target.value }))
                       }
                       placeholder="Dukuhrejo RT 001 / RW 002, Desa Donohudan, Kec Ngemplak, Kabupaten Boyolali"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      className="input-airy w-full px-3 py-2"
                     />
                   </div>
                 </div>
@@ -1337,19 +1338,19 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
 
               {/* 5. Khusus Surat Pernyataan Hibah (conditional) */}
               {isHibah && (
-                <div className="lg:col-span-2 border border-emerald-200 bg-emerald-50/40 rounded-xl p-4 space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200 pb-2">
-                    <h3 className="font-display text-sm font-semibold text-emerald-950">
+                <div className="lg:col-span-2 border border-emerald-200 dark:border-emerald-500/35 bg-emerald-50/50 dark:bg-emerald-950/35 rounded-2xl p-4 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200 dark:border-emerald-500/25 pb-2">
+                    <h3 className="font-display text-sm font-bold text-emerald-950 dark:text-emerald-100">
                       5. Keterangan Khusus Surat Pernyataan Hibah
                     </h3>
-                    <span className="text-[11px] font-medium text-emerald-800">
+                    <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-200/85">
                       Penguatan otomatis oleh Camat {form.kecamatan || settings.nama_kecamatan} ({settings.nama_ppats || 'Pengaturan Kantor'})
                     </span>
                   </div>
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-emerald-900 font-medium mb-1">
+                      <label className="block text-emerald-900 dark:text-emerald-100 font-medium mb-1">
                         Penerima Hibah Adalah (Dicetak Tebal di Surat Pernyataan Hibah)
                       </label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1368,7 +1369,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                               }));
                             }
                           }}
-                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg bg-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="input-airy w-full px-3 py-2 text-xs"
                         >
                           {HIBAH_RELATION_OPTIONS.map((opt) => (
                             <option key={opt} value={opt}>
@@ -1387,21 +1388,21 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                             }))
                           }
                           placeholder="Contoh: Anak Kandungnya"
-                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="input-airy w-full px-3 py-2"
                         />
                       </div>
                     </div>
 
                     {/* Daftar Pihak Menyetujui (bisa lebih dari 1, dikelompokkan otomatis seperti ISTRI / ANAK KANDUNG) */}
-                    <div className="rounded-lg border border-emerald-200 bg-white p-3.5 space-y-3">
+                    <div className="rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-white dark:bg-[#0A2226] p-3.5 space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4 text-emerald-700" />
+                          <Users className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
                           <div>
-                            <p className="text-xs font-semibold text-emerald-950">
+                            <p className="text-xs font-bold text-emerald-950 dark:text-emerald-100">
                               Pihak Menyetujui ({form.pihak_menyetujui.length})
                             </p>
-                            <p className="text-[11px] text-slate-500">
+                            <p className="text-[11px] text-slate-500 dark:text-teal-200/75">
                               Otomatis dikelompokkan per hubungan (contoh: ISTRI:, ANAK KANDUNG:) dengan garis titik tanda tangan.
                             </p>
                           </div>
@@ -1409,7 +1410,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                         <button
                           type="button"
                           onClick={handleAddApprover}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors whitespace-nowrap"
+                          className="btn-3d btn-3d-emerald inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           <span>Tambah Pihak Menyetujui</span>
@@ -1417,7 +1418,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                       </div>
 
                       {form.pihak_menyetujui.length === 0 ? (
-                        <div className="px-3 py-3 rounded-lg border border-dashed border-emerald-200 bg-emerald-50/40 text-[11px] text-emerald-900">
+                        <div className="px-3 py-3 rounded-lg border border-dashed border-emerald-200 dark:border-emerald-500/35 bg-emerald-50/40 dark:bg-emerald-950/35 text-[11px] text-emerald-900 dark:text-emerald-200">
                           Belum ada pihak menyetujui ditambahkan. Klik <strong>&ldquo;Tambah Pihak Menyetujui&rdquo;</strong> untuk menambahkan Istri/Suami dan Anak-Anak Kandung.
                         </div>
                       ) : (
@@ -1427,10 +1428,10 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                             return (
                               <div
                                 key={approverId}
-                                className="p-3 rounded-lg border border-slate-200 bg-slate-50/70 space-y-2.5"
+                                className="p-3 rounded-xl border border-teal-900/12 dark:border-teal-500/20 bg-[#F6FBFA] dark:bg-[#0D2B30] space-y-2.5"
                               >
                                 <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <span className="font-mono text-[11px] font-semibold text-emerald-900 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded">
+                                  <span className="font-mono text-[11px] font-semibold text-emerald-900 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-500/35 px-2 py-0.5 rounded">
                                     Pihak Menyetujui #{idx + 1}
                                   </span>
                                   <div className="flex items-center gap-1.5">
@@ -1468,7 +1469,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                                       onClick={() => handleRemoveApprover(approverId)}
                                       title="Hapus pihak menyetujui ini"
                                       aria-label={`Hapus pihak menyetujui ${idx + 1}`}
-                                      className="p-1.5 rounded-md border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 transition-colors"
+                                      className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-500/35 bg-white dark:bg-rose-950/50 hover:bg-rose-50 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-300 transition-colors"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
@@ -1477,7 +1478,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                                   <div>
-                                    <label className="block text-slate-600 font-medium mb-1">
+                                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                                       Nama Lengkap
                                     </label>
                                     <input
@@ -1489,11 +1490,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                                         })
                                       }
                                       placeholder="Nama sesuai KTP"
-                                      className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                      className="input-airy w-full px-2.5 py-1.5 uppercase"
                                     />
                                   </div>
                                   <div>
-                                    <label className="block text-slate-600 font-medium mb-1">
+                                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                                       NIK (Opsional)
                                     </label>
                                     <input
@@ -1503,11 +1504,11 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                                         handleUpdateApprover(approverId, { nik: e.target.value })
                                       }
                                       placeholder="3309..."
-                                      className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                      className="input-airy w-full px-2.5 py-1.5 font-mono"
                                     />
                                   </div>
                                   <div>
-                                    <label className="block text-slate-600 font-medium mb-1">
+                                    <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                                       Kelompok Hubungan
                                     </label>
                                     <input
@@ -1520,7 +1521,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                                         })
                                       }
                                       placeholder="ISTRI / ANAK KANDUNG"
-                                      className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                      className="input-airy w-full px-2.5 py-1.5"
                                     />
                                   </div>
                                 </div>
@@ -1538,13 +1539,13 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
 
                     {/* Saksi-Saksi (Opsional) */}
                     <div className="space-y-2">
-                      <p className="text-[11px] font-medium text-emerald-900">
+                      <p className="text-[11px] font-medium text-emerald-900 dark:text-emerald-200">
                         Saksi-Saksi (Opsional — kosongkan jika mengikuti format tanpa saksi, atau isi/scan KTP bila diperlukan):
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <div className="flex items-center justify-between gap-2">
-                            <label className="text-emerald-900 font-medium">Saksi I</label>
+                            <label className="text-emerald-900 dark:text-emerald-100 font-medium">Saksi I</label>
                             <InlineScanControls
                               slotKey="saksi1"
                               label="KTP Saksi I"
@@ -1571,12 +1572,12 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                               }))
                             }
                             placeholder="Opsional · Nama Saksi I"
-                            className="w-full px-3 py-2 border border-emerald-200 rounded-lg bg-white uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="input-airy w-full px-3 py-2 uppercase"
                           />
                         </div>
                         <div className="space-y-1">
                           <div className="flex items-center justify-between gap-2">
-                            <label className="text-emerald-900 font-medium">Saksi II</label>
+                            <label className="text-emerald-900 dark:text-emerald-100 font-medium">Saksi II</label>
                             <InlineScanControls
                               slotKey="saksi2"
                               label="KTP Saksi II"
@@ -1603,7 +1604,7 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                               }))
                             }
                             placeholder="Opsional · Nama Saksi II"
-                            className="w-full px-3 py-2 border border-emerald-200 rounded-lg bg-white uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="input-airy w-full px-3 py-2 uppercase"
                           />
                         </div>
                         <datalist id="bphtb-saksi-list">
@@ -1621,15 +1622,15 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
         )}
 
         {/* Action Bar: Review & Generate Documents */}
-        <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="pt-4 border-t border-teal-900/10 dark:border-teal-500/15 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5">
             {viewMode === 'form' && (
               <button
                 type="button"
                 onClick={() => handleOpenPreview()}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-900 text-xs font-semibold transition-colors whitespace-nowrap"
+                className="btn-3d btn-3d-sky inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap"
               >
-                <Eye className="w-4 h-4 text-sky-700" />
+                <Eye className="w-4 h-4" />
                 <span>Review Berkas (Pratinjau F4)</span>
               </button>
             )}
@@ -1638,12 +1639,12 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
               type="button"
               disabled={busyKey !== null || scanningSlot !== null}
               onClick={handleDownloadZip}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-semibold transition-colors disabled:opacity-60 whitespace-nowrap"
+              className="btn-3d btn-3d-teal inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-60 whitespace-nowrap"
             >
               {busyKey === 'zip' ? (
-                <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <FileArchive className="w-4 h-4 text-amber-400" />
+                <FileArchive className="w-4 h-4" />
               )}
               <span>
                 {busyKey === 'zip'
@@ -1656,19 +1657,19 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
               type="button"
               disabled={busyKey !== null || scanningSlot !== null}
               onClick={handleDownloadCombinedDocx}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold transition-colors disabled:opacity-60 whitespace-nowrap"
+              className="btn-3d btn-3d-light inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-60 whitespace-nowrap"
             >
               {busyKey === 'combined' ? (
                 <Loader2 className="w-4 h-4 animate-spin text-sky-600" />
               ) : (
-                <FileText className="w-4 h-4 text-sky-600" />
+                <FileText className="w-4 h-4 text-sky-600 dark:text-sky-400" />
               )}
               <span>Buat 1 File Word Gabungan (.DOCX)</span>
             </button>
           </div>
 
           {!generatedState && (
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-slate-500 dark:text-teal-200/75">
               Setelah berkas selesai dibuat, tombol <strong>Ajukan Sekarang</strong> ke SIPAD Boyolali akan aktif.
             </p>
           )}
@@ -1676,30 +1677,30 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
 
         {/* Post-Generation Banner + Ajukan Sekarang CTA */}
         {generatedState && (
-          <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="rounded-2xl border border-emerald-300 dark:border-emerald-500/35 bg-gradient-to-br from-emerald-50 to-teal-50/70 dark:from-emerald-950/50 dark:to-teal-950/40 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+              <GlossyIcon3D tone="emerald" size="sm">
                 <CheckCircle2 className="w-5 h-5" />
-              </div>
+              </GlossyIcon3D>
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-bold text-emerald-950">
+                  <p className="text-sm font-bold text-emerald-950 dark:text-emerald-100">
                     Berkas Pengajuan BPHTB Selesai Dibuat
                   </p>
-                  <span className="font-mono text-[11px] text-emerald-800 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded">
+                  <span className="font-mono text-[11px] text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-md">
                     {generatedState.generatedAt}
                   </span>
                 </div>
-                <p className="text-xs text-emerald-900">
+                <p className="text-xs text-emerald-900 dark:text-emerald-200">
                   File terakhir: <strong className="font-mono">{generatedState.fileName}</strong>
                 </p>
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
                   {generatedState.includedLabels.map((lbl) => (
                     <span
                       key={lbl}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900 bg-white border border-emerald-200 px-2 py-0.5 rounded-md"
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900 dark:text-emerald-100 bg-white dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-md"
                     >
-                      <FileCheck2 className="w-3 h-3 text-emerald-600" />
+                      <FileCheck2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                       {lbl}
                     </span>
                   ))}
@@ -1712,12 +1713,12 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
                 href={SIPAD_BOYOLALI_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors whitespace-nowrap"
+                className="btn-3d btn-3d-emerald inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-xs font-bold whitespace-nowrap"
               >
                 <span>Ajukan Sekarang</span>
                 <ExternalLink className="w-4 h-4" />
               </a>
-              <span className="text-[11px] text-emerald-800 font-mono text-center sm:text-right">
+              <span className="text-[11px] text-emerald-800 dark:text-emerald-300 font-mono text-center sm:text-right">
                 sipad.boyolali.go.id/sipad/
               </span>
             </div>
