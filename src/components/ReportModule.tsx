@@ -95,7 +95,7 @@ export const ReportModule: React.FC<ReportModuleProps> = ({
                 Laporan Bulanan PPATS
               </h1>
               <p className="text-sm text-slate-600 dark:text-teal-200/75 mt-1">
-                Format resmi pelaporan pembuatan akta bulanan untuk Kepala Kantor Pertanahan (BPN) dan Bapenda. Hanya mencakup Akta PPATS (AJB, APHB, Akta Hibah); berkas Non-Akta (Turun Waris, Pemecahan, Ukur Ulang, Ralat Data) otomatis dikecualikan.
+                Format resmi pelaporan pembuatan akta bulanan untuk Kepala Kantor Pertanahan (BPN) dan Bapenda. Hanya mencakup Akta PPATS (AJB, APHB, Akta Hibah); berkas Non-Akta (Turun Waris, Pemecahan, Ukur Ulang, Ralat Data, Pengecekan, Validasi, Analisis Bidang, PKKPR) otomatis dikecualikan.
               </p>
             </div>
           </div>

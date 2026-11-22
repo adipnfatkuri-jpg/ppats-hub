@@ -3062,7 +3062,12 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               {/* PANEL PENGESAHAN & DETAIL NON-AKTA */}
               {!isAkta && (
                 <>
-                  {/* 1. Pengesahan Tunggal ("Mengetahui") - Default PPATS */}
+                  {/* 1. Pengesahan Tunggal ("Mengetahui") - Default PPATS (hanya untuk layanan yang memuat blok Mengetahui) */}
+                  {(layanan === 'Turun Waris' ||
+                    layanan === 'Pemecahan' ||
+                    layanan === 'Pemecahan/Ukur Ulang' ||
+                    layanan === 'Ukur Ulang' ||
+                    layanan === 'Ralat Data') && (
                   <div className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3">
                     <div className="border-b border-teal-900/10 dark:border-teal-500/20 pb-2">
                       <h3 className="text-xs font-bold text-slate-900 dark:text-white">
@@ -3204,6 +3209,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       </div>
                     </div>
                   </div>
+                  )}
 
                   {/* 2. Detail Khusus Turun Waris */}
                   {layanan === 'Turun Waris' && (

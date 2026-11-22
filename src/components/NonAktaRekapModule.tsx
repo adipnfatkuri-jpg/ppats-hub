@@ -62,6 +62,22 @@ function getNonAktaStatusLabel(status: BerkasStatus): string {
 
 function getPengesahanSummary(rec: BerkasRecord, settings: OfficeSettings): string {
   const na = rec.non_akta;
+  if (rec.layanan === 'Permohonan PKKPR') {
+    return na?.pkkpr_kuasa_2_aktif
+      ? 'Pemohon & 2 Kuasa (DPMPTSP)'
+      : 'Pemohon & Kuasa (DPMPTSP)';
+  }
+  if (rec.layanan === 'Pengecekan Sertipikat') {
+    return na?.pengecekan_kuasa_mode === 'kuasa_bpn'
+      ? 'Pemohon & Kuasa BPN'
+      : `Pemohon & PPATS (${rec.akta.nama_ppats || settings.nama_ppats})`;
+  }
+  if (rec.layanan === 'Validasi Sertipikat') {
+    return 'Pemohon & Kuasa BPN (Geotagging)';
+  }
+  if (rec.layanan === 'Analisis Bidang') {
+    return 'Pemohon & Kuasa BPN (Analisis)';
+  }
   const dualModes =
     rec.layanan === 'Turun Waris' ||
     rec.layanan === 'Ralat Data' ||
