@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -18,6 +19,7 @@ const PORT = Number(process.env.PORT) || 3000;
 
 async function startServer() {
   const app = express();
+  const httpServer = http.createServer(app);
   app.use(express.json({ limit: '50mb' }));
 
   app.get('/api/health', (_req, res) => {
@@ -98,12 +100,30 @@ async function startServer() {
     }
   );
 
+  // Prevent keep-alive race conditions ("connection reset by peer") behind nginx / Cloud Run proxies
+  httpServer.keepAliveTimeout = 65_000;
+  httpServer.headersTimeout = 66_000;
+  httpServer.on('clientError', (err, socket) => {
+    if ((err as NodeJS.ErrnoException)?.code === 'ECONNRESET' || !socket.writable) {
+      return;
+    }
+    socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+  });
+
+  let viteServer: { close: () => Promise<void> } | null = null;
+
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
+    const isHmrDisabled = process.env.DISABLE_HMR === 'true';
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        ws: { server: httpServer },
+        hmr: isHmrDisabled ? false : { server: httpServer },
+      },
       appType: 'spa',
     });
+    viteServer = vite;
     app.use(vite.middlewares);
   } else {
     const distDir = path.resolve(__dirname, 'dist');
@@ -113,7 +133,28 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  let isShuttingDown = false;
+  const gracefulShutdown = () => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    httpServer.close(() => {
+      if (viteServer) {
+        viteServer
+          .close()
+          .catch(() => {})
+          .finally(() => process.exit(0));
+      } else {
+        process.exit(0);
+      }
+    });
+    // Force exit fallback if an idle socket lingers during restart
+    setTimeout(() => process.exit(0), 3000).unref();
+  };
+
+  process.on('SIGTERM', gracefulShutdown);
+  process.on('SIGINT', gracefulShutdown);
+
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`SIM-PPATS server listening on http://localhost:${PORT}`);
   });
 }
