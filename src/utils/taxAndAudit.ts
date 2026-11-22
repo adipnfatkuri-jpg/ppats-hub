@@ -15,6 +15,10 @@ export const NON_AKTA_SERVICE_TYPES: ServiceType[] = [
   'Pemecahan',
   'Ukur Ulang',
   'Ralat Data',
+  'Pengecekan Sertipikat',
+  'Validasi Sertipikat',
+  'Analisis Bidang',
+  'Permohonan PKKPR',
 ];
 
 export function isAktaService(layanan: ServiceType): boolean {

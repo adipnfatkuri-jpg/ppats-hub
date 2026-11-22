@@ -104,6 +104,14 @@ function getJudulAkta(layanan: ServiceType): string {
       return 'BERKAS PENGUKURAN ULANG';
     case 'Ralat Data':
       return 'BERKAS RALAT DATA';
+    case 'Pengecekan Sertipikat':
+      return 'BERKAS PENGECEKAN SERTIPIKAT';
+    case 'Validasi Sertipikat':
+      return 'BERKAS VALIDASI SERTIPIKAT';
+    case 'Analisis Bidang':
+      return 'BERKAS ANALISIS BIDANG';
+    case 'Permohonan PKKPR':
+      return 'BERKAS PERMOHONAN PKKPR';
     case 'Pemecahan/Ukur Ulang':
       return 'BERKAS PEMECAHAN / UKUR ULANG';
   }
@@ -119,6 +127,14 @@ export function getNonAktaBundleFileName(layanan: ServiceType): string {
       return '02_Lampiran_Bundel_Ukur_Ulang.docx';
     case 'Ralat Data':
       return '02_Lampiran_Bundel_Ralat_Data.docx';
+    case 'Pengecekan Sertipikat':
+      return '02_Lampiran_Bundel_Pengecekan_Sertipikat.docx';
+    case 'Validasi Sertipikat':
+      return '02_Lampiran_Bundel_Validasi_Sertipikat.docx';
+    case 'Analisis Bidang':
+      return '02_Lampiran_Bundel_Analisis_Bidang.docx';
+    case 'Permohonan PKKPR':
+      return '02_Lampiran_Bundel_Permohonan_PKKPR.docx';
     default:
       return '02_Lampiran_Bundel_Non_Akta.docx';
   }

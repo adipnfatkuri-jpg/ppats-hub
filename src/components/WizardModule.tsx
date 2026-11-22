@@ -28,6 +28,11 @@ import {
   Grid2x2,
   Compass,
   FilePenLine,
+  FileSearch,
+  ShieldCheck,
+  MapPin,
+  Building2,
+  ImagePlus,
   Check,
 } from 'lucide-react';
 import { DocumentReviewPanel } from './DocumentReviewPanel';
@@ -263,6 +268,32 @@ function createDefaultNonAkta(
     sertakan_beda_nama: false,
     koordinat_gps: '',
     link_maps: '',
+    koordinat_poligon: '',
+    foto_tampak_depan: '',
+    foto_patok_1: '',
+    foto_patok_2: '',
+    foto_patok_3: '',
+    foto_patok_4: '',
+    foto_poligon: '',
+    pengecekan_kuasa_mode: 'ppats',
+    ppats_ttl: '',
+    ppats_nik: '',
+    ppats_pekerjaan: `Camat ${_kecName.replace(/^Kecamatan\s+/i, '').trim() || '-'} / PPATS`,
+    ppats_alamat: settings.alamat_kantor || '',
+    pkkpr_nomor_surat: '',
+    pkkpr_lampiran: '1 (Satu) Berkas',
+    pkkpr_jenis_kegiatan: 'Non Berusaha',
+    pkkpr_telepon: '',
+    pkkpr_email: '',
+    pkkpr_npwp: '',
+    pkkpr_diwakili: 'Diri Sendiri',
+    pkkpr_kbli: 'Rumah Tinggal',
+    pkkpr_jumlah_lantai: '1',
+    pkkpr_luas_bangunan: '± 100 m2',
+    pkkpr_alamat_lokasi: '',
+    pkkpr_kawasan: '',
+    pkkpr_kuasa_2_aktif: false,
+    pkkpr_kuasa_2_detail: { nama: '' },
     nama_di_sertipikat: '',
     nama_di_ktp_kk: '',
     nomor_kk: '',
@@ -1166,6 +1197,35 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     setParaPihak((prev) => prev.filter((p) => p.id !== id));
   };
 
+  const handleGeotagPhotoUpload = async (
+    field:
+      | 'foto_tampak_depan'
+      | 'foto_patok_1'
+      | 'foto_patok_2'
+      | 'foto_patok_3'
+      | 'foto_patok_4'
+      | 'foto_poligon',
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const optimized = await optimizeDocumentFile(file, {
+        maxEdge: 1200,
+        quality: 0.78,
+      });
+      const dataUrl = `data:${optimized.mimeType};base64,${optimized.dataBase64}`;
+      setNonAkta((prev) => ({ ...prev, [field]: dataUrl }));
+      onNotify(`Foto ${file.name} berhasil disematkan ke lampiran Geotagging.`, 'success');
+    } catch (err) {
+      onNotify(
+        err instanceof Error ? err.message : 'Gagal membaca file foto Geotagging.',
+        'error'
+      );
+    }
+  };
+
   const SERVICE_VISUALS: Record<
     ServiceType,
     {
@@ -1181,6 +1241,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     Pemecahan: { Icon: Grid2x2, tone: 'indigo', subtitle: 'Non-Akta · Bundel F4' },
     'Ukur Ulang': { Icon: Compass, tone: 'cyan', subtitle: 'Non-Akta · Bundel F4' },
     'Ralat Data': { Icon: FilePenLine, tone: 'violet', subtitle: 'Non-Akta · Bundel F4' },
+    'Pengecekan Sertipikat': { Icon: FileSearch, tone: 'teal', subtitle: 'Non-Akta · Cek BPN F4' },
+    'Validasi Sertipikat': { Icon: ShieldCheck, tone: 'emerald', subtitle: 'Non-Akta · Geotag F4' },
+    'Analisis Bidang': { Icon: MapPin, tone: 'sky', subtitle: 'Non-Akta · Poligon F4' },
+    'Permohonan PKKPR': { Icon: Building2, tone: 'rose', subtitle: 'Non-Akta · DPMPTSP F4' },
     'Pemecahan/Ukur Ulang': { Icon: Grid2x2, tone: 'indigo', subtitle: 'Non-Akta · Bundel F4' },
   };
 
@@ -3637,6 +3701,623 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     </div>
                   )}
 
+                  {/* 4b. Detail Khusus Pengecekan Sertipikat */}
+                  {layanan === 'Pengecekan Sertipikat' && (
+                    <div className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3">
+                      <div className="border-b border-teal-900/10 dark:border-teal-500/20 pb-2">
+                        <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                          Pengaturan Penerima Kuasa Pengecekan Sertipikat (Hal. 1–3)
+                        </h3>
+                        <p className="text-[11px] text-slate-600 dark:text-teal-200/75 mt-0.5">
+                          Sesuai format standar ATR/BPN: Permohonan (Poin 13), Surat Kuasa Substitusi, dan Pernyataan Pertanggungjawaban Keabsahan Dokumen Online.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" role="radiogroup" aria-label="Mode Penerima Kuasa Pengecekan">
+                        {[
+                          {
+                            id: 'ppats' as const,
+                            label: 'PPATS / Camat (Sesuai Contoh Standar)',
+                            desc: 'Menampilkan Camat/PPATS beserta NIP sebagai Penerima Kuasa.',
+                          },
+                          {
+                            id: 'kuasa_bpn' as const,
+                            label: 'Staf Kuasa BPN',
+                            desc: 'Menggunakan data Penerima Kuasa BPN di panel bawah.',
+                          },
+                        ].map((opt) => {
+                          const active = (nonAkta.pengecekan_kuasa_mode ?? 'ppats') === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              role="radio"
+                              aria-checked={active}
+                              onClick={() =>
+                                setNonAkta({ ...nonAkta, pengecekan_kuasa_mode: opt.id })
+                              }
+                              className={`p-3 rounded-xl border text-left transition-colors ${
+                                active
+                                  ? 'border-teal-600 bg-teal-600 text-white shadow-sm'
+                                  : 'border-teal-900/12 dark:border-teal-500/25 bg-white dark:bg-[#081E22] text-slate-700 dark:text-teal-100 hover:bg-teal-50 dark:hover:bg-[#103036]'
+                              }`}
+                            >
+                              <span className="block text-xs font-bold">{opt.label}</span>
+                              <span
+                                className={`block text-[11px] mt-0.5 ${
+                                  active ? 'text-teal-50' : 'text-slate-500 dark:text-teal-200/70'
+                                }`}
+                              >
+                                {opt.desc}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {(nonAkta.pengecekan_kuasa_mode ?? 'ppats') === 'ppats' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                          <div>
+                            <label htmlFor="cek-ppats-ttl" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                              Tempat / Tanggal Lahir PPATS (Opsional)
+                            </label>
+                            <input
+                              id="cek-ppats-ttl"
+                              type="text"
+                              value={nonAkta.ppats_ttl ?? ''}
+                              onChange={(e) =>
+                                setNonAkta({ ...nonAkta, ppats_ttl: e.target.value })
+                              }
+                              placeholder="Contoh: Boyolali, 12-04-1978"
+                              className="input-airy w-full px-2.5 py-1.5"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="cek-ppats-nik" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                              Nomor KTP (NIK) PPATS (Opsional)
+                            </label>
+                            <input
+                              id="cek-ppats-nik"
+                              type="text"
+                              value={nonAkta.ppats_nik ?? ''}
+                              onChange={(e) =>
+                                setNonAkta({ ...nonAkta, ppats_nik: e.target.value })
+                              }
+                              placeholder="3309..."
+                              className="input-airy w-full px-2.5 py-1.5 font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="cek-ppats-pekerjaan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                              Pekerjaan / Jabatan PPATS
+                            </label>
+                            <input
+                              id="cek-ppats-pekerjaan"
+                              type="text"
+                              value={nonAkta.ppats_pekerjaan ?? ''}
+                              onChange={(e) =>
+                                setNonAkta({ ...nonAkta, ppats_pekerjaan: e.target.value })
+                              }
+                              placeholder={`Camat ${(settings.nama_kecamatan || '').replace(/^Kecamatan\s+/i, '')} / PPATS`}
+                              className="input-airy w-full px-2.5 py-1.5"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="cek-ppats-alamat" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                              Alamat Kantor / Domisili PPATS
+                            </label>
+                            <input
+                              id="cek-ppats-alamat"
+                              type="text"
+                              value={nonAkta.ppats_alamat ?? ''}
+                              onChange={(e) =>
+                                setNonAkta({ ...nonAkta, ppats_alamat: e.target.value })
+                              }
+                              placeholder={settings.alamat_kantor}
+                              className="input-airy w-full px-2.5 py-1.5"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 4c. Detail Khusus Validasi Sertipikat & Analisis Bidang (Geotagging & Foto GPS) */}
+                  {(layanan === 'Validasi Sertipikat' || layanan === 'Analisis Bidang') && (
+                    <div className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3">
+                      <div className="border-b border-teal-900/10 dark:border-teal-500/20 pb-2">
+                        <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                          {layanan === 'Validasi Sertipikat'
+                            ? 'Lampiran Geotagging & Foto GPS Map Camera (Validasi Sertipikat)'
+                            : 'Data Koordinat Poligon, Geotagging & Foto Lokasi (Analisis Bidang)'}
+                        </h3>
+                        <p className="text-[11px] text-slate-600 dark:text-teal-200/75 mt-0.5">
+                          Isi tautan Google Maps dan koordinat lokasi. Unggah foto Tampak Depan, Patok 1–4, dan Poligon jika ingin langsung tercetak ke dalam Word (.DOCX), atau biarkan kosong untuk bingkai siap tempel.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label htmlFor="geo-maps" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Tautan Google Maps Lokasi
+                          </label>
+                          <input
+                            id="geo-maps"
+                            type="url"
+                            value={nonAkta.link_maps ?? ''}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, link_maps: e.target.value })
+                            }
+                            placeholder="https://maps.app.goo.gl/..."
+                            className="input-airy w-full px-2.5 py-1.5"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="geo-gps" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Koordinat GPS Bidang (Opsional)
+                          </label>
+                          <input
+                            id="geo-gps"
+                            type="text"
+                            value={nonAkta.koordinat_gps ?? ''}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, koordinat_gps: e.target.value })
+                            }
+                            placeholder="-7.52341, 110.76123"
+                            className="input-airy w-full px-2.5 py-1.5 font-mono"
+                          />
+                        </div>
+
+                        {layanan === 'Analisis Bidang' && (
+                          <div className="sm:col-span-2">
+                            <label htmlFor="geo-poligon" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                              Titik Koordinat Sudut Poligon (1 titik per baris, opsional)
+                            </label>
+                            <textarea
+                              id="geo-poligon"
+                              rows={3}
+                              value={nonAkta.koordinat_poligon ?? ''}
+                              onChange={(e) =>
+                                setNonAkta({ ...nonAkta, koordinat_poligon: e.target.value })
+                              }
+                              placeholder={'-7.530057, 110.779658\n-7.530119, 110.779647\n-7.530143, 110.779764\n-7.530080, 110.779779'}
+                              className="input-airy w-full px-2.5 py-1.5 font-mono text-xs"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2 pt-1">
+                        <p className="text-[11px] font-semibold text-slate-700 dark:text-teal-100/90">
+                          Unggah Foto Geotagging (Opsional — Otomatis Disematkan ke DOCX)
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                          {(
+                            [
+                              { key: 'foto_tampak_depan', label: 'Tampak Depan' },
+                              { key: 'foto_patok_1', label: 'Patok 1' },
+                              { key: 'foto_patok_2', label: 'Patok 2' },
+                              { key: 'foto_patok_3', label: 'Patok 3' },
+                              { key: 'foto_patok_4', label: 'Patok 4' },
+                              { key: 'foto_poligon', label: 'Poligon / Citra' },
+                            ] as const
+                          ).map((slot) => {
+                            const val = nonAkta[slot.key];
+                            return (
+                              <div
+                                key={slot.key}
+                                className="p-2.5 rounded-xl border border-teal-900/12 dark:border-teal-500/20 bg-white dark:bg-[#081E22] space-y-2"
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="text-[11px] font-bold text-slate-800 dark:text-teal-50">
+                                    {slot.label}
+                                  </span>
+                                  {val && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setNonAkta((prev) => ({ ...prev, [slot.key]: '' }))
+                                      }
+                                      aria-label={`Hapus foto ${slot.label}`}
+                                      className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 hover:underline"
+                                    >
+                                      Hapus
+                                    </button>
+                                  )}
+                                </div>
+                                {val ? (
+                                  <img
+                                    src={val}
+                                    alt={slot.label}
+                                    className="w-full h-20 object-cover rounded-lg border border-teal-900/10"
+                                  />
+                                ) : (
+                                  <label className="flex flex-col items-center justify-center h-20 rounded-lg border border-dashed border-teal-500/40 bg-teal-50/40 dark:bg-teal-950/30 cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors text-[11px] text-teal-700 dark:text-teal-200">
+                                    <ImagePlus className="w-4 h-4 mb-1" />
+                                    <span>Pilih Foto</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      aria-label={`Unggah foto ${slot.label}`}
+                                      onChange={(e) => void handleGeotagPhotoUpload(slot.key, e)}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4d. Detail Khusus Permohonan PKKPR (DPMPTSP) */}
+                  {layanan === 'Permohonan PKKPR' && (
+                    <div className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3.5">
+                      <div className="border-b border-teal-900/10 dark:border-teal-500/20 pb-2">
+                        <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                          Formulir Permohonan PKKPR (DPMPTSP) &amp; Surat Kuasa Pengurusan
+                        </h3>
+                        <p className="text-[11px] text-slate-600 dark:text-teal-200/75 mt-0.5">
+                          Menghasilkan Hal. 1 Surat Permohonan PKKPR kepada Bupati Cq. Kepala DPMPTSP, Hal. 2 Surat Kuasa Pengurusan, dan opsional Hal. 3 Surat Kuasa Kedua.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label htmlFor="pkkpr-jenis" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Jenis Kegiatan PKKPR
+                          </label>
+                          <select
+                            id="pkkpr-jenis"
+                            value={nonAkta.pkkpr_jenis_kegiatan ?? 'Non Berusaha'}
+                            onChange={(e) =>
+                              setNonAkta({
+                                ...nonAkta,
+                                pkkpr_jenis_kegiatan: e.target.value as 'Non Berusaha' | 'Berusaha',
+                              })
+                            }
+                            className="input-airy w-full px-2.5 py-1.5 font-semibold"
+                          >
+                            <option value="Non Berusaha">Non Berusaha</option>
+                            <option value="Berusaha">Berusaha</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label htmlFor="pkkpr-nomor" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Nomor Surat (Opsional)
+                          </label>
+                          <input
+                            id="pkkpr-nomor"
+                            type="text"
+                            value={nonAkta.pkkpr_nomor_surat ?? ''}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, pkkpr_nomor_surat: e.target.value })
+                            }
+                            placeholder="Kosongkan untuk titik-titik"
+                            className="input-airy w-full px-2.5 py-1.5 font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="pkkpr-lampiran" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Lampiran
+                          </label>
+                          <input
+                            id="pkkpr-lampiran"
+                            type="text"
+                            value={nonAkta.pkkpr_lampiran ?? '1 (Satu) Berkas'}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, pkkpr_lampiran: e.target.value })
+                            }
+                            placeholder="1 (Satu) Berkas"
+                            className="input-airy w-full px-2.5 py-1.5"
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor="pkkpr-telp" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            No. Telp / WA Pemohon
+                          </label>
+                          <input
+                            id="pkkpr-telp"
+                            type="text"
+                            value={nonAkta.pkkpr_telepon ?? ''}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, pkkpr_telepon: e.target.value })
+                            }
+                            placeholder="08..."
+                            className="input-airy w-full px-2.5 py-1.5 font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="pkkpr-email" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Email Pemohon
+                          </label>
+                          <input
+                            id="pkkpr-email"
+                            type="email"
+                            value={nonAkta.pkkpr_email ?? ''}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, pkkpr_email: e.target.value })
+                            }
+                            placeholder="nama@gmail.com"
+                            className="input-airy w-full px-2.5 py-1.5"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="pkkpr-npwp" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            No. NPWP (Opsional)
+                          </label>
+                          <input
+                            id="pkkpr-npwp"
+                            type="text"
+                            value={nonAkta.pkkpr_npwp ?? ''}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, pkkpr_npwp: e.target.value })
+                            }
+                            placeholder="-"
+                            className="input-airy w-full px-2.5 py-1.5 font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor="pkkpr-diwakili" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Perorangan / Badan yg Diwakili
+                          </label>
+                          <input
+                            id="pkkpr-diwakili"
+                            type="text"
+                            value={nonAkta.pkkpr_diwakili ?? 'Diri Sendiri'}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, pkkpr_diwakili: e.target.value })
+                            }
+                            placeholder="Diri Sendiri"
+                            className="input-airy w-full px-2.5 py-1.5"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="pkkpr-kbli" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Pemanfaatan Ruang (KBLI)
+                          </label>
+                          <input
+                            id="pkkpr-kbli"
+                            type="text"
+                            value={nonAkta.pkkpr_kbli ?? 'Rumah Tinggal'}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, pkkpr_kbli: e.target.value })
+                            }
+                            placeholder="Rumah Tinggal / Perdagangan"
+                            className="input-airy w-full px-2.5 py-1.5"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label htmlFor="pkkpr-lantai" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                              Jml Lantai
+                            </label>
+                            <input
+                              id="pkkpr-lantai"
+                              type="text"
+                              value={nonAkta.pkkpr_jumlah_lantai ?? '1'}
+                              onChange={(e) =>
+                                setNonAkta({ ...nonAkta, pkkpr_jumlah_lantai: e.target.value })
+                              }
+                              placeholder="1"
+                              className="input-airy w-full px-2.5 py-1.5"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="pkkpr-luas-bgn" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                              Luas Bgn
+                            </label>
+                            <input
+                              id="pkkpr-luas-bgn"
+                              type="text"
+                              value={nonAkta.pkkpr_luas_bangunan ?? '± 100 m2'}
+                              onChange={(e) =>
+                                setNonAkta({ ...nonAkta, pkkpr_luas_bangunan: e.target.value })
+                              }
+                              placeholder="± 100 m2"
+                              className="input-airy w-full px-2.5 py-1.5"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <label htmlFor="pkkpr-alamat-lokasi" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Alamat Lokasi Bidang (Dukuh / RT / RW)
+                          </label>
+                          <input
+                            id="pkkpr-alamat-lokasi"
+                            type="text"
+                            value={nonAkta.pkkpr_alamat_lokasi ?? ''}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, pkkpr_alamat_lokasi: e.target.value })
+                            }
+                            placeholder="Contoh: Dk. Ngesrep Rt. 006 / Rw. 005"
+                            className="input-airy w-full px-2.5 py-1.5"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="pkkpr-kawasan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Kawasan (Opsional)
+                          </label>
+                          <input
+                            id="pkkpr-kawasan"
+                            type="text"
+                            value={nonAkta.pkkpr_kawasan ?? ''}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, pkkpr_kawasan: e.target.value })
+                            }
+                            placeholder="-"
+                            className="input-airy w-full px-2.5 py-1.5"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-3">
+                          <label htmlFor="pkkpr-poligon" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Titik Koordinat Polygon pada Masing-masing Sudut (1 titik per baris — otomatis berhuruf a, b, c, d, ...)
+                          </label>
+                          <textarea
+                            id="pkkpr-poligon"
+                            rows={4}
+                            value={nonAkta.koordinat_poligon ?? ''}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, koordinat_poligon: e.target.value })
+                            }
+                            placeholder={'-7.530057, 110.779658\n-7.530119, 110.779647\n-7.530143, 110.779764\n-7.530080, 110.779779'}
+                            className="input-airy w-full px-2.5 py-1.5 font-mono text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Opsional Penerima Kuasa Kedua (Hal. 3 Surat Kuasa PKKPR) */}
+                      <div className="p-3 rounded-xl border border-teal-900/12 dark:border-teal-500/20 bg-white dark:bg-[#081E22] space-y-2.5">
+                        <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(nonAkta.pkkpr_kuasa_2_aktif)}
+                            onChange={(e) =>
+                              setNonAkta({
+                                ...nonAkta,
+                                pkkpr_kuasa_2_aktif: e.target.checked,
+                              })
+                            }
+                            className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                          />
+                          <span>Sertakan Surat Kuasa Pengurusan Kedua (Hal. 3 — Opsional)</span>
+                        </label>
+
+                        {nonAkta.pkkpr_kuasa_2_aktif && (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                            <div>
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                Nama Kuasa Kedua
+                              </label>
+                              <input
+                                type="text"
+                                value={nonAkta.pkkpr_kuasa_2_detail?.nama ?? ''}
+                                onChange={(e) =>
+                                  setNonAkta({
+                                    ...nonAkta,
+                                    pkkpr_kuasa_2_detail: {
+                                      ...(nonAkta.pkkpr_kuasa_2_detail ?? { nama: '' }),
+                                      nama: e.target.value.toUpperCase(),
+                                    },
+                                  })
+                                }
+                                placeholder="NAMA PENERIMA KUASA 2"
+                                className="input-airy w-full px-2.5 py-1.5 font-medium uppercase"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                Nomor KTP (NIK)
+                              </label>
+                              <input
+                                type="text"
+                                value={nonAkta.pkkpr_kuasa_2_detail?.nik ?? ''}
+                                onChange={(e) =>
+                                  setNonAkta({
+                                    ...nonAkta,
+                                    pkkpr_kuasa_2_detail: {
+                                      ...(nonAkta.pkkpr_kuasa_2_detail ?? { nama: '' }),
+                                      nik: e.target.value,
+                                    },
+                                  })
+                                }
+                                placeholder="3309..."
+                                className="input-airy w-full px-2.5 py-1.5 font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                Pekerjaan
+                              </label>
+                              <input
+                                type="text"
+                                value={nonAkta.pkkpr_kuasa_2_detail?.pekerjaan ?? ''}
+                                onChange={(e) =>
+                                  setNonAkta({
+                                    ...nonAkta,
+                                    pkkpr_kuasa_2_detail: {
+                                      ...(nonAkta.pkkpr_kuasa_2_detail ?? { nama: '' }),
+                                      pekerjaan: e.target.value,
+                                    },
+                                  })
+                                }
+                                placeholder="Karyawan Swasta"
+                                className="input-airy w-full px-2.5 py-1.5"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                Tempat Lahir
+                              </label>
+                              <input
+                                type="text"
+                                value={nonAkta.pkkpr_kuasa_2_detail?.tempat_lahir ?? ''}
+                                onChange={(e) =>
+                                  setNonAkta({
+                                    ...nonAkta,
+                                    pkkpr_kuasa_2_detail: {
+                                      ...(nonAkta.pkkpr_kuasa_2_detail ?? { nama: '' }),
+                                      tempat_lahir: e.target.value,
+                                    },
+                                  })
+                                }
+                                placeholder="Boyolali"
+                                className="input-airy w-full px-2.5 py-1.5"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                Tanggal Lahir
+                              </label>
+                              <DateInputId
+                                allowEmpty
+                                value={nonAkta.pkkpr_kuasa_2_detail?.tanggal_lahir ?? ''}
+                                onChange={(val) =>
+                                  setNonAkta({
+                                    ...nonAkta,
+                                    pkkpr_kuasa_2_detail: {
+                                      ...(nonAkta.pkkpr_kuasa_2_detail ?? { nama: '' }),
+                                      tanggal_lahir: val,
+                                    },
+                                  })
+                                }
+                                placeholder="DD-MM-YYYY"
+                                ariaLabel="Tanggal lahir kuasa kedua PKKPR"
+                                className="py-1.5 px-2.5"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                Alamat Lengkap
+                              </label>
+                              <input
+                                type="text"
+                                value={nonAkta.pkkpr_kuasa_2_detail?.alamat ?? ''}
+                                onChange={(e) =>
+                                  setNonAkta({
+                                    ...nonAkta,
+                                    pkkpr_kuasa_2_detail: {
+                                      ...(nonAkta.pkkpr_kuasa_2_detail ?? { nama: '' }),
+                                      alamat: e.target.value,
+                                    },
+                                  })
+                                }
+                                placeholder="Dukuh, RT/RW, Desa, Kec, Kab"
+                                className="input-airy w-full px-2.5 py-1.5"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* 5. Pengesahan Ganda Camat & Kepala Desa Asal Sertipikat */}
                   {(layanan === 'Turun Waris' ||
                     layanan === 'Ralat Data' ||
@@ -4318,7 +4999,15 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 : getNonAktaBundleFileName(layanan);
               const displayDesc = isAkta
                 ? meta.description
-                : `Bundel lengkap berkas Non-Akta ${layanan} dalam 1 file F4 dengan format pengesahan sesuai jenis dokumen.`;
+                : layanan === 'Pengecekan Sertipikat'
+                  ? 'Bundel F4 Pengecekan Sertipikat (3 Halaman): Permohonan ATR/BPN Poin 13, Surat Kuasa Substitusi, dan Pernyataan Keabsahan & Kebenaran Dokumen Online.'
+                  : layanan === 'Validasi Sertipikat'
+                    ? 'Bundel F4 Validasi Sertipikat (4 Halaman): Permohonan ATR/BPN Poin 14 (Validasi/Verifikasi), Surat Kuasa, serta Lampiran Geotagging (Tampak Depan, Patok 1–4, dan Poligon).'
+                    : layanan === 'Analisis Bidang'
+                      ? 'Bundel F4 Analisis Bidang (5 Halaman): Permohonan ATR/BPN Poin 14 (Analisis Bidang), Surat Kuasa, Pernyataan Keabsahan Data & Lokasi Bidang, serta Lampiran Geotagging & Koordinat Poligon.'
+                      : layanan === 'Permohonan PKKPR'
+                        ? 'Bundel F4 Permohonan PKKPR DPMPTSP (2–3 Halaman): Surat Permohonan PKKPR kepada Bupati Cq. Kepala DPMPTSP beserta Surat Kuasa Pengurusan.'
+                        : `Bundel lengkap berkas Non-Akta ${layanan} dalam 1 file F4 dengan format pengesahan sesuai jenis dokumen.`;
               const paperInfo =
                 meta.paperSize === 'A4'
                   ? 'Kertas A4 (210 × 297 mm)'

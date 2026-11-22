@@ -72,6 +72,9 @@ export function filterNonAktaRecords(
         r.non_akta?.nama_pewaris || '',
         r.non_akta?.nama_di_sertipikat || '',
         r.non_akta?.nama_di_ktp_kk || '',
+        r.non_akta?.pkkpr_kbli || '',
+        r.non_akta?.pkkpr_nomor_surat || '',
+        r.non_akta?.link_maps || '',
         r.akta.nama_kuasa_bpn || '',
         partyText,
       ]
@@ -88,6 +91,10 @@ export interface NonAktaStatsSummary {
   pemecahan: number;
   ukurUlang: number;
   ralatData: number;
+  pengecekan: number;
+  validasi: number;
+  analisisBidang: number;
+  pkkpr: number;
   pemberkasanAwal: number;
   prosesBpn: number;
   selesai: number;
@@ -103,6 +110,10 @@ export function summarizeNonAktaStats(records: BerkasRecord[]): NonAktaStatsSumm
     ).length,
     ukurUlang: nonAkta.filter((r) => r.layanan === 'Ukur Ulang').length,
     ralatData: nonAkta.filter((r) => r.layanan === 'Ralat Data').length,
+    pengecekan: nonAkta.filter((r) => r.layanan === 'Pengecekan Sertipikat').length,
+    validasi: nonAkta.filter((r) => r.layanan === 'Validasi Sertipikat').length,
+    analisisBidang: nonAkta.filter((r) => r.layanan === 'Analisis Bidang').length,
+    pkkpr: nonAkta.filter((r) => r.layanan === 'Permohonan PKKPR').length,
     pemberkasanAwal: nonAkta.filter(
       (r) =>
         r.status === '1. Pemberkasan' ||
@@ -284,6 +295,26 @@ function describeNonAktaDetail(rec: BerkasRecord): string {
       return `${na.nama_di_sertipikat || '-'} -> ${na.nama_di_ktp_kk || '-'}`;
     }
     return 'Ralat Data Sertipikat';
+  }
+  if (rec.layanan === 'Pengecekan Sertipikat') {
+    return na?.pengecekan_kuasa_mode === 'kuasa_bpn'
+      ? 'Pengecekan via Kuasa BPN'
+      : 'Pengecekan via PPATS / Camat';
+  }
+  if (rec.layanan === 'Validasi Sertipikat') {
+    return na?.koordinat_gps
+      ? `Validasi · GPS: ${na.koordinat_gps}`
+      : 'Validasi/Verifikasi & Geotagging';
+  }
+  if (rec.layanan === 'Analisis Bidang') {
+    return na?.koordinat_gps
+      ? `Analisis Bidang · GPS: ${na.koordinat_gps}`
+      : 'Analisis Bidang & Geotagging Poligon';
+  }
+  if (rec.layanan === 'Permohonan PKKPR') {
+    const jenis = na?.pkkpr_jenis_kegiatan || 'Non Berusaha';
+    const kbli = na?.pkkpr_kbli?.trim() || 'Rumah Tinggal';
+    return `PKKPR ${jenis} · ${kbli}`;
   }
   return '-';
 }

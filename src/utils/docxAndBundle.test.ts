@@ -14,6 +14,16 @@ import {
 } from './docxTemplates';
 import { DEFAULT_OFFICE_SETTINGS, INITIAL_SEED_RECORDS } from './seedData';
 import { renderDocxPreviewPages } from './docxPreviewParser';
+import {
+  buildCombinedBphtbDocxBytes,
+  buildInitialBphtbFormData,
+} from './bphtbSubmissionGenerator';
+import { calculateLandTaxes, isAktaService } from './taxAndAudit';
+import {
+  filterNonAktaRecords,
+  filterRecordsByMonthYear,
+  summarizeNonAktaStats,
+} from './reportGenerator';
 
 test('generateBundleFiles renders 2 unified .docx documents: A4 Akta PPATS and F4 Lampiran Bundel Akta', async () => {
   const sample = {
@@ -809,4 +819,315 @@ test('Blank file dates (tanggal_akta: "") never fall back to tanggal_masuk and D
   );
   assert.ok(warisXml.includes('Tanggal ......................'));
 });
+
+test('All generated DOCX bundles prevent adjacent table auto-merge, enforce 1.15 spacing on Permohonan/Lampiran, and provide Meterai Rp 10.000 signature clearance', async () => {
+  const ajbRecord = INITIAL_SEED_RECORDS[0];
+  const ajbFiles = await generateBundleFiles(ajbRecord, DEFAULT_OFFICE_SETTINGS, {});
+  const aktaXml = new PizZip(ajbFiles[0].bytes).file('word/document.xml')?.asText() ?? '';
+  const lampXml = new PizZip(ajbFiles[1].bytes).file('word/document.xml')?.asText() ?? '';
+
+  // 1. Zero adjacent </w:tbl><w:tbl> merges in Akta & Lampiran Bundel Akta
+  assert.ok(
+    !/<\/w:tbl>\s*<w:tbl[\s>]/.test(aktaXml),
+    'Akta DOCX must not contain adjacent </w:tbl><w:tbl> elements'
+  );
+  assert.ok(
+    !/<\/w:tbl>\s*<w:tbl[\s>]/.test(lampXml),
+    'Lampiran Bundel Akta must not contain adjacent </w:tbl><w:tbl> elements (prevents Word merging Lampiran & Hormat Kami tables)'
+  );
+
+  // 2. Permohonan & Lampiran tables use 1.15 spacing (w:line="276"), fixed layout, and no internal borders
+  const permohonanIdx = lampXml.indexOf('Dengan ini mengajukan permohonan');
+  const lampiranIdx = lampXml.indexOf('Untuk melengkapi permohonan dimaksud');
+  const hormatKamiIdx = lampXml.indexOf('Hormat Kami,');
+  assert.ok(permohonanIdx > 0 && lampiranIdx > permohonanIdx && hormatKamiIdx > lampiranIdx);
+
+  const permohonanSlice = lampXml.slice(permohonanIdx, lampiranIdx);
+  const lampiranSlice = lampXml.slice(lampiranIdx, hormatKamiIdx);
+  assert.ok(permohonanSlice.includes('w:line="276"'), 'Daftar Permohonan must use 1.15 spacing (276 twips)');
+  assert.ok(!permohonanSlice.includes('w:line="360"'), 'Daftar Permohonan must not fall back to 1.5 spacing');
+  assert.ok(!permohonanSlice.includes('w:line="250"'), 'Row 5 Permohonan must not use mismatched 250 spacing');
+  assert.ok(permohonanSlice.includes('w:tblLayout w:type="fixed"'), 'Daftar Permohonan table must use fixed DXA layout');
+
+  assert.ok(lampiranSlice.includes('w:line="276"'), 'Lampiran 2-col table must use 1.15 spacing (276 twips)');
+  assert.ok(lampiranSlice.includes('w:tblLayout w:type="fixed"'), 'Lampiran 2-col table must use fixed DXA layout');
+  assert.ok(lampiranSlice.includes('w:insideH w:val="none"'), 'Lampiran 2-col table must explicitly disable inside borders');
+  assert.ok(lampiranSlice.includes('w:hanging="340"'), 'Lampiran items must use hanging indent for wrapped lines');
+
+  // 3. Signature blocks provide ample room for Meterai Rp 10.000 (>= 1320-1440 twips)
+  assert.ok(aktaXml.includes('w:after="1440"') || aktaXml.includes('w:after="1320"'), 'Akta signatures must provide Meterai clearance');
+  assert.ok(lampXml.includes('w:after="1440"'), 'Lampiran Bundel signatures must provide 1440 twips Meterai clearance');
+  assert.ok(lampXml.includes('w:after="1320"'), 'Lampiran Bundel PPATS signatures must provide 1320 twips clearance');
+  assert.ok(!lampXml.includes('Kementrian'), 'Typo Kementrian must be corrected to Kementerian');
+  assert.ok(!lampXml.includes('agar diperunakan'), 'Typo diperunakan must be corrected to dipergunakan');
+
+  // 4. All Non-Akta bundles also have zero adjacent table merges, 1.15 Permohonan/Lampiran spacing, and 1440 Meterai space
+  const nonAktaServices = ['Turun Waris', 'Pemecahan', 'Ukur Ulang', 'Ralat Data'] as const;
+  for (const layanan of nonAktaServices) {
+    const rec = { ...ajbRecord, layanan };
+    const files = await generateBundleFiles(rec, DEFAULT_OFFICE_SETTINGS, {});
+    const xml = new PizZip(files[0].bytes).file('word/document.xml')?.asText() ?? '';
+    assert.ok(
+      !/<\/w:tbl>\s*<w:tbl[\s>]/.test(xml),
+      `Non-Akta ${layanan} must not contain adjacent </w:tbl><w:tbl> elements`
+    );
+    assert.ok(xml.includes('w:line="276"'), `Non-Akta ${layanan} must use 1.15 spacing`);
+    assert.ok(xml.includes('w:after="1440"'), `Non-Akta ${layanan} must include 1440 twips Meterai clearance`);
+  }
+
+  // 5. BPHTB Combined DOCX (AJB + Hibah) must have zero adjacent table merges & enlarged Meterai zones
+  for (const layanan of ['AJB', 'Akta Hibah'] as const) {
+    const rec = { ...ajbRecord, layanan };
+    const taxForm = {
+      layanan,
+      luas_m2: rec.tanah.luas_m2,
+      njop_bumi_m2: rec.pbb.njop_bumi_m2,
+      njop_bangunan: rec.pbb.njop_bangunan,
+      harga_per_m2: 0,
+      nilai_transaksi_override: 250_000_000,
+      npoptkp: 80_000_000,
+    };
+    const taxResult = calculateLandTaxes(taxForm);
+    const bphtbForm = buildInitialBphtbFormData(DEFAULT_OFFICE_SETTINGS, rec);
+    const bphtbResult = await buildCombinedBphtbDocxBytes({
+      taxForm,
+      taxResult,
+      form: bphtbForm,
+      settings: DEFAULT_OFFICE_SETTINGS,
+    });
+    const bphtbXml = new PizZip(bphtbResult.bytes).file('word/document.xml')?.asText() ?? '';
+    assert.ok(
+      !/<\/w:tbl>\s*<w:tbl[\s>]/.test(bphtbXml),
+      `BPHTB combined DOCX (${layanan}) must not contain adjacent </w:tbl><w:tbl> elements`
+    );
+    assert.ok(bphtbXml.includes('w:after="500"') && bphtbXml.includes('w:after="1260"'), `BPHTB (${layanan}) Surat Kuasa must have aligned Meterai space`);
+    assert.ok(bphtbXml.includes('w:after="480"'), `BPHTB (${layanan}) SPJM/Bukti Transaksi must have enlarged Meterai space`);
+  }
+
+  // 6. docxPreviewParser computes accurate DXA column percentages & preserves generous signature spacing
+  const preview = await renderDocxPreviewPages(ajbRecord, DEFAULT_OFFICE_SETTINGS, {}, '02_lampiran_bundel');
+  const permohonanPage = preview.pages.find((p) => p.title.includes('Permohonan ATR/BPN'));
+  assert.ok(permohonanPage, 'Preview must find Hal. 2 Permohonan ATR/BPN');
+  const tablesOnPage2 = permohonanPage.blocks.filter((b) => b.kind === 'table');
+  assert.ok(tablesOnPage2.length >= 4, 'Hal. 2 Permohonan must parse all separate tables (not merged)');
+  const lampiranTable = tablesOnPage2[tablesOnPage2.length - 2];
+  assert.equal(lampiranTable.kind, 'table');
+  if (lampiranTable.kind === 'table') {
+    const firstRow = lampiranTable.rows[0];
+    assert.equal(firstRow.cells.length, 2, 'Lampiran table must have exactly 2 columns');
+    assert.ok(
+      (firstRow.cells[0].widthPct ?? 0) >= 48 && (firstRow.cells[0].widthPct ?? 0) <= 54,
+      `Lampiran left column widthPct should be ~51%, got ${firstRow.cells[0].widthPct}`
+    );
+    assert.ok(
+      (firstRow.cells[1].widthPct ?? 0) >= 46 && (firstRow.cells[1].widthPct ?? 0) <= 52,
+      `Lampiran right column widthPct should be ~49%, got ${firstRow.cells[1].widthPct}`
+    );
+  }
+  const hormatTable = tablesOnPage2[tablesOnPage2.length - 1];
+  if (hormatTable.kind === 'table') {
+    const rightCellBlocks = hormatTable.rows[0]?.cells[1]?.blocks ?? [];
+    const hormatPara = rightCellBlocks.find(
+      (b) => b.kind === 'paragraph' && b.runs.some((r) => r.text.includes('Hormat Kami'))
+    );
+    assert.ok(hormatPara && hormatPara.kind === 'paragraph', 'Must find Hormat Kami paragraph');
+    if (hormatPara && hormatPara.kind === 'paragraph') {
+      assert.ok(
+        hormatPara.spaceAfterPx >= 50,
+        `Hormat Kami signature clearance in preview should be >= 50px, got ${hormatPara.spaceAfterPx}`
+      );
+    }
+  }
+});
+
+test('New Non-Akta sub-bundles (Pengecekan Sertipikat, Validasi Sertipikat, Analisis Bidang, Permohonan PKKPR) match PDF layouts, remain strictly Non-Akta, and pass all XML/preview invariants', async () => {
+  const base = INITIAL_SEED_RECORDS[0];
+  // Minimal valid 1x1 transparent PNG data URL for verifying embedded ImageRun in Geotagging DOCX
+  const tinyPngDataUrl =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=';
+
+  const newServices = [
+    'Pengecekan Sertipikat',
+    'Validasi Sertipikat',
+    'Analisis Bidang',
+    'Permohonan PKKPR',
+  ] as const;
+
+  for (const svc of newServices) {
+    assert.equal(isAktaService(svc), false, `${svc} must be classified as Non-Akta`);
+  }
+
+  // 1. Pengecekan Sertipikat (PPATS mode + Kuasa BPN mode)
+  const cekRecord = {
+    ...base,
+    id: 'cek-1',
+    layanan: 'Pengecekan Sertipikat' as const,
+    akta: { ...base.akta, tanggal_akta: '09-04-2026' },
+    non_akta: {
+      pengecekan_kuasa_mode: 'ppats' as const,
+      ppats_ttl: 'Boyolali, 12-04-1978',
+      ppats_nik: '3309111204780001',
+      ppats_pekerjaan: 'Camat Bergas / PPATS',
+      ppats_alamat: DEFAULT_OFFICE_SETTINGS.alamat_kantor,
+    },
+  };
+  const cekFiles = await generateBundleFiles(cekRecord, DEFAULT_OFFICE_SETTINGS, {});
+  assert.equal(cekFiles.length, 1);
+  assert.equal(cekFiles[0].fileName, '02_Lampiran_Bundel_Pengecekan_Sertipikat.docx');
+  const cekXml = new PizZip(cekFiles[0].bytes).file('word/document.xml')?.asText() ?? '';
+  assert.ok(!/<\/w:tbl>\s*<w:tbl[\s>]/.test(cekXml), 'Pengecekan must have zero adjacent tables');
+  assert.ok(cekXml.includes('13. Pengecekan Sertipikat'));
+  assert.ok(cekXml.includes('14. ALIH MEDIA'));
+  assert.ok(cekXml.includes('mendaftarkan Pengecekan Sertipikat ke Kantor BPN'));
+  assert.ok(cekXml.includes('SURAT PERNYATAAN PERTANGGUNGJAWABAN KEABSAHAN DAN KEBENARAN DOKUMEN'));
+  assert.ok(cekXml.includes('Pejabat Pembuat Akta Tanah Sementara'));
+  assert.ok(cekXml.includes('w:line="276"'));
+  assert.ok(cekXml.includes('w:after="1440"'));
+  assert.ok(!cekXml.includes('{{') && !cekXml.includes('}}'));
+
+  const cekPreview = await renderDocxPreviewPages(cekRecord, DEFAULT_OFFICE_SETTINGS, {}, '02_lampiran_bundel');
+  assert.equal(cekPreview.pages.length, 3);
+  assert.ok(cekPreview.pages[0].title.includes('Permohonan ATR/BPN'));
+  assert.ok(cekPreview.pages[1].title.includes('Surat Kuasa'));
+  assert.ok(cekPreview.pages[2].title.includes('Keabsahan'));
+
+  // 2. Validasi Sertipikat (including embedded PNG photo check)
+  const validasiRecord = {
+    ...base,
+    id: 'val-1',
+    layanan: 'Validasi Sertipikat' as const,
+    akta: { ...base.akta, tanggal_akta: '09-04-2026' },
+    non_akta: {
+      link_maps: 'https://maps.app.goo.gl/contohValidasi123',
+      koordinat_gps: '-7.52341, 110.76123',
+      foto_tampak_depan: tinyPngDataUrl,
+    },
+  };
+  const validasiFiles = await generateBundleFiles(validasiRecord, DEFAULT_OFFICE_SETTINGS, {});
+  assert.equal(validasiFiles.length, 1);
+  assert.equal(validasiFiles[0].fileName, '02_Lampiran_Bundel_Validasi_Sertipikat.docx');
+  const validasiZip = new PizZip(validasiFiles[0].bytes);
+  const validasiXml = validasiZip.file('word/document.xml')?.asText() ?? '';
+  const validasiMediaFiles = Object.keys(validasiZip.files).filter((k) => k.startsWith('word/media/'));
+  assert.ok(validasiMediaFiles.length >= 1, 'Uploaded geotagging photo must be embedded inside word/media/');
+  assert.ok(!/<\/w:tbl>\s*<w:tbl[\s>]/.test(validasiXml), 'Validasi must have zero adjacent tables');
+  assert.ok(validasiXml.includes('14. Validasi/Verifikasi'));
+  assert.ok(validasiXml.includes('Validasi Hak Sertipikat'));
+  assert.ok(validasiXml.includes('GEOTAGGING'));
+  assert.ok(validasiXml.includes('TAMPAK DEPAN'));
+  assert.ok(validasiXml.includes('poligon'));
+  assert.ok(validasiXml.includes('https://maps.app.goo.gl/contohValidasi123'));
+  assert.ok(validasiXml.includes('w:line="276"'));
+  assert.ok(validasiXml.includes('w:after="1440"'));
+
+  const validasiPreview = await renderDocxPreviewPages(validasiRecord, DEFAULT_OFFICE_SETTINGS, {}, '02_lampiran_bundel');
+  assert.equal(validasiPreview.pages.length, 4);
+  assert.ok(validasiPreview.pages[0].title.includes('Permohonan ATR/BPN'));
+  assert.ok(validasiPreview.pages[1].title.includes('Surat Kuasa'));
+  assert.ok(validasiPreview.pages[2].title.includes('Geotagging'));
+  assert.ok(validasiPreview.pages[3].title.includes('Geotagging Lanjutan'));
+
+  // 3. Analisis Bidang (5 pages with polygon coords + pernyataan keabsahan)
+  const analisisRecord = {
+    ...base,
+    id: 'ana-1',
+    layanan: 'Analisis Bidang' as const,
+    akta: { ...base.akta, tanggal_akta: '09-04-2026' },
+    non_akta: {
+      pengesahan_mode: 'ppats' as const,
+      link_maps: 'https://maps.app.goo.gl/analisisBidang',
+      koordinat_gps: '-7.53010, 110.77970',
+      koordinat_poligon: '-7.530057, 110.779658\n-7.530119, 110.779647\n-7.530143, 110.779764\n-7.530080, 110.779779',
+    },
+  };
+  const analisisFiles = await generateBundleFiles(analisisRecord, DEFAULT_OFFICE_SETTINGS, {});
+  assert.equal(analisisFiles.length, 1);
+  assert.equal(analisisFiles[0].fileName, '02_Lampiran_Bundel_Analisis_Bidang.docx');
+  const analisisXml = new PizZip(analisisFiles[0].bytes).file('word/document.xml')?.asText() ?? '';
+  assert.ok(!/<\/w:tbl>\s*<w:tbl[\s>]/.test(analisisXml), 'Analisis Bidang must have zero adjacent tables');
+  assert.ok(analisisXml.includes('14. Analisis Bidang'));
+  assert.ok(analisisXml.includes('Analisis Bidang Tanah'));
+  assert.ok(analisisXml.includes('SURAT PERNYATAAN KEABSAHAN DATA &amp; LOKASI BIDANG TANAH'));
+  assert.ok(analisisXml.includes('GEOTAGGING &amp; ANALISIS BIDANG'));
+  assert.ok(analisisXml.includes('a. -7.530057, 110.779658'));
+  assert.ok(analisisXml.includes('w:line="276"'));
+  assert.ok(analisisXml.includes('w:after="1440"'));
+
+  const analisisPreview = await renderDocxPreviewPages(analisisRecord, DEFAULT_OFFICE_SETTINGS, {}, '02_lampiran_bundel');
+  assert.equal(analisisPreview.pages.length, 5);
+  assert.ok(analisisPreview.pages[2].title.includes('Keabsahan'));
+  assert.ok(analisisPreview.pages[3].title.includes('Analisis Bidang'));
+
+  // 4. Permohonan PKKPR (2 pages default, 3 pages with Kuasa 2)
+  const pkkprBase = {
+    ...base,
+    id: 'pkkpr-1',
+    layanan: 'Permohonan PKKPR' as const,
+    akta: { ...base.akta, tanggal_akta: '09-04-2026' },
+    non_akta: {
+      pkkpr_jenis_kegiatan: 'Non Berusaha' as const,
+      pkkpr_telepon: '081234567890',
+      pkkpr_email: 'pemohon@example.com',
+      pkkpr_npwp: '12.345.678.9-526.000',
+      pkkpr_diwakili: 'Diri Sendiri',
+      pkkpr_kbli: 'Rumah Tinggal',
+      pkkpr_jumlah_lantai: '1',
+      pkkpr_luas_bangunan: '± 100 m2',
+      pkkpr_alamat_lokasi: 'Dk. Ngesrep Rt. 006 / Rw. 005',
+      koordinat_poligon: '-7.530057, 110.779658\n-7.530119, 110.779647\n-7.530143, 110.779764\n-7.530080, 110.779779',
+      pkkpr_kuasa_2_aktif: false,
+    },
+  };
+  const pkkpr2Files = await generateBundleFiles(pkkprBase, DEFAULT_OFFICE_SETTINGS, {});
+  assert.equal(pkkpr2Files.length, 1);
+  assert.equal(pkkpr2Files[0].fileName, '02_Lampiran_Bundel_Permohonan_PKKPR.docx');
+  const pkkpr2Xml = new PizZip(pkkpr2Files[0].bytes).file('word/document.xml')?.asText() ?? '';
+  assert.ok(!/<\/w:tbl>\s*<w:tbl[\s>]/.test(pkkpr2Xml), 'PKKPR must have zero adjacent tables');
+  assert.ok(pkkpr2Xml.includes('Permohonan Persetujuan Kesesuaian Kegiatan Pemanfaatan Ruang (PKKPR)'));
+  assert.ok(pkkpr2Xml.includes('Cq. Kepala Dinas Penanaman Modal Dan Pelayanan Terpadu Satu Pintu'));
+  assert.ok(pkkpr2Xml.includes('Kantor DPMPTSP'));
+  assert.ok(pkkpr2Xml.includes('Rumah Tinggal'));
+  assert.ok(pkkpr2Xml.includes('Dk. Ngesrep Rt. 006 / Rw. 005'));
+  assert.ok(pkkpr2Xml.includes('w:line="276"'));
+  assert.ok(pkkpr2Xml.includes('w:after="1440"'));
+  const pkkpr2Preview = await renderDocxPreviewPages(pkkprBase, DEFAULT_OFFICE_SETTINGS, {}, '02_lampiran_bundel');
+  assert.equal(pkkpr2Preview.pages.length, 2);
+  assert.ok(pkkpr2Preview.pages[0].title.includes('PKKPR'));
+  assert.ok(pkkpr2Preview.pages[1].title.includes('Surat Kuasa'));
+
+  // With optional Kuasa 2 active -> 3 pages
+  const pkkpr3Record = {
+    ...pkkprBase,
+    non_akta: {
+      ...pkkprBase.non_akta,
+      pkkpr_kuasa_2_aktif: true,
+      pkkpr_kuasa_2_detail: {
+        nama: 'SRI WAHYUNI',
+        nik: '3309114505850002',
+        pekerjaan: 'Karyawan Swasta',
+        tempat_lahir: 'Boyolali',
+        tanggal_lahir: '05-05-1985',
+        alamat: 'Dk. Rejosari, Desa Sindon, Ngemplak, Boyolali',
+      },
+    },
+  };
+  const pkkpr3Preview = await renderDocxPreviewPages(pkkpr3Record, DEFAULT_OFFICE_SETTINGS, {}, '02_lampiran_bundel');
+  assert.equal(pkkpr3Preview.pages.length, 3);
+  assert.ok(pkkpr3Preview.pages[2].title.includes('Surat Kuasa'));
+  const pkkpr3Files = await generateBundleFiles(pkkpr3Record, DEFAULT_OFFICE_SETTINGS, {});
+  const pkkpr3Xml = new PizZip(pkkpr3Files[0].bytes).file('word/document.xml')?.asText() ?? '';
+  assert.ok(pkkpr3Xml.includes('SRI WAHYUNI'));
+
+  // 5. Exclusion from Laporan Bulanan PPATS & inclusion in Rekap Non-Akta
+  const allSample = [cekRecord, validasiRecord, analisisRecord, pkkprBase];
+  assert.equal(filterRecordsByMonthYear(allSample, 4, 2026).length, 0, 'New Non-Akta records must never enter Laporan Bulanan PPATS');
+  assert.equal(filterNonAktaRecords(allSample).length, 4, 'All 4 new Non-Akta records must appear in Rekap Non-Akta');
+  const stats = summarizeNonAktaStats(allSample);
+  assert.equal(stats.pengecekan, 1);
+  assert.equal(stats.validasi, 1);
+  assert.equal(stats.analisisBidang, 1);
+  assert.equal(stats.pkkpr, 1);
+});
+
+
 

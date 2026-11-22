@@ -76,7 +76,7 @@ export const RegisterModule: React.FC<RegisterModuleProps> = ({
             Buku Register Akta &amp; Berkas (Repertorium)
           </h1>
           <p className="text-sm text-slate-600 dark:text-teal-200/75 mt-1">
-            Catatan kronologis seluruh Akta PPATS dan Berkas Non-Akta (Turun Waris, Pemecahan, Ukur Ulang, Ralat Data) beserta NIB, luas bidang, nilai transaksi, serta BPHTB &amp; PPh.
+            Catatan kronologis seluruh Akta PPATS dan Berkas Non-Akta (Turun Waris, Pemecahan, Ukur Ulang, Ralat Data, Pengecekan, Validasi, Analisis Bidang, PKKPR) beserta NIB, luas bidang, nilai transaksi, serta BPHTB &amp; PPh.
           </p>
         </div>
       </div>

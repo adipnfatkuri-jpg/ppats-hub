@@ -2,6 +2,7 @@ import {
   AlignmentType,
   BorderStyle,
   Document,
+  LineRuleType,
   Packer,
   PageBreak,
   Paragraph,
@@ -136,6 +137,12 @@ const NO_BORDER = {
   bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
   left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
   right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+};
+
+const NO_TABLE_BORDERS = {
+  ...NO_BORDER,
+  insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
 };
 
 const OUTER_FRAME_BORDER = {
@@ -589,6 +596,7 @@ function p(
       before: opts?.spaceBefore ?? 0,
       after: opts?.spaceAfter ?? 50,
       line: opts?.line ?? LINE_1_15,
+      lineRule: LineRuleType.AUTO,
     },
     children: [
       new TextRun({
@@ -619,7 +627,7 @@ function kvTable(
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     indent: opts?.indentLeft ? { size: opts.indentLeft, type: WidthType.DXA } : undefined,
-    borders: NO_BORDER,
+    borders: NO_TABLE_BORDERS,
     rows: rows.map(
       ([label, val]) =>
         new TableRow({
@@ -656,7 +664,7 @@ function numberedPartyKvTable(
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     indent: { size: 320, type: WidthType.DXA },
-    borders: NO_BORDER,
+    borders: NO_TABLE_BORDERS,
     rows: rows.map(
       ([label, val], idx) =>
         new TableRow({
@@ -735,7 +743,7 @@ function buildSppdElements(ctx: BphtbGenerationContext): Array<Paragraph | Table
 
   const headerTwoCol = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: NO_BORDER,
+    borders: NO_TABLE_BORDERS,
     rows: [
       new TableRow({
         children: [
@@ -771,7 +779,7 @@ function buildSppdElements(ctx: BphtbGenerationContext): Array<Paragraph | Table
 
   const signTwoCol = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: NO_BORDER,
+    borders: NO_TABLE_BORDERS,
     rows: [
       new TableRow({
         children: [
@@ -788,9 +796,10 @@ function buildSppdElements(ctx: BphtbGenerationContext): Array<Paragraph | Table
               p('Wajib Pajak / Kuasa Wajib Pajak *)', {
                 align: AlignmentType.CENTER,
                 size: SIZE_10,
-                spaceAfter: 560,
+                spaceAfter: 1200,
               }),
               p(wpNama !== '-' ? wpNama : '( .................................... )', {
+                bold: true,
                 underline: true,
                 align: AlignmentType.CENTER,
                 size: SIZE_10,
@@ -961,7 +970,7 @@ function buildSuratKuasaElements(ctx: BphtbGenerationContext): Array<Paragraph |
 
   const sigTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: NO_BORDER,
+    borders: NO_TABLE_BORDERS,
     rows: [
       new TableRow({
         children: [
@@ -970,8 +979,10 @@ function buildSuratKuasaElements(ctx: BphtbGenerationContext): Array<Paragraph |
             borders: NO_BORDER,
             children: [
               p(' ', { size: SIZE_11, spaceAfter: 25 }),
-              p('Yang diberi kuasa', { align: AlignmentType.LEFT, size: SIZE_11, spaceAfter: 680 }),
+              p('Yang diberi kuasa', { align: AlignmentType.LEFT, size: SIZE_11, spaceAfter: 1260 }),
               p(kuasaNama !== '-' ? kuasaNama : '( .................................... )', {
+                bold: true,
+                underline: true,
                 align: AlignmentType.LEFT,
                 size: SIZE_11,
                 spaceAfter: 20,
@@ -983,14 +994,16 @@ function buildSuratKuasaElements(ctx: BphtbGenerationContext): Array<Paragraph |
             borders: NO_BORDER,
             children: [
               p(`${city}, ${dateDash}`, { align: AlignmentType.LEFT, size: SIZE_11, spaceAfter: 25 }),
-              p('Yang memberi kuasa', { align: AlignmentType.LEFT, size: SIZE_11, spaceAfter: 260 }),
+              p('Yang memberi kuasa', { align: AlignmentType.LEFT, size: SIZE_11, spaceAfter: 500 }),
               p('Materai Rp 10.000', {
                 italic: true,
                 align: AlignmentType.LEFT,
                 size: 18,
-                spaceAfter: 260,
+                spaceAfter: 500,
               }),
               p(wpNama !== '-' ? wpNama : '( .................................... )', {
+                bold: true,
+                underline: true,
                 align: AlignmentType.LEFT,
                 size: SIZE_11,
                 spaceAfter: 20,
@@ -1071,7 +1084,7 @@ function buildSpjmElements(ctx: BphtbGenerationContext): Array<Paragraph | Table
 
   const sigTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: NO_BORDER,
+    borders: NO_TABLE_BORDERS,
     rows: [
       new TableRow({
         children: [
@@ -1084,14 +1097,16 @@ function buildSpjmElements(ctx: BphtbGenerationContext): Array<Paragraph | Table
             width: { size: 45, type: WidthType.PERCENTAGE },
             borders: NO_BORDER,
             children: [
-              p('Wajib Pajak,', { align: AlignmentType.CENTER, size: SIZE_10, spaceAfter: 240 }),
+              p('Wajib Pajak,', { align: AlignmentType.CENTER, size: SIZE_10, spaceAfter: 480 }),
               p('Materai Rp 10.000', {
                 italic: true,
                 align: AlignmentType.CENTER,
                 size: 18,
-                spaceAfter: 240,
+                spaceAfter: 480,
               }),
               p(wpNama !== '-' ? wpNama : '( .................................... )', {
+                bold: true,
+                underline: true,
                 align: AlignmentType.CENTER,
                 size: SIZE_10,
                 spaceAfter: 20,
@@ -1280,7 +1295,7 @@ function buildSuratPernyataanHibahElements(ctx: BphtbGenerationContext): Array<P
 
   const topSigTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: NO_BORDER,
+    borders: NO_TABLE_BORDERS,
     rows: [
       new TableRow({
         children: [
@@ -1289,8 +1304,10 @@ function buildSuratPernyataanHibahElements(ctx: BphtbGenerationContext): Array<P
             borders: NO_BORDER,
             children: [
               p(' ', { size: SIZE_10, spaceAfter: 25 }),
-              p('Yang menerima Hibah', { align: AlignmentType.LEFT, size: SIZE_10, spaceAfter: 620 }),
+              p('Yang menerima Hibah', { align: AlignmentType.LEFT, size: SIZE_10, spaceAfter: 1180 }),
               p(wpNama !== '-' ? wpNama : '( .................................... )', {
+                bold: true,
+                underline: true,
                 align: AlignmentType.LEFT,
                 size: SIZE_10,
                 spaceAfter: 40,
@@ -1302,14 +1319,16 @@ function buildSuratPernyataanHibahElements(ctx: BphtbGenerationContext): Array<P
             borders: NO_BORDER,
             children: [
               p(`${city}, ${dateDash}`, { align: AlignmentType.LEFT, size: SIZE_10, spaceAfter: 25 }),
-              p('Yang menyatakan', { align: AlignmentType.LEFT, size: SIZE_10, spaceAfter: 240 }),
+              p('Yang menyatakan', { align: AlignmentType.LEFT, size: SIZE_10, spaceAfter: 460 }),
               p('Materai Rp 10.000', {
                 italic: true,
                 align: AlignmentType.LEFT,
                 size: 18,
-                spaceAfter: 240,
+                spaceAfter: 460,
               }),
               p(pemberiNama !== '-' ? pemberiNama : '( .................................... )', {
+                bold: true,
+                underline: true,
                 align: AlignmentType.LEFT,
                 size: SIZE_10,
                 spaceAfter: 40,
@@ -1323,7 +1342,7 @@ function buildSuratPernyataanHibahElements(ctx: BphtbGenerationContext): Array<P
 
   const bottomSigTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: NO_BORDER,
+    borders: NO_TABLE_BORDERS,
     rows: [
       new TableRow({
         children: [
@@ -1339,7 +1358,7 @@ function buildSuratPernyataanHibahElements(ctx: BphtbGenerationContext): Array<P
             margins: { top: 80, bottom: 20, left: 40, right: 0 },
             children: [
               p('Di kuatkan oleh kami :', { align: AlignmentType.CENTER, size: SIZE_10, spaceAfter: 20 }),
-              p(`Camat ${kec}`, { align: AlignmentType.CENTER, size: SIZE_10, spaceAfter: 580 }),
+              p(`Camat ${kec}`, { align: AlignmentType.CENTER, size: SIZE_10, spaceAfter: 1080 }),
               p(camatNama, {
                 bold: true,
                 underline: true,
@@ -1349,7 +1368,7 @@ function buildSuratPernyataanHibahElements(ctx: BphtbGenerationContext): Array<P
               }),
               ...(camatNip
                 ? [
-                    p(`NIP.${camatNip}`, {
+                    p(`NIP. ${camatNip}`, {
                       bold: true,
                       align: AlignmentType.CENTER,
                       size: SIZE_10,
@@ -1444,7 +1463,7 @@ function buildSuratPernyataanHibahElements(ctx: BphtbGenerationContext): Array<P
       }),
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: NO_BORDER,
+        borders: NO_TABLE_BORDERS,
         rows: [
           new TableRow({
             children: [
@@ -1507,7 +1526,7 @@ function buildBuktiTransaksiElements(ctx: BphtbGenerationContext): Array<Paragra
 
   const detailTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: NO_BORDER,
+    borders: NO_TABLE_BORDERS,
     rows: [
       new TableRow({
         children: [
@@ -1605,19 +1624,19 @@ function buildBuktiTransaksiElements(ctx: BphtbGenerationContext): Array<Paragra
 
   const bottomRowTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: NO_BORDER,
+    borders: NO_TABLE_BORDERS,
     rows: [
       new TableRow({
         children: [
           new TableCell({
             width: { size: 52, type: WidthType.PERCENTAGE },
             borders: NO_BORDER,
-            margins: { top: 180, bottom: 40, left: 100, right: 40 },
+            margins: { top: 240, bottom: 40, left: 100, right: 40 },
             children: [
-              p(' ', { size: SIZE_10, spaceAfter: 160 }),
+              p(' ', { size: SIZE_10, spaceAfter: 240 }),
               new Paragraph({
                 alignment: AlignmentType.LEFT,
-                spacing: { before: 80, after: 40, line: LINE_1_15 },
+                spacing: { before: 80, after: 40, line: LINE_1_15, lineRule: LineRuleType.AUTO },
                 children: [
                   new TextRun({
                     text: 'Terbilang ',
@@ -1648,16 +1667,17 @@ function buildBuktiTransaksiElements(ctx: BphtbGenerationContext): Array<Paragra
               p('Yang menerima', {
                 align: AlignmentType.CENTER,
                 size: SIZE_10,
-                spaceAfter: 220,
+                spaceAfter: 480,
               }),
               p('Materai Rp 10.000', {
                 italic: true,
                 align: AlignmentType.CENTER,
                 size: 18,
-                spaceAfter: 220,
+                spaceAfter: 480,
               }),
               p(penjualNama, {
                 bold: true,
+                underline: true,
                 align: AlignmentType.CENTER,
                 size: SIZE_10,
                 spaceAfter: 20,
@@ -1688,6 +1708,7 @@ function buildBuktiTransaksiElements(ctx: BphtbGenerationContext): Array<Paragra
                 spaceAfter: 220,
               }),
               detailTable,
+              p('', { size: SIZE_10, spaceBefore: 0, spaceAfter: 60 }),
               bottomRowTable,
             ],
           }),

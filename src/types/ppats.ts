@@ -6,6 +6,10 @@ export type ServiceType =
   | 'Pemecahan'
   | 'Ukur Ulang'
   | 'Ralat Data'
+  | 'Pengecekan Sertipikat'
+  | 'Validasi Sertipikat'
+  | 'Analisis Bidang'
+  | 'Permohonan PKKPR'
   | 'Pemecahan/Ukur Ulang';
 
 export type PengesahanMode = 'ppats' | 'kades' | 'camat' | 'manual';
@@ -54,6 +58,38 @@ export interface NonAktaDetail {
   sertakan_beda_nama?: boolean;
   koordinat_gps?: string;
   link_maps?: string;
+  koordinat_poligon?: string;
+
+  // Foto geotagging opsional (Data URL base64 untuk Validasi Sertipikat & Analisis Bidang)
+  foto_tampak_depan?: string;
+  foto_patok_1?: string;
+  foto_patok_2?: string;
+  foto_patok_3?: string;
+  foto_patok_4?: string;
+  foto_poligon?: string;
+
+  // Detail Pengecekan Sertipikat (mode penerima kuasa: PPATS/Camat vs Kuasa BPN)
+  pengecekan_kuasa_mode?: 'ppats' | 'kuasa_bpn';
+  ppats_ttl?: string;
+  ppats_nik?: string;
+  ppats_pekerjaan?: string;
+  ppats_alamat?: string;
+
+  // Detail Permohonan PKKPR (DPMPTSP)
+  pkkpr_nomor_surat?: string;
+  pkkpr_lampiran?: string;
+  pkkpr_jenis_kegiatan?: 'Non Berusaha' | 'Berusaha';
+  pkkpr_telepon?: string;
+  pkkpr_email?: string;
+  pkkpr_npwp?: string;
+  pkkpr_diwakili?: string;
+  pkkpr_kbli?: string;
+  pkkpr_jumlah_lantai?: string;
+  pkkpr_luas_bangunan?: string;
+  pkkpr_alamat_lokasi?: string;
+  pkkpr_kawasan?: string;
+  pkkpr_kuasa_2_aktif?: boolean;
+  pkkpr_kuasa_2_detail?: PersonBasicInfo;
 
   nama_di_sertipikat?: string;
   nama_di_ktp_kk?: string;

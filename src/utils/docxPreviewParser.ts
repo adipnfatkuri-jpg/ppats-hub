@@ -242,10 +242,10 @@ function parseParagraphXml(innerXml: string): ParsedParagraphChunk {
 
   const spacingMatches = extractElements(pPr, ['w:spacing']);
   const spaceBeforePx = spacingMatches[0]
-    ? Math.min(36, Math.max(0, Math.round(twipsToPx(getAttr(spacingMatches[0].open, 'w:before')) * 0.65)))
+    ? Math.min(72, Math.max(0, Math.round(twipsToPx(getAttr(spacingMatches[0].open, 'w:before')) * 0.65)))
     : 0;
   const spaceAfterPx = spacingMatches[0]
-    ? Math.min(28, Math.max(0, Math.round(twipsToPx(getAttr(spacingMatches[0].open, 'w:after')) * 0.65)))
+    ? Math.min(76, Math.max(0, Math.round(twipsToPx(getAttr(spacingMatches[0].open, 'w:after')) * 0.65)))
     : 2;
 
   const pBdrMatches = extractElements(pPr, ['w:pBdr']);
@@ -327,6 +327,13 @@ function parsePercentageWidth(raw?: string, type?: string): number | undefined {
   return undefined;
 }
 
+function parseDxaWidth(raw?: string, type?: string): number | undefined {
+  if (!raw) return undefined;
+  if (type && type !== 'dxa') return undefined;
+  const num = Number(raw.trim());
+  return Number.isFinite(num) && num > 0 ? num : undefined;
+}
+
 function hasVisibleBorder(borderXml: string, side: string): boolean | undefined {
   const m = extractElements(borderXml, [side]);
   if (m.length === 0) return undefined;
@@ -337,12 +344,28 @@ function hasVisibleBorder(borderXml: string, side: string): boolean | undefined 
 function parseTableXml(innerXml: string): PreviewTableBlock {
   const tblPr = extractElements(innerXml, ['w:tblPr'])[0]?.inner ?? '';
   const tblW = extractElements(tblPr, ['w:tblW'])[0];
-  const widthPct =
-    (tblW
-      ? parsePercentageWidth(getAttr(tblW.open, 'w:w'), getAttr(tblW.open, 'w:type'))
-      : undefined) ?? 100;
+  const tblWVal = tblW ? getAttr(tblW.open, 'w:w') : undefined;
+  const tblWType = tblW ? getAttr(tblW.open, 'w:type') : undefined;
   const tblInd = extractElements(tblPr, ['w:tblInd'])[0];
+  const indentTwips = tblInd ? Number(getAttr(tblInd.open, 'w:w') ?? 0) : 0;
   const indentLeftPx = tblInd ? twipsToPx(getAttr(tblInd.open, 'w:w')) : 0;
+
+  const tblGrid = extractElements(innerXml, ['w:tblGrid'])[0]?.inner ?? '';
+  const gridColWidths = extractElements(tblGrid, ['w:gridCol'])
+    .map((col) => Number(getAttr(col.open, 'w:w') ?? 0))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const gridTotalDxa = gridColWidths.reduce((sum, w) => sum + w, 0);
+
+  const tblDxa = parseDxaWidth(tblWVal, tblWType) ?? (gridTotalDxa > 0 ? gridTotalDxa : undefined);
+  let widthPct = tblW ? parsePercentageWidth(tblWVal, tblWType) : undefined;
+  if (widthPct === undefined) {
+    if (tblDxa) {
+      const printableDxa = Math.max(4000, 9310 - (Number.isFinite(indentTwips) ? indentTwips : 0));
+      widthPct = tblDxa >= printableDxa * 0.94 ? 100 : Math.min(100, Math.round((tblDxa / printableDxa) * 100));
+    } else {
+      widthPct = 100;
+    }
+  }
 
   const tblBorders = extractElements(tblPr, ['w:tblBorders'])[0]?.inner ?? '';
   const defaultBorders = {
@@ -359,13 +382,17 @@ function parseTableXml(innerXml: string): PreviewTableBlock {
 
   for (const tr of trElements) {
     const tcElements = extractElements(tr.inner, ['w:tc']);
+    const rawCellDxa: Array<number | undefined> = [];
     const cells: Array<PreviewTableCell & { _vMerge: 'restart' | 'continue' | null }> = [];
-    for (const tc of tcElements) {
+    for (let cIdx = 0; cIdx < tcElements.length; cIdx++) {
+      const tc = tcElements[cIdx];
       const tcPr = extractElements(tc.inner, ['w:tcPr'])[0]?.inner ?? '';
       const tcW = extractElements(tcPr, ['w:tcW'])[0];
-      const cellWidthPct = tcW
-        ? parsePercentageWidth(getAttr(tcW.open, 'w:w'), getAttr(tcW.open, 'w:type'))
-        : undefined;
+      const tcWVal = tcW ? getAttr(tcW.open, 'w:w') : undefined;
+      const tcWType = tcW ? getAttr(tcW.open, 'w:type') : undefined;
+      const cellWidthPct = tcW ? parsePercentageWidth(tcWVal, tcWType) : undefined;
+      const cellDxa = tcW ? parseDxaWidth(tcWVal, tcWType) : gridColWidths[cIdx];
+      rawCellDxa.push(cellDxa);
 
       const vMergeEl = extractElements(tcPr, ['w:vMerge'])[0];
       let vMerge: 'restart' | 'continue' | null = null;
@@ -402,6 +429,26 @@ function parseTableXml(innerXml: string): PreviewTableBlock {
         _vMerge: vMerge,
       });
     }
+
+    // Resolve DXA cell widths to accurate percentages when pct was not explicitly specified
+    const rowDxaTotal =
+      rawCellDxa.every((v) => typeof v === 'number' && v > 0)
+        ? rawCellDxa.reduce<number>((sum, v) => sum + (v ?? 0), 0)
+        : gridTotalDxa > 0
+        ? gridTotalDxa
+        : tblDxa ?? 0;
+
+    if (rowDxaTotal > 0) {
+      for (let cIdx = 0; cIdx < cells.length; cIdx++) {
+        if (cells[cIdx].widthPct === undefined) {
+          const dxa = rawCellDxa[cIdx] ?? gridColWidths[cIdx];
+          if (dxa && dxa > 0) {
+            cells[cIdx].widthPct = Math.round((dxa / rowDxaTotal) * 1000) / 10;
+          }
+        }
+      }
+    }
+
     rowsMeta.push({ cells });
   }
 
@@ -464,6 +511,23 @@ function detectPageTitle(docKey: TemplateDocKey, blocks: PreviewBlock[], pageNum
 
   if (joined.includes('SURAT KETERANGAN WARISAN')) return `Hal. ${pageNum} · Surat Keterangan Warisan (SKW)`;
   if (joined.includes('Dokumen yang diserahkan')) return `Hal. ${pageNum} · Surat Pengantar ATR/BPN`;
+  if (
+    joined.includes('Permohonan Persetujuan Kesesuaian Kegiatan Pemanfaatan Ruang') &&
+    joined.includes('DPMPTSP') === false &&
+    joined.includes('Dinas Penanaman Modal')
+  ) {
+    return `Hal. ${pageNum} · Permohonan PKKPR (DPMPTSP)`;
+  }
+  if (joined.includes('GEOTAGGING') && joined.includes('ANALISIS BIDANG')) {
+    return `Hal. ${pageNum} · Geotagging & Analisis Bidang`;
+  }
+  if (joined.includes('GEOTAGGING')) return `Hal. ${pageNum} · Geotagging (Tampak Depan & Patok)`;
+  if (joined.includes('CITRA SATELIT / POLIGON')) {
+    return `Hal. ${pageNum} · Geotagging Lanjutan (Patok 3-4 & Poligon)`;
+  }
+  if (joined.includes('KEABSAHAN DATA & LOKASI BIDANG')) {
+    return `Hal. ${pageNum} · Pernyataan Keabsahan & Lokasi Bidang`;
+  }
   if (
     joined.includes('Dengan ini mengajukan permohonan') ||
     joined.includes('Kantor Kementrian Agraria') ||
