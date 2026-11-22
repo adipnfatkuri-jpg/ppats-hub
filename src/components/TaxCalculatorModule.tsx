@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  AlertCircle,
   Calculator,
+  Camera,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -9,16 +11,20 @@ import {
   FilePlus2,
   FolderCheck,
   Landmark,
+  Loader2,
   Pencil,
   Printer,
   Receipt,
   RotateCcw,
   Save,
+  ScanLine,
   Search,
   Sparkles,
+  X,
 } from 'lucide-react';
 import {
   BerkasRecord,
+  ExtractionApiResponse,
   OfficeSettings,
   ServiceType,
   TaxDraftPrefill,
@@ -50,6 +56,17 @@ import {
   BphtbSubmissionSection,
 } from './BphtbSubmissionSection';
 import { GlossyIcon3D } from './TactileUI';
+import {
+  SCAN_DOC_FILE_ACCEPT,
+  optimizeDocumentFile,
+} from '../utils/imageOptimizer';
+import { postScanJson } from '../utils/scanApi';
+import {
+  applyObjectScanPatchToTaxDraft,
+  mergeObjectScanIntoBphtbForm,
+} from '../utils/bphtbObjectScan';
+
+const TAX_SCAN_FILE_ACCEPT = SCAN_DOC_FILE_ACCEPT;
 
 interface TaxCalculatorModuleProps {
   records: BerkasRecord[];
@@ -126,6 +143,11 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
     buildInitialBphtbFormData(settings, initialRecord)
   );
   const [bphtbGenerated, setBphtbGenerated] = useState<BphtbGeneratedState | null>(null);
+  const [scanningDoc, setScanningDoc] = useState<'sppt' | 'sertipikat' | null>(null);
+  const [scanNotice, setScanNotice] = useState<{
+    type: 'info' | 'success' | 'error';
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     if (initialRecordId) {
@@ -218,6 +240,71 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
     setForm(buildEmptyDraft(settings));
     setBphtbForm(buildInitialBphtbFormData(settings, null));
     setBphtbGenerated(null);
+    setScanNotice(null);
+  };
+
+  const handleTaxObjectScan = async (
+    kind: 'sppt' | 'sertipikat',
+    files: File[]
+  ) => {
+    if (!files || files.length === 0) return;
+    const label = kind === 'sppt' ? 'SPPT PBB' : 'Sertipikat';
+    const startedAt = Date.now();
+    setScanningDoc(kind);
+    setScanNotice({
+      type: 'info',
+      message: `Sedang memindai ${files.length} dokumen ${label}...`,
+    });
+    try {
+      const optimized = await Promise.all(
+        files.map(async (f) => {
+          const payload = await optimizeDocumentFile(f, {
+            maxEdge: 1120,
+            quality: 0.75,
+            skipBelowBytes: 90 * 1024,
+          });
+          return {
+            name: f.name,
+            mimeType: payload.mimeType,
+            dataBase64: payload.dataBase64,
+          };
+        })
+      );
+
+      const data = await postScanJson<ExtractionApiResponse>(
+        '/api/extract-documents',
+        {
+          layanan: form.layanan,
+          scanMode: 'fast',
+          scope: 'object_only',
+          files: optimized,
+        }
+      );
+
+      const merged = mergeObjectScanIntoBphtbForm(bphtbForm, data);
+      setBphtbForm((prev) => mergeObjectScanIntoBphtbForm(prev, data).nextForm);
+      setForm((prev) =>
+        applyObjectScanPatchToTaxDraft(prev, merged.taxPatch, kind)
+      );
+      setBphtbGenerated(null);
+
+      const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
+      const summary = merged.summaryParts.join(' · ');
+      const msg = summary
+        ? `Scan ${label} selesai (${elapsedSec} dtk) · ${summary}.`
+        : `Scan ${label} selesai (${elapsedSec} dtk), namun angka luas/NJOP belum terbaca jelas — periksa foto dokumen.`;
+      setScanNotice({ type: 'success', message: msg });
+      onNotify(msg, 'success');
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : `Gagal memindai dokumen ${label}.`;
+      setScanNotice({ type: 'error', message: msg });
+      onNotify(msg, 'error');
+    } finally {
+      setScanningDoc(null);
+    }
   };
 
   const handleToggleBphtbPanel = () => {
@@ -434,6 +521,161 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
               </div>
             </div>
 
+            {/* Scan Cepat SPPT PBB & Sertipikat */}
+            <div className="rounded-2xl border border-sky-200/90 dark:border-sky-500/25 bg-gradient-to-br from-sky-50/80 via-white to-teal-50/60 dark:from-sky-950/40 dark:via-[#092024] dark:to-teal-950/35 p-3.5 space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <ScanLine className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                    <span>Scan AI SPPT PBB &amp; Sertipikat</span>
+                  </p>
+                  <p className="text-[11px] text-slate-600 dark:text-teal-200/75 mt-0.5">
+                    Dukung foto/JPG/PNG, PDF, dan Word (.docx/.doc) — isi otomatis Luas Tanah, NJOP Bumi/m², NJOP Bangunan sekaligus data Formulir Pengajuan BPHTB.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Scan SPPT PBB */}
+                <div className="flex items-center gap-1.5">
+                  <label
+                    className={`btn-3d btn-3d-sky flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
+                      scanningDoc !== null ? 'opacity-60 pointer-events-none' : ''
+                    }`}
+                  >
+                    {scanningDoc === 'sppt' ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                    ) : (
+                      <ScanLine className="w-3.5 h-3.5 shrink-0" />
+                    )}
+                    <span className="truncate">
+                      {scanningDoc === 'sppt' ? 'Memindai SPPT...' : 'Scan SPPT PBB'}
+                    </span>
+                    <input
+                      type="file"
+                      accept={TAX_SCAN_FILE_ACCEPT}
+                      multiple
+                      disabled={scanningDoc !== null}
+                      aria-label="Pilih file SPPT PBB untuk scan AI pajak"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files ?? []);
+                        e.target.value = '';
+                        void handleTaxObjectScan('sppt', files);
+                      }}
+                      className="sr-only"
+                    />
+                  </label>
+                  <label
+                    title="Foto kamera SPPT PBB"
+                    aria-label="Foto kamera SPPT PBB"
+                    className={`btn-3d btn-3d-light inline-flex items-center justify-center p-2 rounded-xl cursor-pointer shrink-0 ${
+                      scanningDoc !== null ? 'opacity-60 pointer-events-none' : ''
+                    }`}
+                  >
+                    <Camera className="w-4 h-4 text-sky-600 dark:text-sky-300" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      disabled={scanningDoc !== null}
+                      aria-label="Ambil foto kamera SPPT PBB"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files ?? []);
+                        e.target.value = '';
+                        void handleTaxObjectScan('sppt', files);
+                      }}
+                      className="sr-only"
+                    />
+                  </label>
+                </div>
+
+                {/* Scan Sertipikat */}
+                <div className="flex items-center gap-1.5">
+                  <label
+                    className={`btn-3d btn-3d-teal flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
+                      scanningDoc !== null ? 'opacity-60 pointer-events-none' : ''
+                    }`}
+                  >
+                    {scanningDoc === 'sertipikat' ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                    ) : (
+                      <ScanLine className="w-3.5 h-3.5 shrink-0" />
+                    )}
+                    <span className="truncate">
+                      {scanningDoc === 'sertipikat' ? 'Memindai Sertipikat...' : 'Scan Sertipikat'}
+                    </span>
+                    <input
+                      type="file"
+                      accept={TAX_SCAN_FILE_ACCEPT}
+                      multiple
+                      disabled={scanningDoc !== null}
+                      aria-label="Pilih file Sertipikat untuk scan AI pajak"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files ?? []);
+                        e.target.value = '';
+                        void handleTaxObjectScan('sertipikat', files);
+                      }}
+                      className="sr-only"
+                    />
+                  </label>
+                  <label
+                    title="Foto kamera Sertipikat"
+                    aria-label="Foto kamera Sertipikat"
+                    className={`btn-3d btn-3d-light inline-flex items-center justify-center p-2 rounded-xl cursor-pointer shrink-0 ${
+                      scanningDoc !== null ? 'opacity-60 pointer-events-none' : ''
+                    }`}
+                  >
+                    <Camera className="w-4 h-4 text-teal-600 dark:text-teal-300" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      disabled={scanningDoc !== null}
+                      aria-label="Ambil foto kamera Sertipikat"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files ?? []);
+                        e.target.value = '';
+                        void handleTaxObjectScan('sertipikat', files);
+                      }}
+                      className="sr-only"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {scanNotice && (
+                <div
+                  role={scanNotice.type === 'error' ? 'alert' : 'status'}
+                  className={`flex items-start justify-between gap-2 px-3 py-2 rounded-xl text-[11px] border ${
+                    scanNotice.type === 'error'
+                      ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-500/35 text-rose-800 dark:text-rose-200'
+                      : scanNotice.type === 'success'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-500/35 text-emerald-800 dark:text-emerald-200'
+                      : 'bg-sky-50 dark:bg-sky-950/50 border-sky-200 dark:border-sky-500/35 text-sky-800 dark:text-sky-200'
+                  }`}
+                >
+                  <div className="flex items-start gap-1.5 min-w-0">
+                    {scanNotice.type === 'info' ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 mt-0.5" />
+                    ) : scanNotice.type === 'error' ? (
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    ) : (
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    )}
+                    <span className="leading-snug">{scanNotice.message}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setScanNotice(null)}
+                    aria-label="Tutup pemberitahuan scan"
+                    className="p-0.5 opacity-70 hover:opacity-100 shrink-0"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label
@@ -554,7 +796,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                     className="text-slate-600 dark:text-teal-200/85 font-semibold"
                   >
                     NPOPTKP (Rp · Default{' '}
-                    {form.layanan === 'Turun Waris'
+                    {form.layanan === 'Turun Waris' || form.layanan === 'Waris C'
                       ? `Waris ${formatRupiah(settings.npoptkp_waris)}`
                       : `Umum ${formatRupiah(settings.npoptkp_umum)}`}
                     )

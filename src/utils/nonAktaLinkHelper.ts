@@ -219,9 +219,23 @@ export function buildNonAktaPrefillFromRecord(params: {
         ? primaryApplicantName || currentNonAkta.nama_di_ktp_kk
         : currentNonAkta.nama_di_ktp_kk,
     nama_pewaris:
-      targetLayanan === 'Turun Waris'
+      targetLayanan === 'Turun Waris' || targetLayanan === 'Waris C'
         ? sourceNa?.nama_pewaris || primaryHolderName || currentNonAkta.nama_pewaris
         : currentNonAkta.nama_pewaris,
+    waris_c_hak_adat:
+      targetLayanan === 'Waris C'
+        ? sourceNa?.waris_c_hak_adat ||
+          clonedTanah.nomor_hak_lama ||
+          clonedTanah.nib ||
+          currentNonAkta.waris_c_hak_adat
+        : currentNonAkta.waris_c_hak_adat,
+    waris_c_atas_nama_c:
+      targetLayanan === 'Waris C'
+        ? sourceNa?.waris_c_atas_nama_c ||
+          sourceNa?.nama_pewaris ||
+          primaryHolderName ||
+          currentNonAkta.waris_c_atas_nama_c
+        : currentNonAkta.waris_c_atas_nama_c,
   };
 
   return {

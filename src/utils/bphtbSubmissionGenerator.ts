@@ -296,6 +296,7 @@ function getJenisPerolehanUpper(layanan: ServiceType): string {
     case 'APHB':
       return 'PEMBAGIAN HAK BERSAMA';
     case 'Turun Waris':
+    case 'Waris C':
       return 'WARIS';
     default:
       return String(layanan || '').toUpperCase();

@@ -208,6 +208,7 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
     : '';
   const hasDualPengesahan =
     record.layanan === 'Turun Waris' ||
+    record.layanan === 'Waris C' ||
     record.layanan === 'Ralat Data' ||
     Boolean(record.non_akta?.sertakan_beda_nama);
 
@@ -372,7 +373,9 @@ export const DocumentReviewPanel: React.FC<DocumentReviewPanelProps> = ({
                 <span aria-hidden="true" className="text-slate-300 dark:text-teal-700">·</span>
                 <span>
                   <strong className="text-slate-900 dark:text-white">
-                    {record.layanan === 'Turun Waris' ? 'Ahli Waris / Pemohon:' : 'Pemohon:'}
+                    {record.layanan === 'Turun Waris' || record.layanan === 'Waris C'
+                      ? 'Ahli Waris / Pemohon:'
+                      : 'Pemohon:'}
                   </strong>{' '}
                   {nonAktaPemohonNames}
                 </span>

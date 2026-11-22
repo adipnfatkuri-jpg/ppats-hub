@@ -35,6 +35,13 @@ export function formatCompactFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+export const SCAN_DOC_FILE_ACCEPT =
+  'application/pdf,image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,.docx,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword';
+
+const DOCX_MIME =
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const DOC_MIME = 'application/msword';
+
 /**
  * Mendeteksi MIME type dokumen dari magic bytes, tipe file browser, atau ekstensi nama file.
  * Penting untuk perangkat Android/iOS (WhatsApp, galeri, file manager) yang sering mengirim
@@ -45,6 +52,9 @@ export function inferDocumentMimeType(
   declaredType?: string,
   headerBytes?: Uint8Array
 ): string {
+  const lower = (fileName || '').toLowerCase();
+  const rawType = (declaredType || '').trim().toLowerCase();
+
   // 1. Magic bytes check (paling akurat di semua perangkat)
   if (headerBytes && headerBytes.length >= 4) {
     // PDF: %PDF
@@ -55,6 +65,25 @@ export function inferDocumentMimeType(
       headerBytes[3] === 0x46
     ) {
       return 'application/pdf';
+    }
+    // DOCX (ZIP OOXML: PK 03 04)
+    if (
+      headerBytes[0] === 0x50 &&
+      headerBytes[1] === 0x4b &&
+      headerBytes[2] === 0x03 &&
+      headerBytes[3] === 0x04 &&
+      (lower.endsWith('.docx') || rawType === DOCX_MIME)
+    ) {
+      return DOCX_MIME;
+    }
+    // DOC lama (OLE2 Compound Document: D0 CF 11 E0)
+    if (
+      headerBytes[0] === 0xd0 &&
+      headerBytes[1] === 0xcf &&
+      headerBytes[2] === 0x11 &&
+      headerBytes[3] === 0xe0
+    ) {
+      return DOC_MIME;
     }
     // JPEG: FF D8 FF
     if (headerBytes[0] === 0xff && headerBytes[1] === 0xd8 && headerBytes[2] === 0xff) {
@@ -117,9 +146,12 @@ export function inferDocumentMimeType(
   }
 
   // 2. Normalized browser-declared MIME type
-  const rawType = (declaredType || '').trim().toLowerCase();
   if (rawType === 'image/jpg' || rawType === 'image/pjpeg') return 'image/jpeg';
   if (rawType === 'image/x-png') return 'image/png';
+  if (rawType === DOCX_MIME) return DOCX_MIME;
+  if (rawType === DOC_MIME || rawType === 'application/vnd.ms-word' || rawType === 'application/x-msword') {
+    return DOC_MIME;
+  }
   if (
     rawType &&
     rawType !== 'application/octet-stream' &&
@@ -129,7 +161,9 @@ export function inferDocumentMimeType(
   }
 
   // 3. Extension fallback
-  const lower = (fileName || '').toLowerCase();
+  if (lower.endsWith('.docx')) return DOCX_MIME;
+  if (lower.endsWith('.doc')) return DOC_MIME;
+  if (lower.endsWith('.rtf')) return 'application/rtf';
   if (lower.endsWith('.pdf')) return 'application/pdf';
   if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.jfif')) {
     return 'image/jpeg';

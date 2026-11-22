@@ -120,7 +120,7 @@ export function extractDashboardParties(record: BerkasRecord): DashboardPartySum
         pOtherRecipients.length > p2Names.length ? 'Penerima (II+)' : 'Penerima (Pihak II)';
       pihakPenerimaText = pOtherRecipients.join(', ') || '-';
     }
-  } else if (record.layanan === 'Turun Waris') {
+  } else if (record.layanan === 'Turun Waris' || record.layanan === 'Waris C') {
     const pewaris = record.non_akta?.nama_pewaris?.trim();
     if (pewaris) {
       pihakPertamaLabel = 'Pewaris';

@@ -39,6 +39,7 @@ import {
 import { DocumentReviewPanel } from './DocumentReviewPanel';
 import { DateInputId } from './DateInputId';
 import { GlossyIcon3D, type GlossyTone } from './TactileUI';
+import { WarisCDetailPanel } from './WarisCDetailPanel';
 import {
   AuditWarning,
   BerkasRecord,
@@ -73,6 +74,7 @@ import {
 } from '../utils/indonesianFormatter';
 import { resolveAccurateLuasBumiM2 } from '../utils/bphtbObjectScan';
 import {
+  SCAN_DOC_FILE_ACCEPT,
   estimateScanPayloadBytes,
   formatCompactFileSize,
   optimizeDocumentFile,
@@ -89,6 +91,10 @@ import {
   toScanTitleCase,
   toScanUpperName,
 } from '../utils/scanTextCase';
+import {
+  mergePewarisScanIntoNonAkta,
+  mergeWarisCScanIntoState,
+} from '../utils/warisScanHelper';
 import {
   AKTA_SERVICE_TYPES,
   NON_AKTA_SERVICE_TYPES,
@@ -259,6 +265,7 @@ function createDefaultNonAkta(
     camat_pengesahan_nomor: '',
     kades_pengesahan_jabatan: '',
     kades_pengesahan_nama: '',
+    kades_pengesahan_nip: '',
     kades_pengesahan_nomor: '',
     sebutan_pewaris: 'Almarhum',
     nama_pewaris: '',
@@ -267,8 +274,24 @@ function createDefaultNonAkta(
     hubungan_pasangan_pewaris: 'Istrinya',
     nama_pasangan_pewaris: '',
     tgl_lahir_pasangan_pewaris: '',
+    tanggal_meninggal_pasangan: '',
+    tempat_meninggal_pasangan: '',
     jumlah_anak_waris: undefined,
     catatan_skw: '',
+    waris_c_hak_adat: '',
+    waris_c_atas_nama_c: '',
+    waris_c_tahun_tercatat_c: '1960',
+    waris_c_jenis_tanah: 'Pekarangan',
+    waris_c_berdiri_di_atasnya: 'Bangunan Rumah Tinggal',
+    waris_c_nama_blok_dukuh: '',
+    waris_c_hubungan_pewaris: 'orang tua kandungnya',
+    waris_c_tahun_waris: '',
+    waris_c_penerima_bagian: '',
+    waris_c_luas_bagian_m2: undefined,
+    waris_c_sertakan_kuasa_pemecahan: true,
+    waris_c_nama_wp_pbb: '',
+    waris_c_no_surat_keterangan: '',
+    waris_c_no_surat_riwayat: '',
     sub_permohonan_ukur: svc === 'Pemecahan' ? 'Pemecahan' : 'Pengukuran',
     bidang_pecahan: [],
     sertakan_pelepasan_jalan: false,
@@ -284,6 +307,15 @@ function createDefaultNonAkta(
     foto_patok_3: '',
     foto_patok_4: '',
     foto_poligon: '',
+    foto_sket_pecah: '',
+    analisis_no_hp: '',
+    analisis_tema: 'Kesesuaian Penggunaan Tanah terhadap RTRW atau RDTR, LSD dan LP2B',
+    analisis_skala_peta: '1 : 1000',
+    analisis_jumlah_bidang: 3,
+    analisis_rencana_penggunaan: 'Rumah Tinggal',
+    analisis_alasan_peralihan: 'HIBAH kepada anak',
+    analisis_alasan_tabel: 'dihibahkan ke anak',
+    analisis_rencana_jalan_luas_m2: 0,
     pengecekan_kuasa_mode: 'ppats',
     ppats_ttl: '',
     ppats_nik: '',
@@ -352,6 +384,17 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
   const [scanningPersonKey, setScanningPersonKey] = useState<
     'kuasa' | 'saksi1' | 'saksi2' | null
   >(null);
+  const [step3WarisScanSlot, setStep3WarisScanSlot] = useState<
+    'waris_pewaris' | 'waris_c' | null
+  >(null);
+  const [step3PewarisScanNotice, setStep3PewarisScanNotice] = useState<{
+    type: 'info' | 'success' | 'error';
+    message: string;
+  } | null>(null);
+  const [step3WarisCScanNotice, setStep3WarisCScanNotice] = useState<{
+    type: 'info' | 'success' | 'error';
+    message: string;
+  } | null>(null);
   const extractAbortRef = useRef<AbortController | null>(null);
 
   const handleScanAktaPerson = async (
@@ -481,7 +524,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     const startedAt = Date.now();
     const subjectLabel = isAktaService(layanan)
       ? 'Pihak'
-      : layanan === 'Turun Waris'
+      : layanan === 'Turun Waris' || layanan === 'Waris C'
       ? 'Ahli Waris / Pemohon'
       : 'Pemohon';
     setStep2ScanSlot('party:add');
@@ -600,6 +643,96 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       onNotify(msg, 'error');
     } finally {
       setStep2ScanSlot(null);
+    }
+  };
+
+  const handleScanStep3Waris = async (
+    slot: 'waris_pewaris' | 'waris_c',
+    files: File[]
+  ) => {
+    if (files.length === 0) return;
+    const startedAt = Date.now();
+    const isWarisC = slot === 'waris_c';
+    const label = isWarisC ? 'Dokumen Waris Letter C' : 'Dokumen Pewaris / SKW';
+    const setNotice = isWarisC ? setStep3WarisCScanNotice : setStep3PewarisScanNotice;
+
+    setStep3WarisScanSlot(slot);
+    setNotice({
+      type: 'info',
+      message: `Sedang memindai ${files.length} ${label} (Foto/PDF/Word)...`,
+    });
+
+    try {
+      const optimized = await Promise.all(
+        files.map(async (file) => {
+          const payload = await optimizeDocumentFile(file, {
+            maxEdge: 1120,
+            quality: 0.75,
+            skipBelowBytes: 90 * 1024,
+          });
+          return {
+            name: file.name || `dokumen-${Date.now()}.jpg`,
+            mimeType: payload.mimeType,
+            dataBase64: payload.dataBase64,
+          };
+        })
+      );
+
+      const estimatedBytes = estimateScanPayloadBytes(optimized);
+      if (estimatedBytes > 12 * 1024 * 1024) {
+        throw new Error(
+          `Ukuran total dokumen (${formatCompactFileSize(estimatedBytes)}) melebihi batas pengiriman 12 MB. Kurangi jumlah file atau kompres PDF terlebih dahulu.`
+        );
+      }
+
+      const parsed = await postScanJson<ExtractionApiResponse>(
+        '/api/extract-documents',
+        {
+          layanan,
+          scanMode: 'fast',
+          scope: slot,
+          files: optimized,
+        }
+      );
+
+      const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
+
+      if (isWarisC) {
+        const merged = mergeWarisCScanIntoState(nonAkta, tanah, pbb, parsed.waris_c);
+        setNonAkta(merged.nextNonAkta);
+        setTanah(merged.nextTanah);
+        setPbb(merged.nextPbb);
+        const detail = merged.summaryParts.join(' · ');
+        const msg =
+          merged.updatedCount > 0
+            ? `Scan ${label} selesai (${elapsedSec} dtk)${detail ? ` · ${detail}` : ''}. Periksa kembali hasil isian.`
+            : `Scan selesai (${elapsedSec} dtk), namun data khusus Letter C / Pewaris belum terbaca jelas. Coba foto/PDF/Word yang lebih jelas.`;
+        setNotice({
+          type: merged.updatedCount > 0 ? 'success' : 'info',
+          message: msg,
+        });
+        onNotify(msg, merged.updatedCount > 0 ? 'success' : 'error');
+      } else {
+        const merged = mergePewarisScanIntoNonAkta(nonAkta, parsed.waris_pewaris);
+        setNonAkta(merged.nextNonAkta);
+        const detail = merged.summaryParts.join(' · ');
+        const msg =
+          merged.updatedCount > 0
+            ? `Scan ${label} selesai (${elapsedSec} dtk)${detail ? ` · ${detail}` : ''}. Periksa kembali hasil isian.`
+            : `Scan selesai (${elapsedSec} dtk), namun data Pewaris / Akta Kematian belum terbaca jelas. Coba dokumen lain atau isi manual.`;
+        setNotice({
+          type: merged.updatedCount > 0 ? 'success' : 'info',
+          message: msg,
+        });
+        onNotify(msg, merged.updatedCount > 0 ? 'success' : 'error');
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : `Gagal memindai ${label}.`;
+      setNotice({ type: 'error', message: msg });
+      onNotify(msg, 'error');
+    } finally {
+      setStep3WarisScanSlot(null);
     }
   };
 
@@ -934,7 +1067,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     const timeoutId = window.setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, 45000);
+    }, 60000);
 
     setExtracting(true);
     setExtractError(null);
@@ -1312,7 +1445,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       | 'foto_patok_2'
       | 'foto_patok_3'
       | 'foto_patok_4'
-      | 'foto_poligon',
+      | 'foto_poligon'
+      | 'foto_sket_pecah',
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0];
@@ -1346,6 +1480,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     APHB: { Icon: Users, tone: 'sky', subtitle: 'Akta A4 + Lampiran F4' },
     'Akta Hibah': { Icon: Gift, tone: 'emerald', subtitle: 'Akta A4 + Lampiran F4' },
     'Turun Waris': { Icon: ScrollText, tone: 'amber', subtitle: 'Non-Akta · Bundel F4' },
+    'Waris C': { Icon: ScrollText, tone: 'amber', subtitle: 'Non-Akta · Letter C F4' },
     Pemecahan: { Icon: Grid2x2, tone: 'indigo', subtitle: 'Non-Akta · Bundel F4' },
     'Ukur Ulang': { Icon: Compass, tone: 'cyan', subtitle: 'Non-Akta · Bundel F4' },
     'Ralat Data': { Icon: FilePenLine, tone: 'violet', subtitle: 'Non-Akta · Bundel F4' },
@@ -1781,21 +1916,21 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 </div>
               </div>
               <p className="text-sm font-bold text-slate-900 dark:text-white">
-                Tarik dan lepaskan multi-file PDF atau Foto/Scan (JPG, PNG, WebP) di sini
+                Tarik dan lepaskan multi-file PDF, Word (.docx/.doc), atau Foto/Scan (JPG, PNG, WebP) di sini
               </p>
               <p className="text-xs text-slate-600 dark:text-teal-200/75 mt-1 max-w-xl mx-auto">
                 {scanMode === 'fast'
-                  ? 'Mode Cepat (gemini-3.1-flash-lite) + kompresi foto otomatis untuk pembacaan KTP, KK, Sertipikat, dan SPPT dalam hitungan detik.'
-                  : 'Mode Detail (gemini-4-hydrogen) untuk dokumen buram/tulisan tangan dengan fallback otomatis ke Mode Cepat.'}
+                  ? 'Mode Cepat (gemini-4-hydrogen) + ekstraksi Word (.docx/.doc) & kompresi foto otomatis untuk pembacaan KTP, KK, Sertipikat, Letter C, dan SPPT.'
+                  : 'Mode Detail (gemini-4-hydrogen penalaran tinggi) untuk dokumen buram/tulisan tangan/Word dengan fallback otomatis jika jaringan sibuk.'}
               </p>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
                 <label className="btn-3d btn-3d-light inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer">
                   <FileText className="w-3.5 h-3.5 text-teal-600 dark:text-teal-300" />
-                  <span>{preparingFiles ? 'Mengoptimalkan gambar...' : 'Pilih File Dokumen'}</span>
+                  <span>{preparingFiles ? 'Mengoptimalkan file...' : 'Pilih File Dokumen'}</span>
                   <input
                     type="file"
                     multiple
-                    accept="application/pdf,image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
+                    accept={SCAN_DOC_FILE_ACCEPT}
                     onChange={(e) => {
                       void handleFilesSelected(e.target.files);
                       e.target.value = '';
@@ -2020,7 +2155,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
                   {isAkta
                     ? `Data Para Pihak (${paraPihak.length})`
-                    : layanan === 'Turun Waris'
+                    : layanan === 'Turun Waris' || layanan === 'Waris C'
                     ? `Daftar Ahli Waris / Pemohon (${paraPihak.length})`
                     : `Data Pemohon / Pemilik Sertipikat (${paraPihak.length})`}
                 </h2>
@@ -2029,8 +2164,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     ? `Akta ${layanan} hanya terdiri dari Pihak I (${layanan === 'AJB' ? 'Penjual' : 'Pemberi Hibah'}) dan Pihak II (${layanan === 'AJB' ? 'Pembeli' : 'Penerima Hibah'}). Jika pemilik lebih dari satu orang, tambahkan sebagai Pihak I agar tergabung dalam PIHAK PERTAMA.`
                     : layanan === 'APHB'
                     ? 'Untuk APHB, setiap pemilik hak menjadi pihak terpisah secara berurutan (Pihak I, Pihak II, Pihak III, ... s/d Pihak XX atau lebih). Keterangan persetujuan / tidak memerlukan persetujuan otomatis ditulis setelah pihak terakhir.'
-                    : layanan === 'Turun Waris'
-                    ? 'Tambahkan seluruh ahli waris yang berhak sebagai Pihak I, Pihak II, dst. Data pewaris (almarhum/almarhumah) diisi pada Langkah 3.'
+                    : layanan === 'Turun Waris' || layanan === 'Waris C'
+                    ? 'Tambahkan seluruh ahli waris yang berhak sebagai Pihak I, Pihak II, dst. Data pewaris (almarhum/almarhumah) & Letter C diisi pada Langkah 3.'
                     : 'Tambahkan seluruh pemohon / pemegang hak pada sertipikat (Pihak I, Pihak II, dst.) untuk injeksi ke surat permohonan, kuasa, dan pernyataan BPN.'}
                 </p>
               </div>
@@ -2043,11 +2178,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         ? 'opacity-60 pointer-events-none border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
                         : 'cursor-pointer border-sky-200 dark:border-sky-400/35 bg-sky-50 dark:bg-sky-950/70 hover:bg-sky-100 dark:hover:bg-sky-900/70 text-sky-800 dark:text-sky-200'
                     }`}
-                    title="Pilih 1 atau beberapa foto/PDF KTP untuk otomatis mengisi atau menambah Pihak / Pemohon"
+                    title="Pilih 1 atau beberapa foto/PDF/Word KTP untuk otomatis mengisi atau menambah Pihak / Pemohon"
                   >
                     <input
                       type="file"
-                      accept="image/*,application/pdf,.heic,.heif"
+                      accept={SCAN_DOC_FILE_ACCEPT}
                       multiple
                       disabled={step2ScanSlot !== null}
                       onChange={handleScanStep2AddParties}
@@ -2124,7 +2259,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     <span>
                       {isAkta
                         ? `Tambah Pihak (${suggestNextPartyRole(paraPihak, layanan)})`
-                        : layanan === 'Turun Waris'
+                        : layanan === 'Turun Waris' || layanan === 'Waris C'
                         ? `Tambah Ahli Waris (${suggestNextPartyRole(paraPihak, layanan)})`
                         : `Tambah Pemohon (${suggestNextPartyRole(paraPihak, layanan)})`}
                     </span>
@@ -2235,11 +2370,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             ? 'opacity-60 pointer-events-none border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
                             : 'cursor-pointer border-sky-200 dark:border-sky-400/35 bg-sky-50 dark:bg-sky-950/70 hover:bg-sky-100 dark:hover:bg-sky-900/70 text-sky-800 dark:text-sky-200'
                         }`}
-                        title={`Scan foto/PDF KTP untuk mengisi data ${p.peran} #${idx + 1}`}
+                        title={`Scan foto/PDF/Word KTP untuk mengisi data ${p.peran} #${idx + 1}`}
                       >
                         <input
                           type="file"
-                          accept="image/*,application/pdf,.heic,.heif"
+                          accept={SCAN_DOC_FILE_ACCEPT}
                           disabled={step2ScanSlot !== null}
                           onChange={(e) =>
                             handleScanStep2PartyKtp(
@@ -2551,11 +2686,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                           ? 'opacity-60 pointer-events-none border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
                           : 'cursor-pointer border-sky-200 dark:border-sky-400/35 bg-sky-50 dark:bg-sky-950/70 hover:bg-sky-100 dark:hover:bg-sky-900/70 text-sky-800 dark:text-sky-200'
                       }`}
-                      title="Scan foto/PDF Sertipikat Tanah (Digital/Analog) atau SPPT PBB"
+                      title="Scan foto/PDF/Word Sertipikat Tanah (Digital/Analog) atau SPPT PBB"
                     >
                       <input
                         type="file"
-                        accept="image/*,application/pdf,.heic,.heif"
+                        accept={SCAN_DOC_FILE_ACCEPT}
                         multiple
                         disabled={step2ScanSlot !== null}
                         onChange={(e) => handleScanStep2ObjectDocs('sertipikat', e)}
@@ -2951,11 +3086,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         ? 'opacity-60 pointer-events-none border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
                         : 'cursor-pointer border-sky-200 dark:border-sky-400/35 bg-sky-50 dark:bg-sky-950/70 hover:bg-sky-100 dark:hover:bg-sky-900/70 text-sky-800 dark:text-sky-200'
                     }`}
-                    title="Scan foto/PDF SPPT PBB untuk mengisi NOP, Tahun Pajak, NJOP, dan luas"
+                    title="Scan foto/PDF/Word SPPT PBB untuk mengisi NOP, Tahun Pajak, NJOP, dan luas"
                   >
                     <input
                       type="file"
-                      accept="image/*,application/pdf,.heic,.heif"
+                      accept={SCAN_DOC_FILE_ACCEPT}
                       disabled={step2ScanSlot !== null}
                       onChange={(e) => handleScanStep2ObjectDocs('pbb', e)}
                       className="sr-only"
@@ -3468,12 +3603,102 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   </div>
                   )}
 
-                  {/* 2. Detail Khusus Turun Waris */}
-                  {layanan === 'Turun Waris' && (
+                  {/* 2. Detail Khusus Turun Waris & Waris C */}
+                  {(layanan === 'Turun Waris' || layanan === 'Waris C') && (
                     <div className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3">
-                      <h3 className="text-xs font-bold text-slate-900 dark:text-white border-b border-teal-900/10 dark:border-teal-500/20 pb-2">
-                        Data Pewaris &amp; Surat Keterangan Warisan (SKW)
-                      </h3>
+                      <div className="flex flex-wrap items-start justify-between gap-2.5 border-b border-teal-900/10 dark:border-teal-500/20 pb-2.5">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                            Data Pewaris &amp; Surat Keterangan / Pernyataan Ahli Warisan
+                          </h3>
+                          <p className="text-[11px] text-slate-600 dark:text-teal-200/75 mt-0.5">
+                            Scan Akta Kematian, SKW, KK, Letter C, atau file Word (.docx/.doc) untuk mengisi otomatis data pewaris &amp; pasangan.
+                          </p>
+                        </div>
+                        <div className="inline-flex items-center gap-1 shrink-0">
+                          <label
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold whitespace-nowrap transition-colors ${
+                              step3WarisScanSlot !== null
+                                ? 'opacity-60 pointer-events-none border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
+                                : 'cursor-pointer border-sky-200 dark:border-sky-400/35 bg-sky-50 dark:bg-sky-950/70 hover:bg-sky-100 dark:hover:bg-sky-900/70 text-sky-800 dark:text-sky-200'
+                            }`}
+                            title="Scan Foto, PDF, atau Word (.docx/.doc) Akta Kematian, SKW, atau KK"
+                          >
+                            <input
+                              type="file"
+                              accept={SCAN_DOC_FILE_ACCEPT}
+                              multiple
+                              aria-label="Scan Dokumen Pewaris (Foto, PDF, Word)"
+                              disabled={step3WarisScanSlot !== null}
+                              onChange={(e) => {
+                                const files = e.target.files ? Array.from(e.target.files) : [];
+                                e.target.value = '';
+                                if (files.length > 0) {
+                                  void handleScanStep3Waris('waris_pewaris', files);
+                                }
+                              }}
+                              className="sr-only"
+                            />
+                            {step3WarisScanSlot === 'waris_pewaris' ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <ScanLine className="w-3.5 h-3.5" />
+                            )}
+                            <span>
+                              {step3WarisScanSlot === 'waris_pewaris'
+                                ? 'Memindai...'
+                                : 'Scan Dokumen Pewaris'}
+                            </span>
+                          </label>
+                          <label
+                            className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
+                              step3WarisScanSlot !== null
+                                ? 'opacity-60 pointer-events-none border-teal-900/10 dark:border-teal-500/20 bg-slate-50 dark:bg-[#081E22] text-slate-400 dark:text-teal-500/50'
+                                : 'cursor-pointer border-teal-900/15 dark:border-teal-400/25 bg-white dark:bg-[#0D2B30] hover:bg-teal-50 dark:hover:bg-[#12383F] text-slate-700 dark:text-teal-100'
+                            }`}
+                            title="Foto Akta Kematian atau SKW langsung dari kamera"
+                          >
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              aria-label="Foto Kamera Dokumen Pewaris"
+                              disabled={step3WarisScanSlot !== null}
+                              onChange={(e) => {
+                                const files = e.target.files ? Array.from(e.target.files) : [];
+                                e.target.value = '';
+                                if (files.length > 0) {
+                                  void handleScanStep3Waris('waris_pewaris', files);
+                                }
+                              }}
+                              className="sr-only"
+                            />
+                            <Camera className="w-3.5 h-3.5" />
+                          </label>
+                        </div>
+                      </div>
+                      {step3PewarisScanNotice && (
+                        <div
+                          role={step3PewarisScanNotice.type === 'error' ? 'alert' : 'status'}
+                          className={`flex items-start justify-between gap-2 px-3 py-2 rounded-xl border text-xs ${
+                            step3PewarisScanNotice.type === 'error'
+                              ? 'border-rose-200 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200'
+                              : step3PewarisScanNotice.type === 'success'
+                                ? 'border-emerald-200 dark:border-emerald-600/45 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200'
+                                : 'border-sky-200 dark:border-sky-600/45 bg-sky-50 dark:bg-sky-950/50 text-sky-900 dark:text-sky-200'
+                          }`}
+                        >
+                          <span className="leading-snug">{step3PewarisScanNotice.message}</span>
+                          <button
+                            type="button"
+                            onClick={() => setStep3PewarisScanNotice(null)}
+                            aria-label="Tutup pemberitahuan scan Pewaris"
+                            className="shrink-0 opacity-70 hover:opacity-100 p-0.5"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                           <label htmlFor="tw-sebutan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
@@ -3618,6 +3843,27 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         </div>
                       </div>
                     </div>
+                  )}
+
+                  {/* 2b. Detail Khusus Waris Letter C */}
+                  {layanan === 'Waris C' && (
+                    <WarisCDetailPanel
+                      nonAkta={nonAkta}
+                      setNonAkta={setNonAkta}
+                      paraPihak={paraPihak}
+                      desaName={tanah.desa}
+                      luasIndukM2={tanah.luas_m2}
+                      onUploadSketPhoto={(e) =>
+                        void handleGeotagPhotoUpload('foto_sket_pecah', e)
+                      }
+                      onScanWarisC={(files) =>
+                        void handleScanStep3Waris('waris_c', files)
+                      }
+                      scanningWarisC={step3WarisScanSlot === 'waris_c'}
+                      scanDisabled={step3WarisScanSlot !== null}
+                      scanNotice={step3WarisCScanNotice}
+                      onDismissScanNotice={() => setStep3WarisCScanNotice(null)}
+                    />
                   )}
 
                   {/* 3. Detail Khusus Pemecahan & Ukur Ulang */}
@@ -4085,13 +4331,406 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     </div>
                   )}
 
-                  {/* 4c. Detail Khusus Validasi Sertipikat & Analisis Bidang (Geotagging & Foto GPS) */}
-                  {(layanan === 'Validasi Sertipikat' || layanan === 'Analisis Bidang') && (
+                  {/* 4b-bis. Detail Khusus Analisis Bidang (Permohonan Peta Analisis, Sket Rencana Pemecahan & Alasan Pemecahan) */}
+                  {layanan === 'Analisis Bidang' && (
+                    <div className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3.5">
+                      <div className="border-b border-teal-900/10 dark:border-teal-500/20 pb-2">
+                        <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                          Permohonan Peta Analisis Penatagunaan Tanah, Sket Rencana Pemecahan &amp; Alasan Pemecahan
+                        </h3>
+                        <p className="text-[11px] text-slate-600 dark:text-teal-200/75 mt-0.5">
+                          Menghasilkan Permohonan Peta Analisis (RTRW/RDTR, LSD &amp; LP2B), Surat Kuasa, Sket Rencana Pemecahan Bidang Tanah, Surat Pernyataan Alasan Pemecahan (8 Poin), opsional Pelepasan Jalan, serta Keabsahan Lokasi &amp; Geotagging.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label htmlFor="analisis-no-hp" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Nomor HP Pemohon / Kuasa
+                          </label>
+                          <input
+                            id="analisis-no-hp"
+                            type="text"
+                            value={nonAkta.analisis_no_hp ?? ''}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, analisis_no_hp: e.target.value })
+                            }
+                            placeholder="08xxxxxxxxxx"
+                            className="input-airy w-full px-2.5 py-1.5 font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="analisis-skala" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Skala Peta Multimedia
+                          </label>
+                          <input
+                            id="analisis-skala"
+                            type="text"
+                            value={nonAkta.analisis_skala_peta ?? '1 : 1000'}
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, analisis_skala_peta: e.target.value })
+                            }
+                            placeholder="1 : 1000"
+                            className="input-airy w-full px-2.5 py-1.5 font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="analisis-jumlah-bidang" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Jumlah Bidang Rencana Pecah
+                          </label>
+                          <input
+                            id="analisis-jumlah-bidang"
+                            type="number"
+                            min="1"
+                            max="20"
+                            value={
+                              (nonAkta.bidang_pecahan ?? []).length > 0
+                                ? (nonAkta.bidang_pecahan ?? []).length
+                                : nonAkta.analisis_jumlah_bidang ?? 3
+                            }
+                            disabled={(nonAkta.bidang_pecahan ?? []).length > 0}
+                            onChange={(e) =>
+                              setNonAkta({
+                                ...nonAkta,
+                                analisis_jumlah_bidang: Math.max(1, Number(e.target.value) || 1),
+                              })
+                            }
+                            className="input-airy w-full px-2.5 py-1.5 font-mono disabled:opacity-70"
+                          />
+                        </div>
+                        <div className="sm:col-span-3">
+                          <label htmlFor="analisis-tema" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Tema Analisis Penatagunaan Tanah
+                          </label>
+                          <input
+                            id="analisis-tema"
+                            type="text"
+                            value={
+                              nonAkta.analisis_tema ??
+                              'Kesesuaian Penggunaan Tanah terhadap RTRW atau RDTR, LSD dan LP2B'
+                            }
+                            onChange={(e) =>
+                              setNonAkta({ ...nonAkta, analisis_tema: e.target.value })
+                            }
+                            className="input-airy w-full px-2.5 py-1.5"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="analisis-penggunaan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Keperluan / Rencana Penggunaan (Poin 2)
+                          </label>
+                          <input
+                            id="analisis-penggunaan"
+                            type="text"
+                            value={nonAkta.analisis_rencana_penggunaan ?? 'Rumah Tinggal'}
+                            onChange={(e) =>
+                              setNonAkta({
+                                ...nonAkta,
+                                analisis_rencana_penggunaan: e.target.value,
+                              })
+                            }
+                            placeholder="Rumah Tinggal"
+                            className="input-airy w-full px-2.5 py-1.5"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="analisis-alasan-peralihan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Kepentingan Peralihan Hak (Poin 5)
+                          </label>
+                          <input
+                            id="analisis-alasan-peralihan"
+                            type="text"
+                            value={nonAkta.analisis_alasan_peralihan ?? 'HIBAH kepada anak'}
+                            onChange={(e) =>
+                              setNonAkta({
+                                ...nonAkta,
+                                analisis_alasan_peralihan: e.target.value,
+                              })
+                            }
+                            placeholder="HIBAH kepada anak / JUAL BELI / WARIS"
+                            className="input-airy w-full px-2.5 py-1.5"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="analisis-alasan-tabel" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Alasan Pemecahan Default Tabel Sket
+                          </label>
+                          <input
+                            id="analisis-alasan-tabel"
+                            type="text"
+                            value={nonAkta.analisis_alasan_tabel ?? 'dihibahkan ke anak'}
+                            onChange={(e) =>
+                              setNonAkta({
+                                ...nonAkta,
+                                analisis_alasan_tabel: e.target.value,
+                              })
+                            }
+                            placeholder="dihibahkan ke anak"
+                            className="input-airy w-full px-2.5 py-1.5"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tabel Rincian Bidang Pecahan untuk Sket Rencana Pemecahan */}
+                      <div className="space-y-2 pt-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-semibold text-slate-900 dark:text-white">
+                            Tabel Rincian Bidang Sket Rencana Pemecahan ({(nonAkta.bidang_pecahan ?? []).length} baris)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextNum = (nonAkta.bidang_pecahan ?? []).length + 1;
+                              const item: PemecahanBidangItem = {
+                                id: `ab-${Date.now()}-${nextNum}`,
+                                label: `Bidang ${nextNum}`,
+                                luas_m2: 0,
+                                rencana_penggunaan:
+                                  nonAkta.analisis_rencana_penggunaan || 'Rumah Tinggal',
+                                alasan_pemecahan:
+                                  nonAkta.analisis_alasan_tabel || 'dihibahkan ke anak',
+                              };
+                              setNonAkta((prev) => ({
+                                ...prev,
+                                bidang_pecahan: [...(prev.bidang_pecahan ?? []), item],
+                              }));
+                            }}
+                            className="btn-3d btn-3d-teal inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Tambah Baris Bidang</span>
+                          </button>
+                        </div>
+
+                        {(nonAkta.bidang_pecahan ?? []).length === 0 ? (
+                          <p className="text-[11px] text-slate-500 dark:text-teal-200/70">
+                            Belum ada rincian per bidang — dokumen Sket otomatis menyiapkan {nonAkta.analisis_jumlah_bidang ?? 3} baris kosong dengan Rencana Penggunaan &amp; Alasan Pemecahan default di atas. Klik &ldquo;Tambah Baris Bidang&rdquo; untuk mengisi luas masing-masing bidang.
+                          </p>
+                        ) : (
+                          (nonAkta.bidang_pecahan ?? []).map((b, bIdx) => (
+                            <div
+                              key={b.id}
+                              className="p-3 rounded-xl border border-teal-900/10 dark:border-teal-500/20 bg-white dark:bg-[#081E22] grid grid-cols-1 sm:grid-cols-12 gap-2 items-end"
+                            >
+                              <div className="sm:col-span-4">
+                                <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                  Rencana Penggunaan #{bIdx + 1}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={b.rencana_penggunaan ?? b.keterangan ?? 'Rumah Tinggal'}
+                                  onChange={(e) =>
+                                    setNonAkta((prev) => ({
+                                      ...prev,
+                                      bidang_pecahan: (prev.bidang_pecahan ?? []).map((x) =>
+                                        x.id === b.id
+                                          ? { ...x, rencana_penggunaan: e.target.value }
+                                          : x
+                                      ),
+                                    }))
+                                  }
+                                  placeholder="Rumah Tinggal"
+                                  className="input-airy w-full px-2.5 py-1.5"
+                                />
+                              </div>
+                              <div className="sm:col-span-2">
+                                <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                  Luas (m²)
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={b.luas_m2}
+                                  onChange={(e) =>
+                                    setNonAkta((prev) => ({
+                                      ...prev,
+                                      bidang_pecahan: (prev.bidang_pecahan ?? []).map((x) =>
+                                        x.id === b.id
+                                          ? { ...x, luas_m2: Number(e.target.value) || 0 }
+                                          : x
+                                      ),
+                                    }))
+                                  }
+                                  className="input-airy w-full px-2.5 py-1.5 font-mono tabular-nums"
+                                />
+                              </div>
+                              <div className="sm:col-span-4">
+                                <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                  Alasan Pemecahan
+                                </label>
+                                <input
+                                  type="text"
+                                  value={b.alasan_pemecahan ?? 'dihibahkan ke anak'}
+                                  onChange={(e) =>
+                                    setNonAkta((prev) => ({
+                                      ...prev,
+                                      bidang_pecahan: (prev.bidang_pecahan ?? []).map((x) =>
+                                        x.id === b.id
+                                          ? { ...x, alasan_pemecahan: e.target.value }
+                                          : x
+                                      ),
+                                    }))
+                                  }
+                                  placeholder="dihibahkan ke anak"
+                                  className="input-airy w-full px-2.5 py-1.5"
+                                />
+                              </div>
+                              <div className="sm:col-span-2 flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setNonAkta((prev) => ({
+                                      ...prev,
+                                      bidang_pecahan: (prev.bidang_pecahan ?? []).filter(
+                                        (x) => x.id !== b.id
+                                      ),
+                                    }))
+                                  }
+                                  aria-label={`Hapus bidang pecahan #${bIdx + 1}`}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-500/35 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 font-medium"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Hapus</span>
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Rencana & Pelepasan Jalan / Saluran + Opsional Upload Gambar Sket */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                        <div>
+                          <label htmlFor="analisis-jalan-rencana" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Rencana Jalan / Saluran (m²)
+                          </label>
+                          <input
+                            id="analisis-jalan-rencana"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={nonAkta.analisis_rencana_jalan_luas_m2 ?? 0}
+                            onChange={(e) =>
+                              setNonAkta({
+                                ...nonAkta,
+                                analisis_rencana_jalan_luas_m2: Number(e.target.value) || 0,
+                              })
+                            }
+                            placeholder="40"
+                            className="input-airy w-full px-2.5 py-1.5 font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="analisis-jalan-lepas" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Pelepasan Jalan / Saluran (m²)
+                          </label>
+                          <input
+                            id="analisis-jalan-lepas"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={nonAkta.pelepasan_jalan_luas_m2 ?? 0}
+                            onChange={(e) =>
+                              setNonAkta({
+                                ...nonAkta,
+                                pelepasan_jalan_luas_m2: Number(e.target.value) || 0,
+                              })
+                            }
+                            placeholder="40"
+                            className="input-airy w-full px-2.5 py-1.5 font-mono"
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <label className="w-full flex items-center gap-2 p-2.5 rounded-xl border border-teal-900/12 dark:border-teal-500/20 bg-white dark:bg-[#081E22] cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(nonAkta.sertakan_pelepasan_jalan)}
+                              onChange={(e) =>
+                                setNonAkta({
+                                  ...nonAkta,
+                                  sertakan_pelepasan_jalan: e.target.checked,
+                                })
+                              }
+                              className="rounded border-teal-500/40 accent-teal-600"
+                            />
+                            <span className="font-medium text-slate-800 dark:text-teal-100 text-[11px]">
+                              Sertakan Halaman Surat Pelepasan Hak untuk Jalan
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {nonAkta.sertakan_pelepasan_jalan && (
+                        <div>
+                          <label htmlFor="analisis-jalan-ket" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                            Keterangan Jalan Pelepasan (Opsional)
+                          </label>
+                          <input
+                            id="analisis-jalan-ket"
+                            type="text"
+                            value={nonAkta.pelepasan_jalan_keterangan ?? ''}
+                            onChange={(e) =>
+                              setNonAkta({
+                                ...nonAkta,
+                                pelepasan_jalan_keterangan: e.target.value,
+                              })
+                            }
+                            placeholder="Misal: Jalan Umum / Akses Bidang Pecahan"
+                            className="input-airy w-full px-2.5 py-1.5"
+                          />
+                        </div>
+                      )}
+
+                      {/* Opsional Upload Gambar Sket Rencana Pemecahan */}
+                      <div className="p-2.5 rounded-xl border border-teal-900/10 dark:border-teal-500/20 bg-white dark:bg-[#081E22] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+                        <div className="text-[11px]">
+                          <p className="font-bold text-slate-800 dark:text-teal-50">
+                            Gambar Sket Rencana Pemecahan (Opsional)
+                          </p>
+                          <p className="text-slate-500 dark:text-teal-200/70">
+                            Unggah gambar sket untuk disisipkan otomatis ke bingkai Hal. 3, atau biarkan kosong untuk kotak sket siap gambar tangan berpanah Utara (U).
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {nonAkta.foto_sket_pecah && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setNonAkta((prev) => ({ ...prev, foto_sket_pecah: '' }))
+                              }
+                              className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:underline px-2 py-1"
+                            >
+                              Hapus Sket
+                            </button>
+                          )}
+                          <label className="btn-3d btn-3d-light inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer">
+                            <ImagePlus className="w-3.5 h-3.5 text-teal-600 dark:text-teal-300" />
+                            <span>{nonAkta.foto_sket_pecah ? 'Ganti Gambar Sket' : 'Unggah Gambar Sket'}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              aria-label="Unggah gambar sket rencana pemecahan"
+                              onChange={(e) => void handleGeotagPhotoUpload('foto_sket_pecah', e)}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4c. Detail Khusus Validasi Sertipikat, Analisis Bidang & Waris C (Geotagging & Foto GPS) */}
+                  {(layanan === 'Validasi Sertipikat' ||
+                    layanan === 'Analisis Bidang' ||
+                    layanan === 'Waris C') && (
                     <div className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3">
                       <div className="border-b border-teal-900/10 dark:border-teal-500/20 pb-2">
                         <h3 className="text-xs font-bold text-slate-900 dark:text-white">
                           {layanan === 'Validasi Sertipikat'
                             ? 'Lampiran Geotagging & Foto GPS Map Camera (Validasi Sertipikat)'
+                            : layanan === 'Waris C'
+                            ? 'Lampiran Geotagging, Foto Patok 1–4 & Peta Poligon (Hal. 15–16 Waris C)'
                             : 'Data Koordinat Poligon, Geotagging & Foto Lokasi (Analisis Bidang)'}
                         </h3>
                         <p className="text-[11px] text-slate-600 dark:text-teal-200/75 mt-0.5">
@@ -4583,15 +5222,16 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
                   {/* 5. Pengesahan Ganda Camat & Kepala Desa Asal Sertipikat */}
                   {(layanan === 'Turun Waris' ||
+                    layanan === 'Waris C' ||
                     layanan === 'Ralat Data' ||
                     nonAkta.sertakan_beda_nama) && (
                     <div className="sm:col-span-2 border border-amber-200 dark:border-amber-500/35 rounded-2xl p-4 bg-amber-50/50 dark:bg-amber-950/35 space-y-3">
                       <div className="border-b border-amber-200 dark:border-amber-500/30 pb-2">
                         <h3 className="text-xs font-bold text-amber-950 dark:text-amber-100">
-                          Pengesahan Wajib Camat &amp; Kepala Desa Asal Sertipikat (SKW / Beda Nama / Kronologi)
+                          Pengesahan Wajib Camat &amp; Kepala Desa Asal ({layanan === 'Waris C' ? 'Waris Letter C / SKW / Riwayat Tanah' : 'SKW / Beda Nama / Kronologi'})
                         </h3>
                         <p className="text-[11px] text-amber-900/80 dark:text-amber-200/80 mt-0.5">
-                          Khusus Surat Keterangan Warisan, Surat Pernyataan Beda Nama, dan Kronologi Ralat Data wajib disahkan oleh kedua pejabat berikut: Camat dan Kepala Desa letak/asal sertipikat.
+                          Khusus Surat Keterangan Warisan, Bundel Waris Letter C, Surat Pernyataan Beda Nama, dan Kronologi Ralat Data wajib disahkan oleh kedua pejabat berikut: Camat dan Kepala Desa letak/asal tanah.
                         </p>
                       </div>
 
@@ -4699,6 +5339,23 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             </div>
                             <div>
                               <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                NIP / NIAP Kades (Opsional)
+                              </label>
+                              <input
+                                type="text"
+                                value={nonAkta.kades_pengesahan_nip ?? ''}
+                                onChange={(e) =>
+                                  setNonAkta({
+                                    ...nonAkta,
+                                    kades_pengesahan_nip: e.target.value,
+                                  })
+                                }
+                                placeholder="Kosongkan jika tidak ada"
+                                className="input-airy w-full px-2.5 py-1.5 font-mono"
+                              />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                                 No. Register Desa (Opsional)
                               </label>
                               <input
@@ -4753,7 +5410,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       </span>
                       <input
                         type="file"
-                        accept="image/*,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
+                        accept={SCAN_DOC_FILE_ACCEPT}
                         aria-label="Scan KTP Kuasa BPN"
                         disabled={scanningPersonKey !== null}
                         onChange={(e) => void handleScanAktaPerson('kuasa', e)}
@@ -5009,7 +5666,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                           </span>
                           <input
                             type="file"
-                            accept="image/*,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
+                            accept={SCAN_DOC_FILE_ACCEPT}
                             aria-label={`Scan KTP Saksi ${sCfg.num}`}
                             disabled={scanningPersonKey !== null}
                             onChange={(e) =>
@@ -5262,15 +5919,17 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 : getNonAktaBundleFileName(layanan);
               const displayDesc = isAkta
                 ? meta.description
-                : layanan === 'Pengecekan Sertipikat'
-                  ? 'Bundel F4 Pengecekan Sertipikat (3 Halaman): Permohonan ATR/BPN Poin 13, Surat Kuasa Substitusi, dan Pernyataan Keabsahan & Kebenaran Dokumen Online.'
-                  : layanan === 'Validasi Sertipikat'
-                    ? 'Bundel F4 Validasi Sertipikat (4 Halaman): Permohonan ATR/BPN Poin 14 (Validasi/Verifikasi), Surat Kuasa, serta Lampiran Geotagging (Tampak Depan, Patok 1–4, dan Poligon).'
-                    : layanan === 'Analisis Bidang'
-                      ? 'Bundel F4 Analisis Bidang (5 Halaman): Permohonan ATR/BPN Poin 14 (Analisis Bidang), Surat Kuasa, Pernyataan Keabsahan Data & Lokasi Bidang, serta Lampiran Geotagging & Koordinat Poligon.'
-                      : layanan === 'Permohonan PKKPR'
-                        ? 'Bundel F4 Permohonan PKKPR DPMPTSP (2–3 Halaman): Surat Permohonan PKKPR kepada Bupati Cq. Kepala DPMPTSP beserta Surat Kuasa Pengurusan.'
-                        : `Bundel lengkap berkas Non-Akta ${layanan} dalam 1 file F4 dengan format pengesahan sesuai jenis dokumen.`;
+                : layanan === 'Waris C'
+                  ? 'Bundel F4 Waris Letter C (15–16 Halaman): Pernyataan Ahli Warisan, Permohonan Konversi BPN, Surat Kuasa Pengakuan Hak & Pemecahan, Pernyataan Menerima Waris & BPHTB, Penguasaan Fisik & Tidak Sengketa, Pemasangan Tanda Batas, Sket Tanah, 2 Berita Acara Kesaksian, Surat Keterangan Kepala Desa (PP 24/1997), Riwayat Tanah Buku C, Pernyataan Pembagian Warisan, serta Lampiran Geotagging & Poligon.'
+                  : layanan === 'Pengecekan Sertipikat'
+                    ? 'Bundel F4 Pengecekan Sertipikat (3 Halaman): Permohonan ATR/BPN Poin 13, Surat Kuasa Substitusi, dan Pernyataan Keabsahan & Kebenaran Dokumen Online.'
+                    : layanan === 'Validasi Sertipikat'
+                      ? 'Bundel F4 Validasi Sertipikat (4 Halaman): Permohonan ATR/BPN Poin 14 (Validasi/Verifikasi), Surat Kuasa, serta Lampiran Geotagging (Tampak Depan, Patok 1–4, dan Poligon).'
+                      : layanan === 'Analisis Bidang'
+                        ? 'Bundel F4 Analisis Bidang (7–8 Halaman): Permohonan Peta Analisis Penatagunaan Tanah (RTRW/RDTR, LSD & LP2B), Surat Kuasa, Sket Rencana Pemecahan, Surat Pernyataan Alasan Pemecahan (8 Poin), opsional Pelepasan Jalan, Pernyataan Keabsahan Lokasi, serta Lampiran Geotagging & Koordinat Poligon.'
+                        : layanan === 'Permohonan PKKPR'
+                          ? 'Bundel F4 Permohonan PKKPR DPMPTSP (2–3 Halaman): Surat Permohonan PKKPR kepada Bupati Cq. Kepala DPMPTSP beserta Surat Kuasa Pengurusan.'
+                          : `Bundel lengkap berkas Non-Akta ${layanan} dalam 1 file F4 dengan format pengesahan sesuai jenis dokumen.`;
               const paperInfo =
                 meta.paperSize === 'A4'
                   ? 'Kertas A4 (210 × 297 mm)'

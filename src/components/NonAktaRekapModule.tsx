@@ -49,6 +49,7 @@ interface NonAktaRekapModuleProps {
 const NON_AKTA_TABS: Array<{ id: 'SEMUA' | ServiceType; label: string }> = [
   { id: 'SEMUA', label: 'Semua Non-Akta' },
   { id: 'Turun Waris', label: 'Turun Waris' },
+  { id: 'Waris C', label: 'Waris C' },
   { id: 'Pemecahan', label: 'Pemecahan' },
   { id: 'Ukur Ulang', label: 'Ukur Ulang' },
   { id: 'Ralat Data', label: 'Ralat Data' },
@@ -80,6 +81,9 @@ function getPengesahanSummary(rec: BerkasRecord, settings: OfficeSettings): stri
   if (rec.layanan === 'Analisis Bidang') {
     return 'Pemohon & Kuasa BPN (Analisis)';
   }
+  if (rec.layanan === 'Waris C') {
+    return `Camat & Kepala Desa ${rec.tanah.desa || '-'} (Letter C)`;
+  }
   const dualModes =
     rec.layanan === 'Turun Waris' ||
     rec.layanan === 'Ralat Data' ||
@@ -101,6 +105,13 @@ function getSpecificSummary(rec: BerkasRecord): string {
   const na = rec.non_akta;
   if (rec.layanan === 'Turun Waris') {
     return na?.nama_pewaris ? `Pewaris: ${na.nama_pewaris}` : 'Permohonan Turun Waris';
+  }
+  if (rec.layanan === 'Waris C') {
+    const parts = [
+      na?.nama_pewaris ? `Pewaris: ${na.nama_pewaris}` : '',
+      na?.waris_c_hak_adat?.trim() || '',
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(' · ') : 'Konversi / Waris Letter C';
   }
   if (rec.layanan === 'Pemecahan' || rec.layanan === 'Pemecahan/Ukur Ulang') {
     const count = na?.bidang_pecahan?.length ?? 0;
@@ -215,7 +226,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
               Rekap Berkas &amp; Tracking Non-Akta
             </h1>
             <p className="text-sm text-slate-600 dark:text-teal-200/75 mt-1">
-              Buku rekapitulasi dan pelacakan tahapan khusus berkas Non-Akta (Turun Waris, Pemecahan, Ukur Ulang, Ralat Data, Pengecekan, Validasi, Analisis Bidang, PKKPR) di luar Laporan Bulanan PPATS.
+              Buku rekapitulasi dan pelacakan tahapan khusus berkas Non-Akta (Turun Waris, Waris C, Pemecahan, Ukur Ulang, Ralat Data, Pengecekan, Validasi, Analisis Bidang, PKKPR) di luar Laporan Bulanan PPATS.
             </p>
           </div>
         </div>
@@ -261,7 +272,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
               {stats.total}
             </p>
             <p className="text-[11px] text-slate-500 dark:text-teal-300/70 mt-1">
-              Waris {stats.turunWaris} · Pecah {stats.pemecahan} · Ukur {stats.ukurUlang} · Ralat {stats.ralatData} · Cek {stats.pengecekan} · Validasi {stats.validasi} · Analisis {stats.analisisBidang} · PKKPR {stats.pkkpr}
+              Waris {stats.turunWaris} · Waris C {stats.warisC} · Pecah {stats.pemecahan} · Ukur {stats.ukurUlang} · Ralat {stats.ralatData} · Cek {stats.pengecekan} · Validasi {stats.validasi} · Analisis {stats.analisisBidang} · PKKPR {stats.pkkpr}
             </p>
           </div>
           <GlossyIcon3D tone="teal" size="md">
@@ -444,7 +455,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
             Belum ada berkas Non-Akta yang sesuai filter saat ini.
           </p>
           <p className="text-xs text-slate-500 dark:text-teal-200/70">
-            Buat berkas Non-Akta baru (Turun Waris, Pemecahan, Ukur Ulang, Ralat Data, Pengecekan, Validasi, Analisis Bidang, atau PKKPR) agar muncul di rekap dan pelacakan ini.
+            Buat berkas Non-Akta baru (Turun Waris, Waris C, Pemecahan, Ukur Ulang, Ralat Data, Pengecekan, Validasi, Analisis Bidang, atau PKKPR) agar muncul di rekap dan pelacakan ini.
           </p>
           <button
             type="button"

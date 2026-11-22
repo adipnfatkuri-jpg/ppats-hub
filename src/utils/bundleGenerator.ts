@@ -98,6 +98,8 @@ function getJudulAkta(layanan: ServiceType): string {
       return 'AKTA HIBAH';
     case 'Turun Waris':
       return 'BERKAS TURUN WARIS';
+    case 'Waris C':
+      return 'BERKAS WARIS LETTER C';
     case 'Pemecahan':
       return 'BERKAS PEMECAHAN BIDANG';
     case 'Ukur Ulang':
@@ -121,6 +123,8 @@ export function getNonAktaBundleFileName(layanan: ServiceType): string {
   switch (layanan) {
     case 'Turun Waris':
       return '02_Lampiran_Bundel_Turun_Waris.docx';
+    case 'Waris C':
+      return '02_Lampiran_Bundel_Waris_C.docx';
     case 'Pemecahan':
       return '02_Lampiran_Bundel_Pemecahan.docx';
     case 'Ukur Ulang':

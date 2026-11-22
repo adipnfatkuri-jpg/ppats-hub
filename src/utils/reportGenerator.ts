@@ -70,6 +70,8 @@ export function filterNonAktaRecords(
         r.tanah.desa,
         r.tanah.kecamatan,
         r.non_akta?.nama_pewaris || '',
+        r.non_akta?.waris_c_hak_adat || '',
+        r.non_akta?.waris_c_atas_nama_c || '',
         r.non_akta?.nama_di_sertipikat || '',
         r.non_akta?.nama_di_ktp_kk || '',
         r.non_akta?.pkkpr_kbli || '',
@@ -88,6 +90,7 @@ export function filterNonAktaRecords(
 export interface NonAktaStatsSummary {
   total: number;
   turunWaris: number;
+  warisC: number;
   pemecahan: number;
   ukurUlang: number;
   ralatData: number;
@@ -105,6 +108,7 @@ export function summarizeNonAktaStats(records: BerkasRecord[]): NonAktaStatsSumm
   return {
     total: nonAkta.length,
     turunWaris: nonAkta.filter((r) => r.layanan === 'Turun Waris').length,
+    warisC: nonAkta.filter((r) => r.layanan === 'Waris C').length,
     pemecahan: nonAkta.filter(
       (r) => r.layanan === 'Pemecahan' || r.layanan === 'Pemecahan/Ukur Ulang'
     ).length,

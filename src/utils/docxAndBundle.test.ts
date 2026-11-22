@@ -1027,17 +1027,30 @@ test('New Non-Akta sub-bundles (Pengecekan Sertipikat, Validasi Sertipikat, Anal
   assert.ok(validasiPreview.pages[2].title.includes('Geotagging'));
   assert.ok(validasiPreview.pages[3].title.includes('Geotagging Lanjutan'));
 
-  // 3. Analisis Bidang (5 pages with polygon coords + pernyataan keabsahan)
+  // 3. Analisis Bidang (7 pages default: Permohonan Peta Analisis, Surat Kuasa, Sket Rencana Pemecahan,
+  //    Surat Pernyataan Alasan Pemecahan, Pernyataan Keabsahan Lokasi, Geotagging 2 hal; +1 hal Pelepasan Jalan = 8 pages)
   const analisisRecord = {
     ...base,
     id: 'ana-1',
     layanan: 'Analisis Bidang' as const,
-    akta: { ...base.akta, tanggal_akta: '09-04-2026' },
+    akta: { ...base.akta, tanggal_akta: '09-11-2026' },
     non_akta: {
       pengesahan_mode: 'ppats' as const,
       link_maps: 'https://maps.app.goo.gl/analisisBidang',
       koordinat_gps: '-7.53010, 110.77970',
       koordinat_poligon: '-7.530057, 110.779658\n-7.530119, 110.779647\n-7.530143, 110.779764\n-7.530080, 110.779779',
+      analisis_no_hp: '081234567890',
+      analisis_skala_peta: '1 : 1000',
+      analisis_rencana_penggunaan: 'Rumah Tinggal',
+      analisis_alasan_peralihan: 'HIBAH kepada anak',
+      analisis_alasan_tabel: 'dihibahkan ke anak',
+      analisis_rencana_jalan_luas_m2: 40,
+      pelepasan_jalan_luas_m2: 40,
+      bidang_pecahan: [
+        { id: 'ab1', label: 'Bidang 1', luas_m2: 130, rencana_penggunaan: 'Rumah Tinggal', alasan_pemecahan: 'dihibahkan ke anak' },
+        { id: 'ab2', label: 'Bidang 2', luas_m2: 130, rencana_penggunaan: 'Rumah Tinggal', alasan_pemecahan: 'dihibahkan ke anak' },
+        { id: 'ab3', label: 'Bidang 3', luas_m2: 155, rencana_penggunaan: 'Rumah Tinggal', alasan_pemecahan: 'dihibahkan ke anak' },
+      ],
     },
   };
   const analisisFiles = await generateBundleFiles(analisisRecord, DEFAULT_OFFICE_SETTINGS, {});
@@ -1045,8 +1058,30 @@ test('New Non-Akta sub-bundles (Pengecekan Sertipikat, Validasi Sertipikat, Anal
   assert.equal(analisisFiles[0].fileName, '02_Lampiran_Bundel_Analisis_Bidang.docx');
   const analisisXml = new PizZip(analisisFiles[0].bytes).file('word/document.xml')?.asText() ?? '';
   assert.ok(!/<\/w:tbl>\s*<w:tbl[\s>]/.test(analisisXml), 'Analisis Bidang must have zero adjacent tables');
-  assert.ok(analisisXml.includes('14. Analisis Bidang'));
-  assert.ok(analisisXml.includes('Analisis Bidang Tanah'));
+  // PDF Hal. 3 — Permohonan Layanan Peta Analisis Penatagunaan Tanah
+  assert.ok(analisisXml.includes('Permohonan Layanan Peta Analisis Penatagunaan Tanah'));
+  assert.ok(analisisXml.includes('KETERANGAN TENTANG TANAH YANG DIMOHON'));
+  assert.ok(analisisXml.includes('Kesesuaian Penggunaan Tanah terhadap RTRW atau RDTR, LSD dan LP2B'));
+  assert.ok(analisisXml.includes('1. Non-Multimedia'));
+  assert.ok(analisisXml.includes('2. Multimedia'));
+  assert.ok(analisisXml.includes('Skala 1 : 1000'));
+  assert.ok(analisisXml.includes('FC Sertifikat (Terploting)'));
+  // PDF Hal. 4 — Surat Kuasa
+  assert.ok(analisisXml.includes('PEMBERI KUASA'));
+  assert.ok(analisisXml.includes('PENERIMA KUASA'));
+  assert.ok(analisisXml.includes('KHUSUS'));
+  // PDF Hal. 1 — Sket Rencana Pemecahan Bidang Tanah
+  assert.ok(analisisXml.includes('SKET RENCANA PEMECAHAN BIDANG TANAH'));
+  assert.ok(analisisXml.includes('3 (Tiga) Bidang'));
+  assert.ok(analisisXml.includes('Rencana Penggunaan'));
+  assert.ok(analisisXml.includes('Alasan Pemecahan'));
+  assert.ok(analisisXml.includes('dihibahkan ke anak'));
+  // PDF Hal. 2 — Surat Pernyataan Alasan Pemecahan (8 poin)
+  assert.ok(analisisXml.includes('SURAT PERNYATAAN ALASAN PEMECAHAN'));
+  assert.ok(analisisXml.includes('bukan merupakan kegiatan pembangunan perumahan terselubung'));
+  assert.ok(analisisXml.includes('maksimal 5 (lima) bidang'));
+  assert.ok(analisisXml.includes('HIBAH kepada anak'));
+  // Retained pages (Keabsahan Data & Lokasi + Geotagging & Poligon)
   assert.ok(analisisXml.includes('SURAT PERNYATAAN KEABSAHAN DATA &amp; LOKASI BIDANG TANAH'));
   assert.ok(analisisXml.includes('GEOTAGGING &amp; ANALISIS BIDANG'));
   assert.ok(analisisXml.includes('a. -7.530057, 110.779658'));
@@ -1054,9 +1089,22 @@ test('New Non-Akta sub-bundles (Pengecekan Sertipikat, Validasi Sertipikat, Anal
   assert.ok(analisisXml.includes('w:after="1440"'));
 
   const analisisPreview = await renderDocxPreviewPages(analisisRecord, DEFAULT_OFFICE_SETTINGS, {}, '02_lampiran_bundel');
-  assert.equal(analisisPreview.pages.length, 5);
-  assert.ok(analisisPreview.pages[2].title.includes('Keabsahan'));
-  assert.ok(analisisPreview.pages[3].title.includes('Analisis Bidang'));
+  assert.equal(analisisPreview.pages.length, 7);
+  assert.ok(analisisPreview.pages[0].title.includes('Permohonan Peta Analisis'));
+  assert.ok(analisisPreview.pages[1].title.includes('Surat Kuasa'));
+  assert.ok(analisisPreview.pages[2].title.includes('Sket Rencana Pemecahan'));
+  assert.ok(analisisPreview.pages[3].title.includes('Alasan Pemecahan'));
+  assert.ok(analisisPreview.pages[4].title.includes('Keabsahan'));
+  assert.ok(analisisPreview.pages[5].title.includes('Analisis Bidang'));
+
+  // With optional Pelepasan Jalan enabled -> 8 pages
+  const analisisWithJalan = {
+    ...analisisRecord,
+    non_akta: { ...analisisRecord.non_akta, sertakan_pelepasan_jalan: true, pelepasan_jalan_keterangan: 'Jalan Akses Kavling' },
+  };
+  const analisisJalanPreview = await renderDocxPreviewPages(analisisWithJalan, DEFAULT_OFFICE_SETTINGS, {}, '02_lampiran_bundel');
+  assert.equal(analisisJalanPreview.pages.length, 8);
+  assert.ok(analisisJalanPreview.pages[4].title.includes('Pelepasan Jalan'));
 
   // 4. Permohonan PKKPR (2 pages default, 3 pages with Kuasa 2)
   const pkkprBase = {

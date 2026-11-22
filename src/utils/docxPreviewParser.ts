@@ -509,6 +509,18 @@ function detectPageTitle(docKey: TemplateDocKey, blocks: PreviewBlock[], pageNum
     return `Hal. ${pageNum} · Lanjutan Akta`;
   }
 
+  if (joined.includes('SURAT PERNYATAAN AHLI WARISAN')) return `Hal. ${pageNum} · Surat Pernyataan Ahli Warisan`;
+  if (joined.includes('SURAT PERNYATAAN PEMBAGIAN WARISAN')) return `Hal. ${pageNum} · Surat Pernyataan Pembagian Warisan`;
+  if (joined.includes('SURAT KETERANGAN RIWAYAT TANAH')) return `Hal. ${pageNum} · Surat Keterangan Riwayat Tanah`;
+  if (joined.includes('PP No. 24/1997') || joined.includes('Gambar Situasi tanah')) {
+    return `Hal. ${pageNum} · Surat Keterangan Desa (PP 24/1997)`;
+  }
+  if (joined.includes('BERITA ACARA KESAKSIAN')) {
+    if (joined.includes('Landreform') || joined.includes('belum mempunyai sertipikat')) {
+      return `Hal. ${pageNum} · Berita Acara Kesaksian (Riwayat)`;
+    }
+    return `Hal. ${pageNum} · Berita Acara Kesaksian (Fisik)`;
+  }
   if (joined.includes('SURAT KETERANGAN WARISAN')) return `Hal. ${pageNum} · Surat Keterangan Warisan (SKW)`;
   if (joined.includes('Dokumen yang diserahkan')) return `Hal. ${pageNum} · Surat Pengantar ATR/BPN`;
   if (
@@ -518,8 +530,23 @@ function detectPageTitle(docKey: TemplateDocKey, blocks: PreviewBlock[], pageNum
   ) {
     return `Hal. ${pageNum} · Permohonan PKKPR (DPMPTSP)`;
   }
+  if (joined.includes('Permohonan Layanan Peta Analisis Penatagunaan Tanah') && joined.includes('KETERANGAN TENTANG TANAH YANG DIMOHON')) {
+    return `Hal. ${pageNum} · Permohonan Peta Analisis`;
+  }
+  if (joined.includes('SKET RENCANA PEMECAHAN BIDANG TANAH')) {
+    return `Hal. ${pageNum} · Sket Rencana Pemecahan`;
+  }
+  if (joined.includes('SURAT PERNYATAAN ALASAN PEMECAHAN')) {
+    return `Hal. ${pageNum} · Pernyataan Alasan Pemecahan`;
+  }
   if (joined.includes('GEOTAGGING') && joined.includes('ANALISIS BIDANG')) {
     return `Hal. ${pageNum} · Geotagging & Analisis Bidang`;
+  }
+  if (joined.includes('bekas Hak Milik Adat') && joined.includes('Tampak Depan')) {
+    return `Hal. ${pageNum} · Geotagging Tampak Depan & Patok 1-2`;
+  }
+  if (joined.includes('Poligon') && (joined.includes('Patok 3') || joined.includes('3') && joined.includes('4'))) {
+    return `Hal. ${pageNum} · Patok 3-4 & Poligon`;
   }
   if (joined.includes('GEOTAGGING')) return `Hal. ${pageNum} · Geotagging (Tampak Depan & Patok)`;
   if (joined.includes('CITRA SATELIT / POLIGON')) {
@@ -535,9 +562,18 @@ function detectPageTitle(docKey: TemplateDocKey, blocks: PreviewBlock[], pageNum
   ) {
     return `Hal. ${pageNum} · Permohonan ATR/BPN`;
   }
-  if (joined.includes('SURAT KUASA')) return `Hal. ${pageNum} · Surat Kuasa`;
+  if (joined.includes('SURAT KUASA')) {
+    if (joined.includes('Pemecahan bidang Sertipikat')) {
+      return `Hal. ${pageNum} · Surat Kuasa (Pemecahan Bidang)`;
+    }
+    if (joined.includes('pengakuan Hak Sertipikat')) {
+      return `Hal. ${pageNum} · Surat Kuasa (Pengakuan Hak)`;
+    }
+    return `Hal. ${pageNum} · Surat Kuasa`;
+  }
+  if (joined.includes('PENGUASAAN FISIK BIDANG TANAH')) return `Hal. ${pageNum} · Penguasaan Fisik Bidang Tanah`;
   if (joined.includes('PENGUASAAN FISIK TANAH')) return `Hal. ${pageNum} · Penguasaan Fisik & Tidak Sengketa`;
-  if (joined.includes('PEMASANGAN TANDA BATAS')) return `Hal. ${pageNum} · Pemasangan Tanda Batas`;
+  if (joined.includes('PEMASANGAN TANDA BATAS')) return `Hal. ${pageNum} · Pemasangan Tanda Batas & Sketsa`;
   if (joined.includes('GAMBAR SKET TANAH')) return `Hal. ${pageNum} · Gambar Sket Tanah`;
   if (joined.includes('PELEPASAN JALAN')) return `Hal. ${pageNum} · Pelepasan Jalan`;
   if (joined.includes('BEDA NAMA')) return `Hal. ${pageNum} · Surat Pernyataan Beda Nama`;

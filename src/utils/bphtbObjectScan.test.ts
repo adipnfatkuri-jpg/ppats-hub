@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  applyObjectScanPatchToTaxDraft,
   mergeObjectScanIntoBphtbForm,
   normalizeObjekRtRw,
   resolveAccurateLuasBumiM2,
@@ -116,4 +117,37 @@ test('mergeObjectScanIntoBphtbForm populates Lokasi/Dukuh GORONGAN and RT/RW 002
   assert.equal(nextForm.pemberi_nama, 'SUGIARTI, A.MD KOM');
   assert.equal(taxPatch.luas_m2, 160);
   assert.equal(taxPatch.njop_bumi_m2, 464000);
+});
+
+test('applyObjectScanPatchToTaxDraft merges SPPT PBB then Sertipikat without wiping NJOP values', () => {
+  const initial = {
+    layanan: 'AJB' as const,
+    luas_m2: 0,
+    njop_bumi_m2: 0,
+    njop_bangunan: 0,
+    harga_per_m2: 1500000,
+    nilai_transaksi_override: null,
+    npoptkp: 80000000,
+  };
+
+  // 1. Scan SPPT PBB fills luas, NJOP Bumi/m2, and NJOP Bangunan
+  const afterSppt = applyObjectScanPatchToTaxDraft(
+    initial,
+    { luas_m2: 160, njop_bumi_m2: 464000, njop_bangunan: 35000000 },
+    'sppt'
+  );
+  assert.equal(afterSppt.luas_m2, 160);
+  assert.equal(afterSppt.njop_bumi_m2, 464000);
+  assert.equal(afterSppt.njop_bangunan, 35000000);
+  assert.equal(afterSppt.harga_per_m2, 1500000);
+
+  // 2. Subsequent Scan Sertipikat updates authoritative luas_m2 (196) while keeping NJOP intact
+  const afterSertipikat = applyObjectScanPatchToTaxDraft(
+    afterSppt,
+    { luas_m2: 196 },
+    'sertipikat'
+  );
+  assert.equal(afterSertipikat.luas_m2, 196);
+  assert.equal(afterSertipikat.njop_bumi_m2, 464000);
+  assert.equal(afterSertipikat.njop_bangunan, 35000000);
 });

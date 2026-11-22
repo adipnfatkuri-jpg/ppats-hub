@@ -3,6 +3,13 @@ import {
   ThinkingLevel,
   Type,
 } from '@google/genai';
+import {
+  DOCX_MIME,
+  DOC_MIME,
+  extractWordDocumentForAi,
+  isWordFilename,
+  isWordMimeType,
+} from '../src/utils/wordDocExtractor.ts';
 
 export interface UploadedDocPayload {
   name: string;
@@ -10,10 +17,12 @@ export interface UploadedDocPayload {
   dataBase64: string;
 }
 
+export type ExtractionScope = 'full' | 'object_only' | 'waris_pewaris' | 'waris_c';
+
 export interface ExtractDocumentsRequestBody {
   layanan?: string;
   scanMode?: 'fast' | 'accurate';
-  scope?: 'full' | 'object_only';
+  scope?: ExtractionScope;
   files?: UploadedDocPayload[];
 }
 
@@ -234,6 +243,178 @@ export const personExtractionResponseSchema = {
   ],
 };
 
+const warisPewarisProperties = {
+  sebutan_pewaris: {
+    type: Type.STRING,
+    description: '"Almarhum" (laki-laki) atau "Almarhumah" (perempuan).',
+  },
+  nama_pewaris: {
+    type: Type.STRING,
+    description: 'Nama lengkap pewaris (pemegang hak yang meninggal), HURUF KAPITAL.',
+  },
+  tanggal_meninggal: {
+    type: Type.STRING,
+    description: 'Tanggal meninggal pewaris format DD-MM-YYYY (kosongkan jika tidak ada).',
+  },
+  tempat_meninggal: {
+    type: Type.STRING,
+    description: 'Tempat meninggal dan/atau nomor Akta Kematian / Surat Keterangan Kematian.',
+  },
+  hubungan_pasangan_pewaris: {
+    type: Type.STRING,
+    description: '"Istrinya", "Suaminya", atau "Pasangannya".',
+  },
+  nama_pasangan_pewaris: {
+    type: Type.STRING,
+    description: 'Nama lengkap janda/duda/pasangan pewaris, HURUF KAPITAL.',
+  },
+  tgl_lahir_pasangan_pewaris: {
+    type: Type.STRING,
+    description: 'Tanggal lahir pasangan pewaris format DD-MM-YYYY.',
+  },
+  tanggal_meninggal_pasangan: {
+    type: Type.STRING,
+    description: 'Tanggal meninggal pasangan pewaris format DD-MM-YYYY jika juga sudah almarhum/almarhumah.',
+  },
+  tempat_meninggal_pasangan: {
+    type: Type.STRING,
+    description: 'Tempat meninggal pasangan pewaris jika sudah meninggal.',
+  },
+  jumlah_anak_waris: {
+    type: Type.NUMBER,
+    description: 'Jumlah anak kandung / ahli waris (0 jika tidak disebut).',
+  },
+  catatan_skw: {
+    type: Type.STRING,
+    description: 'Catatan tambahan SKW (misal nomor kutipan akta nikah KUA, nomor akta kematian, keterangan waris).',
+  },
+};
+
+export const warisPewarisExtractionResponseSchema = {
+  type: Type.OBJECT,
+  properties: {
+    waris_pewaris: {
+      type: Type.OBJECT,
+      properties: warisPewarisProperties,
+      required: [
+        'sebutan_pewaris',
+        'nama_pewaris',
+        'tanggal_meninggal',
+        'tempat_meninggal',
+        'hubungan_pasangan_pewaris',
+        'nama_pasangan_pewaris',
+        'tgl_lahir_pasangan_pewaris',
+        'tanggal_meninggal_pasangan',
+        'tempat_meninggal_pasangan',
+        'jumlah_anak_waris',
+        'catatan_skw',
+      ],
+    },
+  },
+  required: ['waris_pewaris'],
+};
+
+export const warisCExtractionResponseSchema = {
+  type: Type.OBJECT,
+  properties: {
+    waris_c: {
+      type: Type.OBJECT,
+      properties: {
+        ...warisPewarisProperties,
+        waris_c_hak_adat: {
+          type: Type.STRING,
+          description: 'Nomor Buku Letter C / Persil / Kelas, contoh: "C-723 Persil 73-109 Kelas IIa".',
+        },
+        waris_c_atas_nama_c: {
+          type: Type.STRING,
+          description: 'Atas nama pemilik tercatat di Buku Letter C Desa, HURUF KAPITAL.',
+        },
+        waris_c_tahun_tercatat_c: {
+          type: Type.STRING,
+          description: 'Tahun tercatat di Buku Letter C (misal "1960" atau "1959").',
+        },
+        waris_c_jenis_tanah: {
+          type: Type.STRING,
+          description: '"Pekarangan", "Pertanian", "Tegalan", atau "Tanah dan Bangunan".',
+        },
+        waris_c_berdiri_di_atasnya: {
+          type: Type.STRING,
+          description: 'Bangunan/tanaman yang berdiri di atas tanah (misal "Bangunan Rumah Tinggal" atau "Kosong").',
+        },
+        waris_c_nama_blok_dukuh: {
+          type: Type.STRING,
+          description: 'Nama blok / dukuh / RT RW lokasi tanah.',
+        },
+        waris_c_nama_wp_pbb: {
+          type: Type.STRING,
+          description: 'Nama Wajib Pajak di SPPT PBB, HURUF KAPITAL.',
+        },
+        waris_c_no_surat_keterangan: {
+          type: Type.STRING,
+          description: 'Nomor Surat Keterangan Desa (misal "593/...").',
+        },
+        waris_c_no_surat_riwayat: {
+          type: Type.STRING,
+          description: 'Nomor Surat Keterangan Riwayat Tanah (misal "593/...").',
+        },
+        waris_c_penerima_bagian: {
+          type: Type.STRING,
+          description: 'Nama ahli waris penerima bagian / pemohon utama, HURUF KAPITAL.',
+        },
+        waris_c_luas_bagian_m2: {
+          type: Type.NUMBER,
+          description: 'Luas bidang bagian pemohon dalam m2 (0 jika tidak disebut).',
+        },
+        waris_c_tahun_waris: {
+          type: Type.STRING,
+          description: 'Tahun waris / mulai menguasai fisik secara terus-menerus (misal "2015").',
+        },
+        waris_c_hubungan_pewaris: {
+          type: Type.STRING,
+          description: 'Hubungan pemohon dengan pewaris (misal "orang tua kandungnya").',
+        },
+        waris_c_batas_bagian_utara: { type: Type.STRING },
+        waris_c_batas_bagian_timur: { type: Type.STRING },
+        waris_c_batas_bagian_selatan: { type: Type.STRING },
+        waris_c_batas_bagian_barat: { type: Type.STRING },
+        waris_c_riwayat_1_tahun: { type: Type.STRING },
+        waris_c_riwayat_1_oleh: { type: Type.STRING },
+        waris_c_riwayat_1_cara: { type: Type.STRING },
+        waris_c_riwayat_1_bukti: { type: Type.STRING },
+        waris_c_riwayat_2_tahun: { type: Type.STRING },
+        waris_c_riwayat_2_oleh: { type: Type.STRING },
+        waris_c_riwayat_2_cara: { type: Type.STRING },
+        waris_c_riwayat_2_bukti: { type: Type.STRING },
+        waris_c_riwayat_3_tahun: { type: Type.STRING },
+        waris_c_riwayat_3_oleh: { type: Type.STRING },
+        waris_c_riwayat_3_cara: { type: Type.STRING },
+        waris_c_riwayat_3_bukti: { type: Type.STRING },
+        luas_induk_m2: {
+          type: Type.NUMBER,
+          description: 'Luas induk keseluruhan bidang tanah Letter C dalam m2 (0 jika tidak disebut).',
+        },
+        desa: { type: Type.STRING },
+        kecamatan: { type: Type.STRING },
+        kabupaten: { type: Type.STRING },
+        nop: { type: Type.STRING, description: 'NOP PBB jika tercantum.' },
+      },
+      required: [
+        'waris_c_hak_adat',
+        'waris_c_atas_nama_c',
+        'waris_c_tahun_tercatat_c',
+        'waris_c_jenis_tanah',
+        'waris_c_berdiri_di_atasnya',
+        'waris_c_nama_blok_dukuh',
+        'waris_c_nama_wp_pbb',
+        'waris_c_penerima_bagian',
+        'waris_c_luas_bagian_m2',
+        'waris_c_tahun_waris',
+      ],
+    },
+  },
+  required: ['waris_c'],
+};
+
 const SUPPORTED_GEMINI_MIME_TYPES = new Set([
   'image/jpeg',
   'image/png',
@@ -242,11 +423,20 @@ const SUPPORTED_GEMINI_MIME_TYPES = new Set([
   'image/heif',
   'image/gif',
   'application/pdf',
+  DOCX_MIME,
+  DOC_MIME,
+  'application/rtf',
+  'text/rtf',
 ]);
 
-function inferMimeFromBase64Prefix(base64: string): string | null {
+function inferMimeFromBase64Prefix(base64: string, fileName?: string): string | null {
   const head = base64.slice(0, 24);
   if (head.startsWith('JVBERi0')) return 'application/pdf';
+  if (head.startsWith('0M8R4KGx')) return DOC_MIME;
+  if (head.startsWith('UEsDB') && (fileName || '').toLowerCase().endsWith('.docx')) {
+    return DOCX_MIME;
+  }
+  if (head.startsWith('e1xydGY')) return 'application/rtf';
   if (head.startsWith('/9j/')) return 'image/jpeg';
   if (head.startsWith('iVBORw0KGgo')) return 'image/png';
   if (head.startsWith('UklGR')) return 'image/webp';
@@ -256,6 +446,9 @@ function inferMimeFromBase64Prefix(base64: string): string | null {
 
 function inferMimeFromFilename(name: string): string | null {
   const lower = (name || '').toLowerCase();
+  if (lower.endsWith('.docx')) return DOCX_MIME;
+  if (lower.endsWith('.doc')) return DOC_MIME;
+  if (lower.endsWith('.rtf')) return 'application/rtf';
   if (lower.endsWith('.pdf')) return 'application/pdf';
   if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.jfif')) {
     return 'image/jpeg';
@@ -292,14 +485,69 @@ export function sanitizeUploadedDoc(raw: UploadedDocPayload): {
     declaredMime = 'image/jpeg';
   } else if (declaredMime === 'image/x-png') {
     declaredMime = 'image/png';
+  } else if (declaredMime === 'application/vnd.ms-word' || declaredMime === 'application/x-msword') {
+    declaredMime = DOC_MIME;
   }
 
   let mimeType = SUPPORTED_GEMINI_MIME_TYPES.has(declaredMime) ? declaredMime : '';
   if (!mimeType) {
-    mimeType = inferMimeFromBase64Prefix(dataBase64) || inferMimeFromFilename(name) || 'image/jpeg';
+    mimeType =
+      inferMimeFromBase64Prefix(dataBase64, name) ||
+      inferMimeFromFilename(name) ||
+      'image/jpeg';
   }
 
   return { name, mimeType, dataBase64 };
+}
+
+type GeminiContentPart =
+  | { inlineData: { mimeType: string; data: string } }
+  | { text: string };
+
+/**
+ * Mengonversi berkas unggahan ke parts Gemini API.
+ * - Gambar/PDF dikirim langsung via `inlineData`.
+ * - Dokumen Microsoft Word (`.docx` / `.doc` / `.rtf`) diekstrak menjadi teks terstruktur
+ *   beserta gambar tertanam di dalam Word (mis. foto KTP/Sertipikat/SPPT yang ditempel).
+ */
+export function buildGeminiFileParts(
+  files: Array<{ name: string; mimeType: string; dataBase64: string }>
+): GeminiContentPart[] {
+  const parts: GeminiContentPart[] = [];
+  for (const f of files) {
+    if (isWordMimeType(f.mimeType) || isWordFilename(f.name)) {
+      const bytes = new Uint8Array(Buffer.from(f.dataBase64, 'base64'));
+      const extracted = extractWordDocumentForAi(bytes, f.name, f.mimeType);
+      if (extracted.text) {
+        parts.push({
+          text: `=== ISI DOKUMEN WORD (${f.name}) ===\n${extracted.text}\n=== AKHIR DOKUMEN WORD (${f.name}) ===`,
+        });
+      }
+      for (const img of extracted.images) {
+        parts.push({
+          inlineData: {
+            mimeType: img.mimeType,
+            data: img.dataBase64,
+          },
+        });
+      }
+      if (!extracted.text && extracted.images.length === 0) {
+        const err = new Error(
+          `File Word "${f.name}" tidak memiliki teks atau gambar yang terbaca. Pastikan file .docx/.doc tidak terkunci password atau simpan ulang sebagai .docx/PDF.`
+        ) as Error & { status?: number };
+        err.status = 400;
+        throw err;
+      }
+    } else {
+      parts.push({
+        inlineData: {
+          mimeType: f.mimeType,
+          data: f.dataBase64,
+        },
+      });
+    }
+  }
+  return parts;
 }
 
 const PLACEHOLDER_API_KEYS = new Set([
@@ -383,48 +631,95 @@ function isTransientGeminiError(err: unknown): boolean {
   );
 }
 
+export interface GeminiModelAttempt {
+  model: string;
+  level: ThinkingLevel;
+  timeoutMs: number;
+}
+
+export type GeminiExtractionKind =
+  | 'full'
+  | 'object_only'
+  | 'person'
+  | 'waris_pewaris'
+  | 'waris_c';
+
 /**
- * Menjalankan permintaan Gemini dengan pola hedged fallback:
- * - Memanggil model utama terlebih dahulu (tanpa duplikasi kuota bila respons normal 2–5 dtk).
- * - Bila model utama belum merespons setelah `hedgeDelayMs` atau gagal transient, model cadangan
- *   dijalankan paralel dan respons valid pertama langsung dipakai sambil membatalkan yang lebih lambat.
+ * Menentukan urutan model Gemini yang paling andal & cepat:
+ * - Menggunakan `gemini-4-hydrogen` sebagai model utama (bebas error transient berulang dari flash-lite,
+ *   mendukung ThinkingLevel.LOW untuk kecepatan tinggi & ThinkingLevel.MEDIUM untuk dokumen rumit/buram).
+ * - Menyediakan fallback otomatis ke `gemini-3.1-flash-lite` (ThinkingLevel.MINIMAL) serta retry dengan
+ *   backoff bila terjadi gangguan sementara (503/429/timeout).
+ */
+export function resolveGeminiExtractionAttempts(
+  kind: GeminiExtractionKind,
+  scanMode: 'fast' | 'accurate' = 'fast'
+): GeminiModelAttempt[] {
+  if (kind === 'full' && scanMode === 'accurate') {
+    return [
+      { model: 'gemini-4-hydrogen', level: ThinkingLevel.MEDIUM, timeoutMs: 42000 },
+      { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 28000 },
+      { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 22000 },
+    ];
+  }
+  if (kind === 'person') {
+    return [
+      { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 26000 },
+      { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 20000 },
+      { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 24000 },
+    ];
+  }
+  return [
+    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 32000 },
+    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 24000 },
+    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 26000 },
+  ];
+}
+
+function isModelNotFoundError(err: unknown): boolean {
+  const status =
+    typeof err === 'object' &&
+    err !== null &&
+    'status' in err &&
+    typeof (err as { status?: unknown }).status === 'number'
+      ? (err as { status: number }).status
+      : 0;
+  const msg = err instanceof Error ? err.message : '';
+  return status === 404 || /NOT_FOUND|model.*not found/i.test(msg);
+}
+
+function waitMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Menjalankan permintaan Gemini secara berurutan dengan backoff + fallback otomatis:
+ * - Tidak mengirim dua request paralel sekaligus (menghindari lonjakan 429/503 dan warning palsu).
+ * - Jika model utama gagal karena error transient (503/502/504/429/timeout/network) atau 404,
+ *   otomatis menunggu backoff singkat lalu berpindah ke attempt berikutnya.
  */
 async function generateJsonWithFallback(
   ai: GoogleGenAI,
   parts: Array<{ inlineData: { mimeType: string; data: string } } | { text: string }>,
   responseSchema: object,
-  attempts: Array<{ model: string; level: ThinkingLevel; timeoutMs: number }>,
-  label: string,
-  hedgeDelayMs = 6000
+  attempts: GeminiModelAttempt[],
+  label: string
 ): Promise<{ parsed: unknown; model: string; elapsedMs: number }> {
+  if (attempts.length === 0) {
+    throw new Error('Tidak ada konfigurasi model Gemini yang tersedia.');
+  }
+
   const startedAt = Date.now();
-  const controllers: AbortController[] = [];
-  const timers: Array<ReturnType<typeof setTimeout>> = [];
+  let lastErr: unknown = null;
 
-  const cleanup = () => {
-    timers.forEach((t) => clearTimeout(t));
-    controllers.forEach((c) => {
-      try {
-        if (!c.signal.aborted) c.abort();
-      } catch {
-        // ignore
-      }
-    });
-  };
-
-  const runAttempt = async (attempt: {
-    model: string;
-    level: ThinkingLevel;
-    timeoutMs: number;
-  }): Promise<{ parsed: unknown; model: string }> => {
+  for (let i = 0; i < attempts.length; i += 1) {
+    const attempt = attempts[i];
     const controller = new AbortController();
-    controllers.push(controller);
     let didTimeout = false;
     const timer = setTimeout(() => {
       didTimeout = true;
       controller.abort();
     }, attempt.timeoutMs);
-    timers.push(timer);
 
     try {
       const response = await ai.models.generateContent({
@@ -442,99 +737,37 @@ async function generateJsonWithFallback(
         .replace(/^```(?:json)?\s*/i, '')
         .replace(/\s*```$/, '');
       const parsed = JSON.parse(rawText);
-      return { parsed, model: attempt.model };
+      const elapsedMs = Date.now() - startedAt;
+      console.log(`Gemini ${label} succeeded with ${attempt.model} in ${elapsedMs}ms`);
+      return { parsed, model: attempt.model, elapsedMs };
     } catch (err) {
-      if (didTimeout) {
-        const timeoutErr = new Error(
-          `Permintaan model ${attempt.model} melebihi batas waktu (${Math.round(attempt.timeoutMs / 1000)} detik).`
-        ) as Error & { status?: number; isTimeout?: boolean };
-        timeoutErr.status = 504;
-        timeoutErr.isTimeout = true;
-        throw timeoutErr;
+      const normalizedErr = didTimeout
+        ? (() => {
+            const timeoutErr = new Error(
+              `Permintaan model ${attempt.model} melebihi batas waktu (${Math.round(attempt.timeoutMs / 1000)} detik).`
+            ) as Error & { status?: number; isTimeout?: boolean };
+            timeoutErr.status = 504;
+            timeoutErr.isTimeout = true;
+            return timeoutErr;
+          })()
+        : err;
+
+      lastErr = normalizedErr;
+      const hasNext = i < attempts.length - 1;
+      const canFallback = isTransientGeminiError(normalizedErr) || isModelNotFoundError(normalizedErr);
+
+      if (!hasNext || !canFallback) {
+        throw normalizedErr;
       }
-      throw err;
+
+      const backoffMs = isModelNotFoundError(normalizedErr) ? 150 : 700 * (i + 1);
+      await waitMs(backoffMs);
     } finally {
       clearTimeout(timer);
     }
-  };
-
-  if (attempts.length === 0) {
-    throw new Error('Tidak ada konfigurasi model Gemini yang tersedia.');
   }
 
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    let backupStarted = false;
-    let remaining = 1;
-    let lastErr: unknown = null;
-    let hedgeTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const finishOk = (result: { parsed: unknown; model: string }) => {
-      if (settled) return;
-      settled = true;
-      if (hedgeTimer) clearTimeout(hedgeTimer);
-      cleanup();
-      const elapsedMs = Date.now() - startedAt;
-      console.log(`Gemini ${label} succeeded with ${result.model} in ${elapsedMs}ms`);
-      resolve({ ...result, elapsedMs });
-    };
-
-    const finishErr = (err: unknown) => {
-      if (settled) return;
-      settled = true;
-      if (hedgeTimer) clearTimeout(hedgeTimer);
-      cleanup();
-      reject(err);
-    };
-
-    const launchBackup = (reason: string) => {
-      if (settled || backupStarted || attempts.length < 2) return;
-      backupStarted = true;
-      remaining += 1;
-      console.warn(
-        `Gemini ${label}: ${reason} — launching hedged fallback ${attempts[1].model}...`
-      );
-      runAttempt(attempts[1])
-        .then(finishOk)
-        .catch((err) => {
-          lastErr = err;
-          remaining -= 1;
-          if (!settled && remaining <= 0) {
-            finishErr(lastErr);
-          }
-        });
-    };
-
-    if (attempts.length >= 2 && hedgeDelayMs > 0) {
-      hedgeTimer = setTimeout(() => {
-        launchBackup(`primary ${attempts[0].model} >${hedgeDelayMs}ms`);
-      }, hedgeDelayMs);
-      timers.push(hedgeTimer);
-    }
-
-    runAttempt(attempts[0])
-      .then(finishOk)
-      .catch((err) => {
-        lastErr = err;
-        remaining -= 1;
-        if (settled) return;
-
-        if (!isTransientGeminiError(err)) {
-          finishErr(err);
-          return;
-        }
-
-        if (hedgeTimer) clearTimeout(hedgeTimer);
-        if (!backupStarted && attempts.length >= 2) {
-          launchBackup(`primary ${attempts[0].model} transient error`);
-          return;
-        }
-
-        if (remaining <= 0) {
-          finishErr(lastErr);
-        }
-      });
-  });
+  throw lastErr ?? new Error('Gagal memproses permintaan ke Gemini API.');
 }
 
 export function mapGeminiError(err: unknown, fallbackLabel: string): ApiHttpError {
@@ -591,7 +824,7 @@ export function mapGeminiError(err: unknown, fallbackLabel: string): ApiHttpErro
     /Unsupported MIME|Unable to process input image|INVALID_ARGUMENT/i.test(rawMessage)
   ) {
     clientMessage =
-      'Format gambar/dokumen tidak dapat dibaca oleh AI. Gunakan foto JPG/PNG/WebP atau PDF yang jelas, lalu coba lagi.';
+      'Format gambar/dokumen tidak dapat dibaca oleh AI. Gunakan foto JPG/PNG/WebP, PDF, atau Word (.docx/.doc) yang jelas, lalu coba lagi.';
   } else if (httpStatus === 404 || /NOT_FOUND/i.test(rawMessage)) {
     clientMessage = `Model AI tidak tersedia (404): ${rawMessage}`;
   }
@@ -616,11 +849,63 @@ export async function extractDocumentsWithGemini(
   const ai = createGeminiClient(apiKey);
   const layanan = body.layanan || 'AJB';
   const scanMode = body.scanMode === 'accurate' ? 'accurate' : 'fast';
-  const isObjectOnly = body.scope === 'object_only';
+  const scope: ExtractionScope =
+    body.scope === 'object_only' ||
+    body.scope === 'waris_pewaris' ||
+    body.scope === 'waris_c'
+      ? body.scope
+      : 'full';
 
   const fileNames = files.map((f) => f.name).join(', ');
-  const promptText = isObjectOnly
-    ? `Ekstrak data sertipikat tanah & SPPT PBB dari dokumen (${fileNames}) ke JSON sesuai skema.
+  let promptText = '';
+  let responseSchema: object = extractionResponseSchema;
+  let label = `extraction(${scanMode})`;
+
+  if (scope === 'waris_pewaris') {
+    responseSchema = warisPewarisExtractionResponseSchema;
+    label = 'waris-pewaris-extract';
+    promptText = `Ekstrak DATA PEWARIS & SURAT KETERANGAN AHLI WARISAN (SKW) dari dokumen (${fileNames}) ke JSON sesuai skema "waris_pewaris".
+Aturan:
+- Baca Akta Kematian, Surat Keterangan Kematian, Surat Keterangan Warisan (SKW), Kartu Keluarga (KK), Buku Letter C, atau file Word.
+- sebutan_pewaris: "Almarhum" (laki-laki) atau "Almarhumah" (perempuan).
+- nama_pewaris & nama_pasangan_pewaris: WAJIB HURUF BESAR SEMUA (CAPSLOCK).
+- tanggal_meninggal, tgl_lahir_pasangan_pewaris, tanggal_meninggal_pasangan: format DD-MM-YYYY (kosongkan "" jika tidak ada atau masih hidup).
+- tempat_meninggal & tempat_meninggal_pasangan: Title Case (misal "Desa Sindon, Kec. Ngemplak, Boyolali" atau nomor Akta Kematian).
+- hubungan_pasangan_pewaris: "Istrinya", "Suaminya", atau "Pasangannya".
+- jumlah_anak_waris: angka jumlah anak/ahli waris (0 jika tidak disebut).
+- catatan_skw: ringkas nomor akta kematian, nomor buku nikah KUA, atau keterangan tambahan SKW jika tercantum.
+- Field yang tidak ada isi "" atau 0.`;
+  } else if (scope === 'waris_c') {
+    responseSchema = warisCExtractionResponseSchema;
+    label = 'waris-c-extract';
+    promptText = `Ekstrak DATA KHUSUS WARIS LETTER C / KONVERSI BEKAS HAK MILIK ADAT & DATA PEWARIS dari dokumen (${fileNames}) ke JSON sesuai skema "waris_c".
+Aturan:
+1. Data Buku Letter C Desa:
+   - waris_c_hak_adat: Nomor C, Persil, dan Kelas (misal "C-723 Persil 73-109 Kelas IIa").
+   - waris_c_atas_nama_c: Nama pemilik tercatat di Buku C (HURUF KAPITAL).
+   - waris_c_tahun_tercatat_c: Tahun tercatat di Buku C (misal "1960" atau "1959").
+   - waris_c_jenis_tanah: salah satu dari "Pekarangan", "Pertanian", "Tegalan", atau "Tanah dan Bangunan".
+   - waris_c_berdiri_di_atasnya: misal "Bangunan Rumah Tinggal" atau "Kosong".
+   - waris_c_nama_blok_dukuh: nama blok/dukuh/RT RW lokasi tanah (Title Case).
+   - waris_c_nama_wp_pbb: nama Wajib Pajak di SPPT PBB (HURUF KAPITAL).
+   - waris_c_no_surat_keterangan & waris_c_no_surat_riwayat: nomor surat desa jika ada.
+2. Pembagian Warisan & Bidang Bagian Pemohon:
+   - waris_c_penerima_bagian: nama ahli waris penerima bagian / pemohon utama (HURUF KAPITAL).
+   - waris_c_luas_bagian_m2: luas bagian pemohon dalam angka m2 (0 jika tidak disebut).
+   - waris_c_tahun_waris: tahun pembagian/penguasaan waris (misal "2015").
+   - waris_c_hubungan_pewaris: hubungan pemohon dengan pewaris (misal "orang tua kandungnya").
+   - waris_c_batas_bagian_utara/timur/selatan/barat: batas bidang bagian jika disebut (Title Case).
+3. Riwayat Penguasaan Tanah (a/b/c):
+   - waris_c_riwayat_1_{tahun,oleh,cara,bukti}: tahap 1 (sebelum 1960 / awal Buku C).
+   - waris_c_riwayat_2_{tahun,oleh,cara,bukti}: tahap 2 (peralihan pewaris / warisan).
+   - waris_c_riwayat_3_{tahun,oleh,cara,bukti}: tahap 3 (pembagian / penguasaan saat ini).
+4. Data Pewaris & Pasangan (sebutan_pewaris, nama_pewaris, tanggal_meninggal DD-MM-YYYY, tempat_meninggal, hubungan_pasangan_pewaris, nama_pasangan_pewaris, tgl_lahir_pasangan_pewaris, tanggal_meninggal_pasangan, tempat_meninggal_pasangan, jumlah_anak_waris, catatan_skw) jika tercantum.
+5. Juga ekstrak luas_induk_m2, desa, kecamatan, kabupaten, dan nop jika tercantum.
+- Semua NAMA ORANG wajib HURUF KAPITAL; tempat/keterangan ditulis Title Case; field tidak ada isi "" atau 0.`;
+  } else if (scope === 'object_only') {
+    responseSchema = objectExtractionResponseSchema;
+    label = 'object-extract';
+    promptText = `Ekstrak data sertipikat tanah & SPPT PBB dari dokumen (${fileNames}) ke JSON sesuai skema.
 Aturan singkat:
 - Sertipikat -> "tanah": jenis_sertipikat ("digital" NIBel / "analog" No SHM+Surat Ukur), jenis_hak, nib, nomor_hak_lama, surat_ukur_tanggal, surat_ukur_nomor, luas_m2, desa, kecamatan, kabupaten, provinsi, batas_utara/timur/selatan/barat, dasar_perolehan, pemegang_hak_sertipikat.
 - SPPT PBB -> "pbb": NOP, tahun_pajak, njop_bumi_m2, njop_bumi_total, njop_bangunan, luas_bumi_m2 (gabung angka terpotong 2 baris; cocokkan luas_bumi_m2 * njop_bumi_m2 ≈ njop_bumi_total), luas_bangunan_m2.
@@ -629,8 +914,9 @@ Aturan singkat:
   * letak_objek_rt_rw = RT/RW kolom kiri format "002/003", BUKAN RT/RW WP.
   * letak_objek_desa/kecamatan/kabupaten = dari kolom kiri; nama_wp_pbb = nama WP kolom kanan.
 - Aturan huruf: semua NAMA ORANG (pemegang_hak_sertipikat, nama_wp_pbb) WAJIB HURUF BESAR SEMUA (CAPSLOCK); teks lainnya (lokasi/dukuh, desa, kecamatan, kabupaten, provinsi, jenis_hak, batas, dasar_perolehan) ditulis Title Case (huruf depan kapital).
-- Field yang tidak ada isi "" atau 0.`
-    : `Ekstrak data berkas PPATS (${fileNames}) untuk layanan "${layanan}" ke JSON sesuai skema.
+- Field yang tidak ada isi "" atau 0.`;
+  } else {
+    promptText = `Ekstrak data berkas PPATS (${fileNames}) untuk layanan "${layanan}" ke JSON sesuai skema.
 Aturan:
 1. KTP/KK/SKW -> "para_pihak" (peran_saran: "Pihak I"=pemilik/penjual/pemberi, "Pihak II"=pembeli/penerima, "Persetujuan Pasangan"=pasangan Pihak I, "Lampiran Lain"=saksi/lainnya). Tanggal lahir DD-MM-YYYY. Field kosong isi "".
 2. Sertipikat -> "tanah": jenis_sertipikat ("digital" NIBel / "analog" No SHM+SU), jenis_hak, nib, nomor_hak_lama, surat_ukur_tanggal/nomor, luas_m2, desa, kecamatan, kabupaten, provinsi, batas, dasar_perolehan, pemegang_hak_sertipikat.
@@ -638,40 +924,24 @@ Aturan:
    WAJIB pisahkan kolom kiri LETAK OBJEK PAJAK (letak_objek_lokasi=dukuh baris 1 mis. "Gorongan" bukan desa, letak_objek_rt_rw="002/003", letak_objek_desa/kecamatan/kabupaten) vs kolom kanan WAJIB PAJAK (nama_wp_pbb).
 4. Aturan huruf: semua NAMA ORANG (para_pihak[].nama, pemegang_hak_sertipikat, nama_wp_pbb) WAJIB HURUF BESAR SEMUA (CAPSLOCK); seluruh teks lain (tempat_lahir, pekerjaan, alamat_jalan, desa, kecamatan, kabupaten, provinsi, status_perkawinan, jenis_hak, batas, dasar_perolehan, letak_objek_lokasi) ditulis Title Case (huruf depan kapital).
 5. "audit_warnings": ${scanMode === 'fast' ? 'isi [] kecuali ada ketidakcocokan nama/NIK/sertipikat yang jelas (maks 2 butir singkat).' : 'laporkan selisih alamat/RT/RW, NIK ganda, beda nama KTP vs sertipikat, atau Pihak I kawin tanpa pasangan.'}`;
+  }
 
-  const parts = [
-    ...files.map((f) => ({
-      inlineData: {
-        mimeType: f.mimeType,
-        data: f.dataBase64,
-      },
-    })),
+  const parts: GeminiContentPart[] = [
+    ...buildGeminiFileParts(files),
     { text: promptText },
   ];
 
-  const attempts =
-    scanMode === 'accurate' && !isObjectOnly
-      ? [
-          { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 28000 },
-          { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 18000 },
-        ]
-      : [
-          { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 20000 },
-          { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 20000 },
-        ];
-
-  const hedgeDelayMs = isObjectOnly ? 5500 : scanMode === 'accurate' ? 9000 : 7000;
+  const attempts = resolveGeminiExtractionAttempts(scope, scanMode);
 
   const { parsed } = await generateJsonWithFallback(
     ai,
     parts,
-    isObjectOnly ? objectExtractionResponseSchema : extractionResponseSchema,
+    responseSchema,
     attempts,
-    isObjectOnly ? 'object-extract' : `extraction(${scanMode})`,
-    hedgeDelayMs
+    label
   );
 
-  if (isObjectOnly && parsed && typeof parsed === 'object') {
+  if (scope === 'object_only' && parsed && typeof parsed === 'object') {
     const obj = parsed as Record<string, unknown>;
     obj.para_pihak = [];
     obj.audit_warnings = [];
@@ -885,6 +1155,55 @@ function normalizeExtractionOutput(parsed: unknown): unknown {
     }
   }
 
+  const normalizeWarisRecord = (rec: Record<string, unknown>) => {
+    const upperKeys = [
+      'nama_pewaris',
+      'nama_pasangan_pewaris',
+      'waris_c_atas_nama_c',
+      'waris_c_nama_wp_pbb',
+      'waris_c_penerima_bagian',
+      'waris_c_riwayat_1_oleh',
+      'waris_c_riwayat_2_oleh',
+      'waris_c_riwayat_3_oleh',
+    ];
+    for (const k of upperKeys) {
+      if (typeof rec[k] === 'string') {
+        rec[k] = toScanUpperNameServer(rec[k]);
+      }
+    }
+    const titleKeys = [
+      'tempat_meninggal',
+      'tempat_meninggal_pasangan',
+      'waris_c_berdiri_di_atasnya',
+      'waris_c_nama_blok_dukuh',
+      'waris_c_batas_bagian_utara',
+      'waris_c_batas_bagian_timur',
+      'waris_c_batas_bagian_selatan',
+      'waris_c_batas_bagian_barat',
+      'waris_c_riwayat_1_cara',
+      'waris_c_riwayat_1_bukti',
+      'waris_c_riwayat_2_cara',
+      'waris_c_riwayat_2_bukti',
+      'waris_c_riwayat_3_cara',
+      'waris_c_riwayat_3_bukti',
+      'desa',
+      'kecamatan',
+      'kabupaten',
+    ];
+    for (const k of titleKeys) {
+      if (typeof rec[k] === 'string') {
+        rec[k] = toScanTitleCaseServer(rec[k]);
+      }
+    }
+  };
+
+  if (obj.waris_pewaris && typeof obj.waris_pewaris === 'object') {
+    normalizeWarisRecord(obj.waris_pewaris as Record<string, unknown>);
+  }
+  if (obj.waris_c && typeof obj.waris_c === 'object') {
+    normalizeWarisRecord(obj.waris_c as Record<string, unknown>);
+  }
+
   return obj;
 }
 
@@ -905,31 +1224,22 @@ export async function extractPersonWithGemini(
   const ai = createGeminiClient(apiKey);
   const role = (body?.role || 'Saksi / Kuasa').trim();
 
-  const parts = [
-    ...files.map((f) => ({
-      inlineData: {
-        mimeType: f.mimeType,
-        data: f.dataBase64,
-      },
-    })),
+  const parts: GeminiContentPart[] = [
+    ...buildGeminiFileParts(files),
     {
-      text: `Ekstrak identitas 1 orang (${role}) dari KTP (${files.map((f) => f.name).join(', ')}) ke JSON.
+      text: `Ekstrak identitas 1 orang (${role}) dari dokumen KTP/Word (${files.map((f) => f.name).join(', ')}) ke JSON.
 Ambil nama (huruf KAPITAL semua), NIK 16 digit, tempat_lahir, tanggal_lahir (DD-MM-YYYY), jenis_kelamin ("Laki-laki"/"Perempuan"), status_perkawinan, pekerjaan, alamat_jalan (tanpa RT/RW), rt, rw, desa_kelurahan, kecamatan, kabupaten (dari header KTP). Field selain nama ditulis Title Case (huruf depan kapital). Field tidak terbaca isi "".`,
     },
   ];
 
-  const attempts = [
-    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 18000 },
-    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 18000 },
-  ];
+  const attempts = resolveGeminiExtractionAttempts('person', 'fast');
 
   const { parsed, model, elapsedMs } = await generateJsonWithFallback(
     ai,
     parts,
     personExtractionResponseSchema,
     attempts,
-    `person-extract(${role})`,
-    5000
+    `person-extract(${role})`
   );
 
   if (parsed && typeof parsed === 'object') {

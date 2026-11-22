@@ -25,6 +25,7 @@ import {
 } from '../utils/bundleGenerator';
 import { SUPPORTED_TEMPLATE_TAGS } from '../utils/docxTemplates';
 import { scanPersonFromFiles } from '../utils/personScan';
+import { SCAN_DOC_FILE_ACCEPT } from '../utils/imageOptimizer';
 import { toScanUpperName } from '../utils/scanTextCase';
 import { CloudTeamPanel, type CloudTeamPanelProps } from './CloudTeamPanel';
 import { GlossyIcon3D } from './TactileUI';
@@ -616,7 +617,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                 </span>
                 <input
                   type="file"
-                  accept="image/*,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
+                  accept={SCAN_DOC_FILE_ACCEPT}
                   aria-label="Scan KTP tambah saksi baru"
                   disabled={scanningTarget !== null}
                   onChange={(e) => void handleScanPerson('saksi', 'new', e)}
@@ -661,7 +662,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                           </span>
                           <input
                             type="file"
-                            accept="image/*,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
+                            accept={SCAN_DOC_FILE_ACCEPT}
                             aria-label={`Scan KTP saksi ${s}`}
                             disabled={scanningTarget !== null}
                             onChange={(e) => void handleScanPerson('saksi', idx, e)}
@@ -863,7 +864,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                 </span>
                 <input
                   type="file"
-                  accept="image/*,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
+                  accept={SCAN_DOC_FILE_ACCEPT}
                   aria-label="Scan KTP tambah kuasa BPN baru"
                   disabled={scanningTarget !== null}
                   onChange={(e) => void handleScanPerson('kuasa', 'new', e)}
@@ -908,7 +909,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                           </span>
                           <input
                             type="file"
-                            accept="image/*,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
+                            accept={SCAN_DOC_FILE_ACCEPT}
                             aria-label={`Scan KTP kuasa BPN ${k}`}
                             disabled={scanningTarget !== null}
                             onChange={(e) => void handleScanPerson('kuasa', idx, e)}

@@ -1,4 +1,4 @@
-import { ExtractionApiResponse } from '../types/ppats';
+import { ExtractionApiResponse, TaxDraftPrefill } from '../types/ppats';
 import { BphtbSubmissionFormData } from './bphtbSubmissionGenerator';
 import { formatNumberId, formatRupiah } from './indonesianFormatter';
 import { toScanTitleCase, toScanUpperName } from './scanTextCase';
@@ -219,4 +219,44 @@ export function mergeObjectScanIntoBphtbForm(
   }
 
   return { nextForm, taxPatch, summaryParts };
+}
+
+/**
+ * Menerapkan hasil pemindaian SPPT PBB dan/atau Sertipikat ke form Perhitungan Pajak
+ * secara non-destruktif:
+ * - Scan Sertipikat memperbarui luas_m2 (luas sertipikat otoritatif) tanpa menghapus NJOP yang sudah terisi.
+ * - Scan SPPT PBB memperbarui NJOP Bumi/m², NJOP Bangunan, serta luas_m2 (jika valid > 0).
+ */
+export function applyObjectScanPatchToTaxDraft(
+  prev: TaxDraftPrefill,
+  patch: ObjectTaxScanSyncPayload,
+  sourceKind: 'sppt' | 'sertipikat' | 'both' = 'both'
+): TaxDraftPrefill {
+  const next: TaxDraftPrefill = { ...prev };
+
+  if (typeof patch.luas_m2 === 'number' && Number.isFinite(patch.luas_m2) && patch.luas_m2 > 0) {
+    if (sourceKind === 'sertipikat' || sourceKind === 'both' || prev.luas_m2 <= 0) {
+      next.luas_m2 = patch.luas_m2;
+    } else if (sourceKind === 'sppt') {
+      next.luas_m2 = patch.luas_m2;
+    }
+  }
+
+  if (
+    typeof patch.njop_bumi_m2 === 'number' &&
+    Number.isFinite(patch.njop_bumi_m2) &&
+    patch.njop_bumi_m2 > 0
+  ) {
+    next.njop_bumi_m2 = patch.njop_bumi_m2;
+  }
+
+  if (
+    typeof patch.njop_bangunan === 'number' &&
+    Number.isFinite(patch.njop_bangunan) &&
+    patch.njop_bangunan > 0
+  ) {
+    next.njop_bangunan = patch.njop_bangunan;
+  }
+
+  return next;
 }

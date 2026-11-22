@@ -3,6 +3,7 @@ export type ServiceType =
   | 'APHB'
   | 'Akta Hibah'
   | 'Turun Waris'
+  | 'Waris C'
   | 'Pemecahan'
   | 'Ukur Ulang'
   | 'Ralat Data'
@@ -20,6 +21,8 @@ export interface PemecahanBidangItem {
   luas_m2: number;
   atas_nama?: string;
   keterangan?: string;
+  rencana_penggunaan?: string;
+  alasan_pemecahan?: string;
 }
 
 export interface NonAktaDetail {
@@ -34,6 +37,7 @@ export interface NonAktaDetail {
   camat_pengesahan_nomor?: string;
   kades_pengesahan_jabatan?: string;
   kades_pengesahan_nama?: string;
+  kades_pengesahan_nip?: string;
   kades_pengesahan_nomor?: string;
 
   sebutan_pewaris?: 'Almarhum' | 'Almarhumah';
@@ -43,8 +47,42 @@ export interface NonAktaDetail {
   hubungan_pasangan_pewaris?: 'Suaminya' | 'Istrinya' | 'Pasangannya';
   nama_pasangan_pewaris?: string;
   tgl_lahir_pasangan_pewaris?: string;
+  tanggal_meninggal_pasangan?: string;
+  tempat_meninggal_pasangan?: string;
   jumlah_anak_waris?: number;
   catatan_skw?: string;
+
+  // Detail Khusus Waris C (Konversi / Pendaftaran Hak Bekas Hak Milik Adat Letter C)
+  waris_c_hak_adat?: string;
+  waris_c_atas_nama_c?: string;
+  waris_c_tahun_tercatat_c?: string;
+  waris_c_jenis_tanah?: string;
+  waris_c_berdiri_di_atasnya?: string;
+  waris_c_nama_blok_dukuh?: string;
+  waris_c_hubungan_pewaris?: string;
+  waris_c_tahun_waris?: string;
+  waris_c_penerima_bagian?: string;
+  waris_c_luas_bagian_m2?: number;
+  waris_c_batas_bagian_utara?: string;
+  waris_c_batas_bagian_timur?: string;
+  waris_c_batas_bagian_selatan?: string;
+  waris_c_batas_bagian_barat?: string;
+  waris_c_sertakan_kuasa_pemecahan?: boolean;
+  waris_c_nama_wp_pbb?: string;
+  waris_c_no_surat_keterangan?: string;
+  waris_c_no_surat_riwayat?: string;
+  waris_c_riwayat_1_tahun?: string;
+  waris_c_riwayat_1_oleh?: string;
+  waris_c_riwayat_1_cara?: string;
+  waris_c_riwayat_1_bukti?: string;
+  waris_c_riwayat_2_tahun?: string;
+  waris_c_riwayat_2_oleh?: string;
+  waris_c_riwayat_2_cara?: string;
+  waris_c_riwayat_2_bukti?: string;
+  waris_c_riwayat_3_tahun?: string;
+  waris_c_riwayat_3_oleh?: string;
+  waris_c_riwayat_3_cara?: string;
+  waris_c_riwayat_3_bukti?: string;
 
   sub_permohonan_ukur?:
     | 'Pengukuran'
@@ -67,6 +105,17 @@ export interface NonAktaDetail {
   foto_patok_3?: string;
   foto_patok_4?: string;
   foto_poligon?: string;
+  foto_sket_pecah?: string;
+
+  // Detail Khusus Analisis Bidang (Permohonan Layanan Peta Analisis Penatagunaan Tanah & Rencana Pemecahan)
+  analisis_no_hp?: string;
+  analisis_tema?: string;
+  analisis_skala_peta?: string;
+  analisis_jumlah_bidang?: number;
+  analisis_rencana_penggunaan?: string;
+  analisis_alasan_peralihan?: string;
+  analisis_alasan_tabel?: string;
+  analisis_rencana_jalan_luas_m2?: number;
 
   // Detail Pengecekan Sertipikat (mode penerima kuasa: PPATS/Camat vs Kuasa BPN)
   pengecekan_kuasa_mode?: 'ppats' | 'kuasa_bpn';
@@ -375,4 +424,58 @@ export interface ExtractionApiResponse {
     judul: string;
     deskripsi: string;
   }>;
+  waris_pewaris?: WarisPewarisScanResult;
+  waris_c?: WarisCScanResult;
 }
+
+export interface WarisPewarisScanResult {
+  sebutan_pewaris?: 'Almarhum' | 'Almarhumah' | string;
+  nama_pewaris?: string;
+  tanggal_meninggal?: string;
+  tempat_meninggal?: string;
+  hubungan_pasangan_pewaris?: 'Istrinya' | 'Suaminya' | 'Pasangannya' | string;
+  nama_pasangan_pewaris?: string;
+  tgl_lahir_pasangan_pewaris?: string;
+  tanggal_meninggal_pasangan?: string;
+  tempat_meninggal_pasangan?: string;
+  jumlah_anak_waris?: number;
+  catatan_skw?: string;
+}
+
+export interface WarisCScanResult extends WarisPewarisScanResult {
+  waris_c_hak_adat?: string;
+  waris_c_atas_nama_c?: string;
+  waris_c_tahun_tercatat_c?: string;
+  waris_c_jenis_tanah?: string;
+  waris_c_berdiri_di_atasnya?: string;
+  waris_c_nama_blok_dukuh?: string;
+  waris_c_nama_wp_pbb?: string;
+  waris_c_no_surat_keterangan?: string;
+  waris_c_no_surat_riwayat?: string;
+  waris_c_penerima_bagian?: string;
+  waris_c_luas_bagian_m2?: number;
+  waris_c_tahun_waris?: string;
+  waris_c_hubungan_pewaris?: string;
+  waris_c_batas_bagian_utara?: string;
+  waris_c_batas_bagian_timur?: string;
+  waris_c_batas_bagian_selatan?: string;
+  waris_c_batas_bagian_barat?: string;
+  waris_c_riwayat_1_tahun?: string;
+  waris_c_riwayat_1_oleh?: string;
+  waris_c_riwayat_1_cara?: string;
+  waris_c_riwayat_1_bukti?: string;
+  waris_c_riwayat_2_tahun?: string;
+  waris_c_riwayat_2_oleh?: string;
+  waris_c_riwayat_2_cara?: string;
+  waris_c_riwayat_2_bukti?: string;
+  waris_c_riwayat_3_tahun?: string;
+  waris_c_riwayat_3_oleh?: string;
+  waris_c_riwayat_3_cara?: string;
+  waris_c_riwayat_3_bukti?: string;
+  luas_induk_m2?: number;
+  desa?: string;
+  kecamatan?: string;
+  kabupaten?: string;
+  nop?: string;
+}
+

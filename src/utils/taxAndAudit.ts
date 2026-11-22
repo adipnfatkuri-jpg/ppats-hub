@@ -12,6 +12,7 @@ import { extractMonthYearFromDate, toRomanMonth } from './indonesianFormatter';
 export const AKTA_SERVICE_TYPES: ServiceType[] = ['AJB', 'APHB', 'Akta Hibah'];
 export const NON_AKTA_SERVICE_TYPES: ServiceType[] = [
   'Turun Waris',
+  'Waris C',
   'Pemecahan',
   'Ukur Ulang',
   'Ralat Data',
@@ -29,7 +30,7 @@ export function getDefaultNpoptkp(
   layanan: ServiceType,
   settings?: Pick<OfficeSettings, 'npoptkp_umum' | 'npoptkp_waris'>
 ): number {
-  if (layanan === 'Turun Waris') {
+  if (layanan === 'Turun Waris' || layanan === 'Waris C') {
     return settings?.npoptkp_waris ?? 300_000_000;
   }
   return settings?.npoptkp_umum ?? 80_000_000;

@@ -45,7 +45,10 @@ import {
   isHibahService,
 } from '../utils/bphtbSubmissionGenerator';
 import { formatPersonFullAddress, resolvePersonDetail } from '../utils/bundleGenerator';
-import { optimizeDocumentFile } from '../utils/imageOptimizer';
+import {
+  SCAN_DOC_FILE_ACCEPT,
+  optimizeDocumentFile,
+} from '../utils/imageOptimizer';
 import { scanPersonFromFiles } from '../utils/personScan';
 import { toScanUpperName } from '../utils/scanTextCase';
 import { postScanJson } from '../utils/scanApi';
@@ -102,8 +105,7 @@ const APPROVER_RELATION_PRESETS = [
 
 const JENIS_TANAH_PRESETS = ['pekarangan', 'sawah', 'tegal', 'tanah dan bangunan'];
 
-const DOC_FILE_ACCEPT =
-  'image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,application/pdf';
+const DOC_FILE_ACCEPT = SCAN_DOC_FILE_ACCEPT;
 
 function buildTtlFromPerson(p: PersonBasicInfo): string {
   return [p.tempat_lahir?.trim(), p.tanggal_lahir?.trim()].filter(Boolean).join(', ');
@@ -169,7 +171,7 @@ const InlineScanControls: React.FC<InlineScanControlsProps> = ({
   return (
     <div className="inline-flex items-center gap-1.5 shrink-0">
       <label
-        title={`Scan ${label} dari galeri atau file PDF`}
+        title={`Scan ${label} dari galeri, PDF, atau file Word (.docx/.doc)`}
         className={`relative inline-flex items-center gap-1 rounded-lg border border-sky-200 dark:border-sky-400/35 bg-sky-50 dark:bg-sky-950/70 hover:bg-sky-100 dark:hover:bg-sky-900/70 text-sky-800 dark:text-sky-200 font-semibold transition-colors whitespace-nowrap select-none ${
           anyScanning ? 'opacity-50 pointer-events-none' : 'cursor-pointer'
         } ${compact ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1.5 text-[11px]'}`}
