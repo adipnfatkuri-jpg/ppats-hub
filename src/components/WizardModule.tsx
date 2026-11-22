@@ -34,6 +34,7 @@ import {
   Building2,
   ImagePlus,
   Check,
+  Link2,
 } from 'lucide-react';
 import { DocumentReviewPanel } from './DocumentReviewPanel';
 import { DateInputId } from './DateInputId';
@@ -97,6 +98,14 @@ import {
   runClientAuditWarnings,
   suggestNextAktaNumber,
 } from '../utils/taxAndAudit';
+import {
+  NonAktaPartyCopyScope,
+  buildNonAktaPrefillFromRecord,
+  clearNonAktaLinkMetadata,
+  formatLinkableBerkasOptionLabel,
+  getLinkableBerkasRecords,
+  hasSecondPartyInRecord,
+} from '../utils/nonAktaLinkHelper';
 import {
   formatPersonFullAddress,
   formatPersonShortAddress,
@@ -743,19 +752,118 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
 
   const isAkta = isAktaService(layanan);
 
+  const [nonAktaSourceMode, setNonAktaSourceMode] = useState<'manual' | 'linked'>(() =>
+    editingRecord?.non_akta?.linked_berkas_id ? 'linked' : 'manual'
+  );
+  const [linkedSourceId, setLinkedSourceId] = useState<string>(
+    editingRecord?.non_akta?.linked_berkas_id ?? ''
+  );
+  const [linkPartyScope, setLinkPartyScope] =
+    useState<NonAktaPartyCopyScope>('pihak1_only');
+
+  const linkableRecords = useMemo(
+    () => getLinkableBerkasRecords(existingRecords, editingRecord?.id ?? savedRecordId),
+    [existingRecords, editingRecord?.id, savedRecordId]
+  );
+
+  const linkedSourceRecord = useMemo(
+    () => linkableRecords.find((r) => r.id === linkedSourceId) ?? null,
+    [linkableRecords, linkedSourceId]
+  );
+
+  const applyLinkedSourceRecord = (
+    source: BerkasRecord,
+    scope: NonAktaPartyCopyScope,
+    targetSvc: ServiceType = layanan
+  ) => {
+    const prefill = buildNonAktaPrefillFromRecord({
+      source,
+      targetLayanan: targetSvc,
+      currentNonAkta: nonAkta,
+      currentAkta: akta,
+      settings,
+      partyScope: scope,
+    });
+    setParaPihak(prefill.paraPihak);
+    setTanah(prefill.tanah);
+    setPemegangHakInput(prefill.pemegangHakInput);
+    setPbb(prefill.pbb);
+    setAkta(prefill.akta);
+    setNonAkta(prefill.nonAkta);
+    setLinkedSourceId(source.id);
+    setNonAktaSourceMode('linked');
+    onNotify(
+      `Data Non-Akta dikaitkan ke ${source.kode_berkas} (${source.layanan}) · ${prefill.copiedPartyCount} pihak, sertipikat & PBB terisi otomatis.`,
+      'success'
+    );
+  };
+
+  const handleSelectNonAktaMode = (nextMode: 'manual' | 'linked') => {
+    setNonAktaSourceMode(nextMode);
+    if (nextMode === 'manual') {
+      setLinkedSourceId('');
+      setNonAkta((prev) => clearNonAktaLinkMetadata(prev));
+      return;
+    }
+    if (linkableRecords.length === 0) return;
+    const chosen =
+      linkableRecords.find((r) => r.id === linkedSourceId) ?? linkableRecords[0];
+    if (chosen) {
+      const safeScope: NonAktaPartyCopyScope =
+        linkPartyScope === 'pihak2_only' && !hasSecondPartyInRecord(chosen)
+          ? 'pihak1_only'
+          : linkPartyScope;
+      setLinkPartyScope(safeScope);
+      applyLinkedSourceRecord(chosen, safeScope, layanan);
+    }
+  };
+
+  const handleLinkedRecordChange = (nextRecordId: string) => {
+    setLinkedSourceId(nextRecordId);
+    const chosen = linkableRecords.find((r) => r.id === nextRecordId);
+    if (!chosen) {
+      setNonAkta((prev) => clearNonAktaLinkMetadata(prev));
+      return;
+    }
+    const safeScope: NonAktaPartyCopyScope =
+      linkPartyScope === 'pihak2_only' && !hasSecondPartyInRecord(chosen)
+        ? 'pihak1_only'
+        : linkPartyScope;
+    setLinkPartyScope(safeScope);
+    applyLinkedSourceRecord(chosen, safeScope, layanan);
+  };
+
+  const handleLinkPartyScopeChange = (nextScope: NonAktaPartyCopyScope) => {
+    setLinkPartyScope(nextScope);
+    if (linkedSourceRecord) {
+      applyLinkedSourceRecord(linkedSourceRecord, nextScope, layanan);
+    }
+  };
+
   const handleServiceChange = (nextLayanan: ServiceType) => {
     setLayanan(nextLayanan);
     if (!isAktaService(nextLayanan)) {
       setReviewDocKey('02_lampiran_bundel');
-      setNonAkta((prev) => ({
-        ...prev,
-        sub_permohonan_ukur:
-          nextLayanan === 'Pemecahan'
-            ? 'Pemecahan'
-            : nextLayanan === 'Ukur Ulang' || nextLayanan === 'Pemecahan/Ukur Ulang'
-            ? 'Pengukuran'
-            : prev.sub_permohonan_ukur,
-      }));
+      setNonAkta((prev) => {
+        const locationParts = [
+          tanah.desa ? `Desa ${tanah.desa}` : '',
+          tanah.kecamatan ? `Kecamatan ${tanah.kecamatan}` : '',
+          tanah.kabupaten || '',
+        ].filter(Boolean);
+        return {
+          ...prev,
+          sub_permohonan_ukur:
+            nextLayanan === 'Pemecahan'
+              ? 'Pemecahan'
+              : nextLayanan === 'Ukur Ulang' || nextLayanan === 'Pemecahan/Ukur Ulang'
+              ? 'Pengukuran'
+              : prev.sub_permohonan_ukur,
+          pkkpr_alamat_lokasi:
+            nextLayanan === 'Permohonan PKKPR'
+              ? prev.pkkpr_alamat_lokasi?.trim() || locationParts.join(', ')
+              : prev.pkkpr_alamat_lokasi,
+        };
+      });
     } else {
       setReviewDocKey('01_akta');
     }
@@ -1458,10 +1566,150 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             </div>
 
             {!isAkta && (
-              <div className="p-3.5 rounded-2xl border border-sky-200/90 dark:border-sky-700/50 bg-sky-50/75 dark:bg-sky-950/45 text-xs text-sky-950 dark:text-sky-100">
-                <strong>Catatan Berkas Non-Akta ({layanan}):</strong> Berkas ini{' '}
-                <strong>tidak menerbitkan Akta A4</strong>,{' '}
-                <strong>tidak masuk dalam Laporan Bulanan PPATS</strong>, dan hanya menghasilkan 1 file bundel Word ukuran F4. Pengesahan dokumen dapat diatur di Langkah 3 (SKW &amp; Beda Nama otomatis 2 pengesahan Camat + Kepala Desa asal sertipikat; dokumen lainnya default PPATS atau pilih Kepala Desa / isi manual).
+              <div className="space-y-3">
+                {/* Sumber Data Berkas Non-Akta: Input Mandiri vs Kaitkan ke Berkas Terdaftar */}
+                <div className="rounded-2xl border border-teal-900/10 dark:border-teal-400/20 bg-white/95 dark:bg-[#092024] p-4 shadow-[0_8px_20px_-6px_rgba(15,61,62,0.08)] space-y-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                    <div
+                      role="tablist"
+                      aria-label="Mode Sumber Data Berkas Non-Akta"
+                      className="inline-flex items-center gap-1 p-1.5 bg-[#EAF3F1] dark:bg-[#081F22] rounded-2xl border border-teal-900/8 dark:border-teal-400/15 shadow-inner w-fit"
+                    >
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={nonAktaSourceMode === 'manual'}
+                        onClick={() => handleSelectNonAktaMode('manual')}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 ${
+                          nonAktaSourceMode === 'manual'
+                            ? 'bg-gradient-to-b from-teal-400 to-teal-600 text-white border-b-2 border-teal-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_6px_14px_-4px_rgba(13,148,136,0.5)]'
+                            : 'text-slate-600 dark:text-teal-200/75 hover:text-teal-900 dark:hover:text-white'
+                        }`}
+                      >
+                        Input Mandiri (Baru)
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={nonAktaSourceMode === 'linked'}
+                        disabled={linkableRecords.length === 0}
+                        onClick={() => handleSelectNonAktaMode('linked')}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 disabled:opacity-50 ${
+                          nonAktaSourceMode === 'linked'
+                            ? 'bg-gradient-to-b from-teal-400 to-teal-600 text-white border-b-2 border-teal-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_6px_14px_-4px_rgba(13,148,136,0.5)]'
+                            : 'text-slate-600 dark:text-teal-200/75 hover:text-teal-900 dark:hover:text-white'
+                        }`}
+                      >
+                        Kaitkan ke Berkas Terdaftar ({linkableRecords.length})
+                      </button>
+                    </div>
+
+                    {nonAktaSourceMode === 'linked' && (
+                      <div className="flex items-center gap-2.5 flex-1 lg:max-w-xl">
+                        <label
+                          htmlFor="non-akta-linked-berkas-select"
+                          className="text-xs font-semibold text-slate-600 dark:text-teal-200/80 whitespace-nowrap"
+                        >
+                          Pilih Berkas:
+                        </label>
+                        <select
+                          id="non-akta-linked-berkas-select"
+                          value={linkedSourceId}
+                          onChange={(e) => handleLinkedRecordChange(e.target.value)}
+                          className="input-airy w-full px-3.5 py-2 text-xs font-medium"
+                        >
+                          <option value="">-- Pilih berkas terdaftar --</option>
+                          {linkableRecords.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {formatLinkableBerkasOptionLabel(r)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {nonAktaSourceMode === 'linked' && linkedSourceRecord && (
+                    <div className="rounded-xl border border-teal-200/90 dark:border-teal-500/30 bg-teal-50/75 dark:bg-teal-950/50 px-3.5 py-3 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-gradient-to-b from-teal-400 to-teal-600 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                          <Link2 className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0 text-xs">
+                          <p className="font-bold text-teal-950 dark:text-teal-50">
+                            Terkait ke {linkedSourceRecord.kode_berkas} ({linkedSourceRecord.layanan})
+                          </p>
+                          <p className="text-teal-800/85 dark:text-teal-200/80 mt-0.5">
+                            Data Pemohon ({paraPihak.length} pihak), Sertipikat ({tanah.jenis_hak}{' '}
+                            {tanah.nib || tanah.nomor_hak_lama || '-'} · Desa {tanah.desa || '-'}), PBB &amp; Kuasa BPN telah terisi otomatis.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <div
+                          role="group"
+                          aria-label="Cakupan Pihak yang Disalin"
+                          className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/90 dark:bg-[#081F22] border border-teal-900/10 dark:border-teal-400/20 text-[11px]"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleLinkPartyScopeChange('pihak1_only')}
+                            aria-pressed={linkPartyScope === 'pihak1_only'}
+                            className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                              linkPartyScope === 'pihak1_only'
+                                ? 'bg-teal-600 text-white shadow-xs'
+                                : 'text-slate-600 dark:text-teal-200/80 hover:text-teal-900 dark:hover:text-white'
+                            }`}
+                          >
+                            Pemilik (Pihak I)
+                          </button>
+                          {hasSecondPartyInRecord(linkedSourceRecord) && (
+                            <button
+                              type="button"
+                              onClick={() => handleLinkPartyScopeChange('pihak2_only')}
+                              aria-pressed={linkPartyScope === 'pihak2_only'}
+                              className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                                linkPartyScope === 'pihak2_only'
+                                  ? 'bg-teal-600 text-white shadow-xs'
+                                  : 'text-slate-600 dark:text-teal-200/80 hover:text-teal-900 dark:hover:text-white'
+                              }`}
+                            >
+                              Penerima (Pihak II)
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleLinkPartyScopeChange('all_pihak')}
+                            aria-pressed={linkPartyScope === 'all_pihak'}
+                            className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                              linkPartyScope === 'all_pihak'
+                                ? 'bg-teal-600 text-white shadow-xs'
+                                : 'text-slate-600 dark:text-teal-200/80 hover:text-teal-900 dark:hover:text-white'
+                            }`}
+                          >
+                            Semua Pihak
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setStep(2)}
+                          className="btn-3d btn-3d-teal inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold"
+                        >
+                          <span>Lanjut Verifikasi</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3.5 rounded-2xl border border-sky-200/90 dark:border-sky-700/50 bg-sky-50/75 dark:bg-sky-950/45 text-xs text-sky-950 dark:text-sky-100">
+                  <strong>Catatan Berkas Non-Akta ({layanan}):</strong> Berkas ini{' '}
+                  <strong>tidak menerbitkan Akta A4</strong>,{' '}
+                  <strong>tidak masuk dalam Laporan Bulanan PPATS</strong>, dan hanya menghasilkan 1 file bundel Word ukuran F4. Pengesahan dokumen dapat diatur di Langkah 3 (SKW &amp; Beda Nama otomatis 2 pengesahan Camat + Kepala Desa asal sertipikat; dokumen lainnya default PPATS atau pilih Kepala Desa / isi manual).
+                </div>
               </div>
             )}
           </div>
@@ -1674,10 +1922,19 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
         <div className="space-y-6">
           {/* Audit Warnings Panel */}
           <div className="bento-card p-5 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
                 Hasil Audit &amp; Peringatan Verifikasi Berkas ({combinedAuditWarnings.length})
               </h2>
+              {!isAkta && nonAkta.linked_berkas_kode && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-teal-50 dark:bg-teal-900/50 text-teal-800 dark:text-teal-200 border border-teal-200/90 dark:border-teal-500/35">
+                  <Link2 className="w-3.5 h-3.5" />
+                  <span>
+                    Terkait: {nonAkta.linked_berkas_kode}
+                    {nonAkta.linked_berkas_layanan ? ` (${nonAkta.linked_berkas_layanan})` : ''}
+                  </span>
+                </span>
+              )}
             </div>
 
             {combinedAuditWarnings.length === 0 ? (

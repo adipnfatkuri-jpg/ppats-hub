@@ -99,6 +99,11 @@ export interface NonAktaDetail {
   tgl_lahir_baku?: string;
   keperluan_ralat?: string;
   uraian_kronologi?: string;
+
+  // Kaitan opsional ke berkas terdaftar (seperti fitur kaitan di Kalkulator Pajak)
+  linked_berkas_id?: string;
+  linked_berkas_kode?: string;
+  linked_berkas_layanan?: ServiceType;
 }
 
 export type BerkasStatus =

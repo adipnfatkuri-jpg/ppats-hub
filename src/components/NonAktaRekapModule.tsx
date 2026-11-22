@@ -8,6 +8,7 @@ import {
   FilePlus2,
   FileSpreadsheet,
   FolderKanban,
+  Link2,
   Pencil,
   Printer,
   Search,
@@ -480,6 +481,15 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                     <span className="text-xs font-semibold text-sky-900 dark:text-sky-200 bg-sky-50 dark:bg-sky-900/40 border border-sky-200 dark:border-sky-500/30 px-2.5 py-0.5 rounded-lg">
                       {rec.layanan}
                     </span>
+                    {rec.non_akta?.linked_berkas_kode && (
+                      <span
+                        title={`Dikaitkan dari berkas ${rec.non_akta.linked_berkas_kode}${rec.non_akta.linked_berkas_layanan ? ` (${rec.non_akta.linked_berkas_layanan})` : ''}`}
+                        className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/45 border border-emerald-200/90 dark:border-emerald-500/35 px-2 py-0.5 rounded-lg"
+                      >
+                        <Link2 className="w-3 h-3 shrink-0" />
+                        <span>Terkait: {rec.non_akta.linked_berkas_kode}</span>
+                      </span>
+                    )}
                     <span className="font-mono text-xs text-slate-600 dark:text-teal-200/80 tabular-nums">
                       Masuk: <strong className="text-slate-900 dark:text-teal-50">{tglMasuk}</strong>
                     </span>
@@ -492,7 +502,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                     </span>
                   </div>
 
-                  <div className="no-print flex flex-wrap items-center gap-2">
+                  <div className="no-print flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
                     <select
                       aria-label={`Ubah status Non-Akta ${rec.kode_berkas}`}
                       value={currentStatus}
