@@ -7,9 +7,11 @@ import {
   extractDocumentsWithGemini,
   extractPersonWithGemini,
   mapGeminiError,
+  refineSketchWithGemini,
   resolveGeminiApiKey,
   type ExtractDocumentsRequestBody,
   type ExtractPersonRequestBody,
+  type RefineSketchRequestBody,
 } from './api/_geminiExtractor.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -67,6 +69,30 @@ async function startServer() {
     } catch (err: unknown) {
       if (res.headersSent) return;
       const mapped = mapGeminiError(err, 'Gagal memindai KTP saksi/kuasa menggunakan Gemini API.');
+      return res.status(mapped.status).json({ error: mapped.error });
+    }
+  });
+
+  app.post('/api/refine-sketch', async (req, res) => {
+    try {
+      const apiKey = resolveGeminiApiKey(process.env.GEMINI_API_KEY);
+      if (!apiKey) {
+        return res.status(503).json({
+          error:
+            'GEMINI_API_KEY belum terkonfigurasi dengan benar di server. Gunakan tombol "Buat Sket Otomatis (CAD)" atau periksa API key di Settings > Secrets.',
+        });
+      }
+
+      const body = (req.body ?? {}) as RefineSketchRequestBody;
+      const result = await refineSketchWithGemini(apiKey, body);
+      if (res.headersSent) return;
+      return res.json(result);
+    } catch (err: unknown) {
+      if (res.headersSent) return;
+      const mapped = mapGeminiError(
+        err,
+        'Gagal menyempurnakan gambar sket kasar menggunakan Gemini API.'
+      );
       return res.status(mapped.status).json({ error: mapped.error });
     }
   });

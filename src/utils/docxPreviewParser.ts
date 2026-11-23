@@ -16,9 +16,16 @@ export interface PreviewTextRun {
   sizePt?: number;
 }
 
+export interface PreviewImageEntry {
+  dataUrl: string;
+  widthPx?: number;
+  heightPx?: number;
+}
+
 export interface PreviewParagraphBlock {
   kind: 'paragraph';
   runs: PreviewTextRun[];
+  images?: PreviewImageEntry[];
   align: 'left' | 'center' | 'right' | 'justify';
   indentLeftPx: number;
   firstLinePx: number;
@@ -218,7 +225,56 @@ interface ParsedParagraphChunk {
   paragraph: PreviewParagraphBlock;
 }
 
-function parseParagraphXml(innerXml: string): ParsedParagraphChunk {
+function extractDocxImageMap(zip: PizZip): Map<string, string> {
+  const map = new Map<string, string>();
+  const relsXml = zip.file('word/_rels/document.xml.rels')?.asText() ?? '';
+  if (!relsXml) return map;
+
+  const relRegex = /<Relationship\b[^>]*>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = relRegex.exec(relsXml)) !== null) {
+    const tag = match[0];
+    const id = getAttr(tag, 'Id');
+    const target = getAttr(tag, 'Target');
+    if (!id || !target || !target.includes('media/')) continue;
+    const normalizedPath = target.startsWith('word/')
+      ? target
+      : `word/${target.replace(/^\/+/, '')}`;
+    const entry = zip.file(normalizedPath);
+    if (!entry) continue;
+    const ext = normalizedPath.split('.').pop()?.toLowerCase() ?? 'png';
+    const mime =
+      ext === 'jpg' || ext === 'jpeg'
+        ? 'image/jpeg'
+        : ext === 'gif'
+        ? 'image/gif'
+        : ext === 'bmp'
+        ? 'image/bmp'
+        : 'image/png';
+    try {
+      const bytes = entry.asUint8Array();
+      let base64 = '';
+      if (typeof Buffer !== 'undefined') {
+        base64 = Buffer.from(bytes).toString('base64');
+      } else {
+        let bin = '';
+        for (let i = 0; i < bytes.length; i += 1) {
+          bin += String.fromCharCode(bytes[i]);
+        }
+        base64 = btoa(bin);
+      }
+      map.set(id, `data:${mime};base64,${base64}`);
+    } catch {
+      // Ignore unreadable media entry
+    }
+  }
+  return map;
+}
+
+function parseParagraphXml(
+  innerXml: string,
+  imageMap?: Map<string, string>
+): ParsedParagraphChunk {
   const pPrList = extractElements(innerXml, ['w:pPr']);
   const pPr = pPrList[0]?.inner ?? '';
 
@@ -260,6 +316,7 @@ function parseParagraphXml(innerXml: string): ParsedParagraphChunk {
 
   let hasInlinePageBreak = false;
   const runs: PreviewTextRun[] = [];
+  const images: PreviewImageEntry[] = [];
   const runElements = extractElements(innerXml, ['w:r']);
 
   for (const r of runElements) {
@@ -271,6 +328,19 @@ function parseParagraphXml(innerXml: string): ParsedParagraphChunk {
     const szMatches = extractElements(rPr, ['w:sz']);
     const szRaw = szMatches[0] ? Number(getAttr(szMatches[0].open, 'w:val')) : NaN;
     const sizePt = Number.isFinite(szRaw) && szRaw > 0 ? szRaw / 2 : undefined;
+
+    if (imageMap && imageMap.size > 0 && r.inner.includes('blip')) {
+      const blipMatch = /<a:blip\b[^>]*r:embed="([^"]+)"/i.exec(r.inner);
+      if (blipMatch) {
+        const dataUrl = imageMap.get(blipMatch[1]);
+        if (dataUrl) {
+          const extMatch = /<wp:extent\b[^>]*cx="(\d+)"[^>]*cy="(\d+)"/i.exec(r.inner);
+          const widthPx = extMatch ? Math.round(Number(extMatch[1]) / 9525) : undefined;
+          const heightPx = extMatch ? Math.round(Number(extMatch[2]) / 9525) : undefined;
+          images.push({ dataUrl, widthPx, heightPx });
+        }
+      }
+    }
 
     // Walk text, br, tab nodes inside run
     const parts = extractElements(r.inner, ['w:t', 'w:br', 'w:tab']);
@@ -301,6 +371,7 @@ function parseParagraphXml(innerXml: string): ParsedParagraphChunk {
     paragraph: {
       kind: 'paragraph',
       runs,
+      ...(images.length > 0 ? { images } : {}),
       align,
       indentLeftPx,
       firstLinePx,
@@ -341,7 +412,7 @@ function hasVisibleBorder(borderXml: string, side: string): boolean | undefined 
   return v !== 'none' && v !== 'nil';
 }
 
-function parseTableXml(innerXml: string): PreviewTableBlock {
+function parseTableXml(innerXml: string, imageMap?: Map<string, string>): PreviewTableBlock {
   const tblPr = extractElements(innerXml, ['w:tblPr'])[0]?.inner ?? '';
   const tblW = extractElements(tblPr, ['w:tblW'])[0];
   const tblWVal = tblW ? getAttr(tblW.open, 'w:w') : undefined;
@@ -413,10 +484,10 @@ function parseTableXml(innerXml: string): PreviewTableBlock {
       const blocks: PreviewBlock[] = [];
       for (const ch of children) {
         if (ch.tag === 'w:p') {
-          const parsedP = parseParagraphXml(ch.inner);
+          const parsedP = parseParagraphXml(ch.inner, imageMap);
           blocks.push(parsedP.paragraph);
         } else if (ch.tag === 'w:tbl') {
-          blocks.push(parseTableXml(ch.inner));
+          blocks.push(parseTableXml(ch.inner, imageMap));
         }
       }
 
@@ -579,7 +650,10 @@ function detectPageTitle(docKey: TemplateDocKey, blocks: PreviewBlock[], pageNum
   if (joined.includes('BEDA NAMA')) return `Hal. ${pageNum} · Surat Pernyataan Beda Nama`;
   if (joined.includes('KRONOLOGI RALAT DATA')) return `Hal. ${pageNum} · Kronologi Ralat Data`;
   if (joined.includes('TIDAK MENUNTUT PENGEMBALIAN PNBP')) return `Hal. ${pageNum} · Penutupan Permohonan & PNBP`;
-  if (joined.includes('FOTO LOKASI')) return `Hal. ${pageNum} · Foto Lokasi & Poligon`;
+  if (joined.includes('FOTO LOKASI')) return `Hal. ${pageNum} · Foto Lokasi Tampak Depan & Patok 1-2`;
+  if (joined.includes('POLIGON') && (joined.includes('3') || joined.includes('4'))) {
+    return `Hal. ${pageNum} · Patok 3-4 & Poligon`;
+  }
   if (joined.includes('kekurangan pembayaran BPHTB')) return `Hal. ${pageNum} · Surat Pernyataan BPHTB`;
   if (joined.includes('SPPT/PBB')) return `Hal. ${pageNum} · Surat Pernyataan SPPT/PBB`;
   if (joined.includes('PERTANGGUNGJAWABAN KEABSAHAN')) return `Hal. ${pageNum} · Keabsahan & Kebenaran Dokumen`;
@@ -590,6 +664,7 @@ function detectPageTitle(docKey: TemplateDocKey, blocks: PreviewBlock[], pageNum
 
 function isEmptyParagraphBlock(block: PreviewBlock): boolean {
   if (block.kind !== 'paragraph') return false;
+  if (block.images && block.images.length > 0) return false;
   return block.runs.every((r) => r.text.trim() === '');
 }
 
@@ -604,6 +679,7 @@ export function parseDocxBytesToPreview(
   }
 ): DocxPreviewDocument {
   const zip = new PizZip(bytes);
+  const imageMap = extractDocxImageMap(zip);
   const docXml = zip.file('word/document.xml')?.asText() ?? '';
   const bodyInner = extractElements(docXml, ['w:body'])[0]?.inner ?? '';
   const topElements = extractElements(bodyInner, ['w:p', 'w:tbl']);
@@ -611,11 +687,13 @@ export function parseDocxBytesToPreview(
   const rawPages: PreviewBlock[][] = [[]];
   for (const el of topElements) {
     if (el.tag === 'w:p') {
-      const parsed = parseParagraphXml(el.inner);
+      const parsed = parseParagraphXml(el.inner, imageMap);
       if (parsed.hasPageBreakBefore && rawPages[rawPages.length - 1].length > 0) {
         rawPages.push([]);
       }
-      const hasContent = parsed.paragraph.runs.some((r) => r.text.length > 0);
+      const hasContent =
+        parsed.paragraph.runs.some((r) => r.text.length > 0) ||
+        Boolean(parsed.paragraph.images && parsed.paragraph.images.length > 0);
       if (hasContent || !parsed.hasInlinePageBreak) {
         rawPages[rawPages.length - 1].push(parsed.paragraph);
       }
@@ -623,7 +701,7 @@ export function parseDocxBytesToPreview(
         rawPages.push([]);
       }
     } else if (el.tag === 'w:tbl') {
-      rawPages[rawPages.length - 1].push(parseTableXml(el.inner));
+      rawPages[rawPages.length - 1].push(parseTableXml(el.inner, imageMap));
     }
   }
 

@@ -1214,6 +1214,112 @@ test('APHB with multiple recipients renders pemegang hak bersama wording on Akta
   assert.ok(!lampiranXml.includes('{{') && !lampiranXml.includes('}}'));
 });
 
+test('Pemecahan and Ukur Ulang embed Sketsa Bidang Tanah in Pemasangan Tanda Batas, Gambar Sket Tanah, and 2-page Foto Lokasi Tampak Depan/Patok 1-4/Poligon with preview images', async () => {
+  const tinyPngDataUrl =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+  const pemecahanFull = {
+    ...INITIAL_SEED_RECORDS[0],
+    layanan: 'Pemecahan' as const,
+    tanah: {
+      ...INITIAL_SEED_RECORDS[0].tanah,
+      jenis_sertipikat: 'digital' as const,
+      nib: '11.17.000025993.0',
+      luas_m2: 778,
+      desa: 'Sawahan',
+      kecamatan: 'Ngemplak',
+      kabupaten: 'Kabupaten Boyolali',
+      batas_utara: 'Sumedi',
+      batas_timur: 'Jalan',
+      batas_selatan: 'Rohim',
+      batas_barat: 'Sadli',
+      pemegang_hak_sertipikat: ['SITI MARSIYAH'],
+    },
+    non_akta: {
+      pengesahan_mode: 'kades' as const,
+      pengesahan_jabatan: 'Kepala Desa Sawahan',
+      pengesahan_nama: 'AGUS SUNARNO',
+      sub_permohonan_ukur: 'Pemecahan' as const,
+      bidang_pecahan: [
+        { id: 'b1', label: 'sisa', luas_m2: 196 },
+        { id: 'b2', label: 'Tri Handoko', luas_m2: 432 },
+      ],
+      sertakan_pelepasan_jalan: true,
+      pelepasan_jalan_luas_m2: 150,
+      pelepasan_jalan_sisi: 'utara' as const,
+      koordinat_gps: '-7.514428, 110.809820',
+      link_maps: 'https://maps.app.goo.gl/V94o5vCsbTEmRzAk8',
+      koordinat_poligon: '-7.514428, 110.809986\n-7.514346, 110.809631\n-7.514554, 110.809937\n-7.514486, 110.809596',
+      foto_sket_pecah: tinyPngDataUrl,
+      foto_tampak_depan: tinyPngDataUrl,
+      foto_patok_1: tinyPngDataUrl,
+      foto_patok_2: tinyPngDataUrl,
+      foto_patok_3: tinyPngDataUrl,
+      foto_patok_4: tinyPngDataUrl,
+      foto_poligon: tinyPngDataUrl,
+    },
+  };
+
+  const pecahFiles = await generateBundleFiles(pemecahanFull, DEFAULT_OFFICE_SETTINGS, {});
+  const pecahZip = new PizZip(pecahFiles[0].bytes);
+  const pecahXml = pecahZip.file('word/document.xml')?.asText() ?? '';
+  const mediaFiles = Object.keys(pecahZip.files).filter((f) => f.startsWith('word/media/'));
+  const blipCount = (pecahXml.match(/<a:blip\b/g) ?? []).length;
+
+  assert.ok(mediaFiles.length >= 1, `Expected embedded media files in word/media/, got ${mediaFiles.length}`);
+  assert.ok(blipCount >= 8, `Expected at least 8 embedded image drawings (2x sketch + 6x geotag/poligon), got ${blipCount}`);
+  assert.ok(pecahXml.includes('SKETSA BIDANG TANAH'));
+  assert.ok(pecahXml.includes('GAMBAR SKET TANAH'));
+  assert.ok(pecahXml.includes('Dilepaskan Untuk Jalan Luas ± 150 m²'));
+  assert.ok(pecahXml.includes('FOTO LOKASI SHM Nibel 11.17.000025993.0'));
+  assert.ok(pecahXml.includes('TAMPAK DEPAN'));
+  assert.ok(pecahXml.includes('-7.514428, 110.809820'));
+  assert.ok(pecahXml.includes('https://maps.app.goo.gl/V94o5vCsbTEmRzAk8'));
+  assert.ok(pecahXml.includes('POLIGON'));
+  assert.ok(pecahXml.includes('Titik Koordinat Sudut Poligon Bidang Tanah'));
+
+  // Preview parser extracts embedded images into preview blocks
+  const pecahPreview = await renderDocxPreviewPages(pemecahanFull, DEFAULT_OFFICE_SETTINGS, {}, '02_lampiran_bundel');
+  const countPreviewImages = (blocks: typeof pecahPreview.pages[number]['blocks']): number =>
+    blocks.reduce((sum, blk) => {
+      if (blk.kind === 'paragraph') return sum + (blk.images?.length ?? 0);
+      return (
+        sum +
+        blk.rows.reduce(
+          (rSum, row) => rSum + row.cells.reduce((cSum, cell) => cSum + countPreviewImages(cell.blocks), 0),
+          0
+        )
+      );
+    }, 0);
+  const totalPreviewImgs = pecahPreview.pages.reduce((sum, p) => sum + countPreviewImages(p.blocks), 0);
+  assert.ok(totalPreviewImgs >= 8, `Expected at least 8 embedded images rendered in preview (2x sketch + 6x geotag/poligon), got ${totalPreviewImgs}`);
+  assert.ok(pecahPreview.pages.some((p) => p.title.includes('Pemasangan Tanda Batas')));
+  assert.ok(pecahPreview.pages.some((p) => p.title.includes('Gambar Sket Tanah')));
+  assert.ok(pecahPreview.pages.some((p) => p.title.includes('Foto Lokasi Tampak Depan')));
+  assert.ok(pecahPreview.pages.some((p) => p.title.includes('Patok 3-4 & Poligon')));
+
+  // Ukur Ulang also includes Gambar Sket Tanah, Sketsa Bidang Tanah, and Foto Lokasi/Poligon
+  const ukurUlangRecord = {
+    ...pemecahanFull,
+    layanan: 'Ukur Ulang' as const,
+    non_akta: {
+      ...pemecahanFull.non_akta,
+      sub_permohonan_ukur: 'Pengukuran' as const,
+      bidang_pecahan: [],
+      sertakan_pelepasan_jalan: false,
+    },
+  };
+  const ukurFiles = await generateBundleFiles(ukurUlangRecord, DEFAULT_OFFICE_SETTINGS, {});
+  assert.equal(ukurFiles[0].fileName, '02_Lampiran_Bundel_Ukur_Ulang.docx');
+  const ukurXml = new PizZip(ukurFiles[0].bytes).file('word/document.xml')?.asText() ?? '';
+  assert.ok(ukurXml.includes('SKETSA BIDANG TANAH'));
+  assert.ok(ukurXml.includes('GAMBAR SKET TANAH'));
+  assert.ok(ukurXml.includes('Bidang Ukur Ulang'));
+  assert.ok(ukurXml.includes('FOTO LOKASI SHM Nibel 11.17.000025993.0'));
+  assert.ok(ukurXml.includes('POLIGON'));
+});
+
+
 
 
 

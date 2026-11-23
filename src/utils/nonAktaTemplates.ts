@@ -31,6 +31,7 @@ import { LAMPIRAN_MARGINS, PAPER_SIZE_F4_TWIPS } from './docxTemplates';
 import { resolveAnalisisBidangConfig } from './analisisBidangHelper';
 import { formatPpatsTtl } from './ppatsProfileHelper';
 import { buildWarisCBundle } from './warisCTemplates';
+import { isBoundaryNonPerson } from './sketchRefiner';
 
 const F4_FONT = 'Bookman Old Style';
 const F4_SIZE = 22; // 11 pt
@@ -1939,7 +1940,7 @@ function buildPemecahanUkurUlangBundle(
         'Fotokopi KTP dan KK Para Pihak',
         'Surat Penguasaan Fisik',
         'Surat Pemasangan Batas',
-        ...(isPemecahan ? ['Gambar Sket Tanah'] : []),
+        'Gambar Sket Tanah',
         ...(na?.sertakan_pelepasan_jalan ? ['Surat Pelepasan Jalan'] : []),
         ...(na?.sertakan_beda_nama ? ['Surat Pernyataan Beda Nama'] : []),
         'Surat SPPT Terhutang',
@@ -2043,263 +2044,530 @@ function buildPemecahanUkurUlangBundle(
     }),
     ...buildSaksiBlocks(saksi1.nama, saksi2.nama, 200),
 
-    // 5. SURAT PERNYATAAN PEMASANGAN TANDA BATAS & PERSETUJUAN PEMILIK BERBATASAN
-    fp('SURAT PERNYATAAN PEMASANGAN TANDA BATAS DAN', {
-      pageBreakBefore: true,
-      bold: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 0,
-      line: 255,
-    }),
-    fp('PERSETUJUAN PEMILIK YANG BERBATASAN', {
-      bold: true,
-      underline: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 140,
-      line: 255,
-    }),
-    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: 245 }),
-    ...buildNumberedPartiesKvBlocks(parties, { spaceAfterRow: 0 }),
-    fp(
-      `Selaku pemohon ${isPemecahan ? 'Pemecahan' : 'Pengukuran'} bidang tanah ${sert.jenisHak} ${sert.ringkas}, Luas ${sert.luasStr} M² di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}, dengan ini menyatakan :`,
-      { align: AlignmentType.JUSTIFIED, spaceBefore: 80, spaceAfter: 50, line: 245 }
-    ),
-    fp(
-      '1. Telah memasang tanda batas (patok) secara permanen pada setiap sudut bidang tanah sesuai dengan ketentuan peraturan pertanahan yang berlaku.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 300, hanging: 300, spaceAfter: 20, line: 245 }
-    ),
-    fp(
-      '2. Tanda batas yang dipasang telah disepakati dan disetujui oleh pemilik bidang tanah yang berbatasan langsung.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 300, hanging: 300, spaceAfter: 20, line: 245 }
-    ),
-    fp(
-      '3. Apabila terjadi selisih luas akibat pemasangan batas lapangan, pemohon bersedia menyesuaikan dengan hasil ukur resmi Kantor Pertanahan.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 300, hanging: 300, spaceAfter: 20, line: 245 }
-    ),
-    fp(
-      '4. Apabila dikemudian hari terdapat keberatan dari pihak lain mengenai tanda batas, seluruh akibat hukum menjadi tanggung jawab pemohon.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 300, hanging: 300, spaceAfter: 90, line: 245 }
-    ),
-    fp('Menyetujui Pemilik Tanah Yang Berbatasan :', { bold: true, spaceAfter: 40, line: 245 }),
-    new Table({
-      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [2234, 4470, F4_CONTENT_WIDTH_DXA - 6704],
-      layout: TableLayoutType.FIXED,
-      borders: THIN_TABLE_BORDERS,
-      rows: [
-        ['Arah', 'Nama Pemilik / Batas Tanah', 'Tanda Tangan'],
-        ['Sebelah Utara', record.tanah.batas_utara || '-', '1. ....................'],
-        ['Sebelah Timur', record.tanah.batas_timur || '-', '2. ....................'],
-        ['Sebelah Selatan', record.tanah.batas_selatan || '-', '3. ....................'],
-        ['Sebelah Barat', record.tanah.batas_barat || '-', '4. ....................'],
-      ].map((row, idx) =>
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 2234, type: WidthType.DXA },
-              borders: THIN_BORDER,
-              margins: { top: 40, bottom: 40, left: 80, right: 80 },
-              children: [fp(row[0], { bold: idx === 0, spaceAfter: 20, line: F4_LINE })],
-            }),
-            new TableCell({
-              width: { size: 4470, type: WidthType.DXA },
-              borders: THIN_BORDER,
-              margins: { top: 40, bottom: 40, left: 80, right: 80 },
-              children: [fp(row[1], { bold: idx === 0, spaceAfter: 20, line: F4_LINE })],
-            }),
-            new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 6704, type: WidthType.DXA },
-              borders: THIN_BORDER,
-              margins: { top: 40, bottom: 40, left: 80, right: 80 },
-              children: [fp(row[2], { bold: idx === 0, spaceAfter: idx === 0 ? 20 : 120, line: F4_LINE })],
-            }),
-          ],
-        })
-      ),
-    }),
-    fp('', { spaceAfter: 60, line: 160 }),
-    new Table({
-      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
-      layout: TableLayoutType.FIXED,
-      borders: NO_TABLE_BORDERS,
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 0, right: 120 },
-              children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
-            }),
-            new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 120, right: 0 },
+    // 5. SURAT PERNYATAAN PEMASANGAN TANDA BATAS & PERSETUJUAN PEMILIK BERBATASAN (DENGAN SKETSA BIDANG)
+    ...(() => {
+      const sketItems = isPemecahan
+        ? bidangPecahan.map((b, idx) => {
+            const descParts = [b.label, b.atas_nama, b.keterangan]
+              .map((v) => (v || '').trim())
+              .filter(Boolean);
+            const deduped: string[] = [];
+            for (const part of descParts) {
+              if (!deduped.some((d) => d.toLowerCase() === part.toLowerCase())) {
+                deduped.push(part);
+              }
+            }
+            const noteText = deduped.length > 0 ? ` (${deduped.join(' · ')})` : '';
+            return {
+              no: idx + 1,
+              luasText: `± ${formatNumberId(b.luas_m2)} m²`,
+              noteText,
+            };
+          })
+        : [
+            {
+              no: 1,
+              luasText: `± ${sert.luasStr} m²`,
+              noteText: ' (Bidang Ukur Ulang)',
+            },
+          ];
+
+      const decodedSket = decodeDataUrlToImage(na?.foto_sket_pecah);
+      const batasRows: Array<{ label: string; value: string; needSign: boolean }> = [
+        {
+          label: 'Utara',
+          value: record.tanah.batas_utara?.trim() || '-',
+          needSign: !isBoundaryNonPerson(record.tanah.batas_utara),
+        },
+        {
+          label: 'Timur',
+          value: record.tanah.batas_timur?.trim() || '-',
+          needSign: !isBoundaryNonPerson(record.tanah.batas_timur),
+        },
+        {
+          label: 'Selatan',
+          value: record.tanah.batas_selatan?.trim() || '-',
+          needSign: !isBoundaryNonPerson(record.tanah.batas_selatan),
+        },
+        {
+          label: 'Barat',
+          value: record.tanah.batas_barat?.trim() || '-',
+          needSign: !isBoundaryNonPerson(record.tanah.batas_barat),
+        },
+      ];
+
+      const leftBatasW = 4680;
+      const rightSignW = F4_CONTENT_WIDTH_DXA - leftBatasW;
+      const sketImgColW = Math.round(F4_CONTENT_WIDTH_DXA * 0.58);
+      const sketInfoColW = F4_CONTENT_WIDTH_DXA - sketImgColW;
+
+      const sketInlineChildren: Paragraph[] = decodedSket
+        ? [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 40, after: 40, line: F4_LINE, lineRule: LineRuleType.AUTO },
               children: [
-                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-                  align: AlignmentType.CENTER,
-                  spaceBefore: 20,
-                  spaceAfter: 0,
-                  line: F4_LINE,
+                new ImageRun({
+                  data: decodedSket.bytes,
+                  type: decodedSket.type,
+                  transformation: { width: 310, height: 198 },
                 }),
-                fp('Pemohon / Yang Memasang Batas', {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                  line: F4_LINE,
+              ],
+            }),
+          ]
+        : [
+            fp('U ↑', { bold: true, size: 20, spaceBefore: 40, spaceAfter: 60, line: 230 }),
+            fp(`Utara : ${record.tanah.batas_utara || '-'}`, {
+              align: AlignmentType.CENTER,
+              size: 18,
+              spaceAfter: 460,
+              line: 220,
+            }),
+            fp(
+              `Barat : ${record.tanah.batas_barat || '-'}          |          Timur : ${record.tanah.batas_timur || '-'}`,
+              {
+                align: AlignmentType.CENTER,
+                size: 18,
+                spaceAfter: 460,
+                line: 220,
+              }
+            ),
+            fp(`Selatan : ${record.tanah.batas_selatan || '-'}`, {
+              align: AlignmentType.CENTER,
+              size: 18,
+              spaceAfter: 60,
+              line: 220,
+            }),
+          ];
+
+      const sketLargeChildren: Paragraph[] = decodedSket
+        ? [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 80, after: 80, line: F4_LINE, lineRule: LineRuleType.AUTO },
+              children: [
+                new ImageRun({
+                  data: decodedSket.bytes,
+                  type: decodedSket.type,
+                  transformation: { width: 510, height: 326 },
                 }),
-                ...buildNumberedSignerLines(parties, 260),
+              ],
+            }),
+          ]
+        : [
+            fp('U ↑', { bold: true, size: 22, spaceBefore: 80, spaceAfter: 120, line: 240 }),
+            fp(`Utara : ${record.tanah.batas_utara || '-'}`, {
+              align: AlignmentType.CENTER,
+              size: 20,
+              spaceAfter: 1200,
+              line: 240,
+            }),
+            fp(
+              `Barat : ${record.tanah.batas_barat || '-'}                    |                    Timur : ${record.tanah.batas_timur || '-'}`,
+              {
+                align: AlignmentType.CENTER,
+                size: 20,
+                spaceAfter: 1200,
+                line: 240,
+              }
+            ),
+            fp(`Selatan : ${record.tanah.batas_selatan || '-'}`, {
+              align: AlignmentType.CENTER,
+              size: 20,
+              spaceAfter: 100,
+              line: 240,
+            }),
+          ];
+
+      return [
+        fp('SURAT PERNYATAAN PEMASANGAN TANDA BATAS DAN', {
+          pageBreakBefore: true,
+          bold: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 0,
+          line: 255,
+        }),
+        fp('PERSETUJUAN PEMILIK YANG BERBATASAN', {
+          bold: true,
+          underline: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 140,
+          line: 255,
+        }),
+        fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: 245 }),
+        ...buildNumberedPartiesKvBlocks(parties, { spaceAfterRow: 0 }),
+        fp(
+          `Selaku pemohon ${isPemecahan ? 'pengukuran / pemecahan' : 'pengukuran'} / pemilik tanah ${sert.jenisHak} ${sert.ringkas} Seluas ± ${sert.luasStr} M² (${sert.luasTerbilang}), yang terletak di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}. Dengan ini menyatakan bahwa tanah tersebut :`,
+          { align: AlignmentType.JUSTIFIED, spaceBefore: 80, spaceAfter: 50, line: 245 }
+        ),
+        fp('1. Telah dipasang patok/ tanda batas;', {
+          align: AlignmentType.JUSTIFIED,
+          indentLeft: 300,
+          hanging: 300,
+          spaceAfter: 20,
+          line: 245,
+        }),
+        fp('2. Terhadap patok yang dipasang tersebut tidak ada pihak yang keberatan;', {
+          align: AlignmentType.JUSTIFIED,
+          indentLeft: 300,
+          hanging: 300,
+          spaceAfter: 20,
+          line: 245,
+        }),
+        fp(
+          `3. Apabila ternyata luas hasil ukur lebih kecil dari luas yang tertulis pada alas hak/ akta peralihan hak/ surat-surat lain dalam berkas permohonan sertipikat, ${parties.length > 1 ? 'kami' : 'saya'} menerima luas hasil ukuran petugas Kantor Pertanahan; dan`,
+          { align: AlignmentType.JUSTIFIED, indentLeft: 300, hanging: 300, spaceAfter: 20, line: 245 }
+        ),
+        fp(
+          `4. Apabila hasil pengukuran ternyata lebih besar dari yang tertulis pada alas hak/ akta peralihan hak/ surat-surat lain dalam berkas permohonan sertipikat, ${parties.length > 1 ? 'kami' : 'saya'} tidak mengambil hak orang lain dan tidak ada perolehan lain selain bukti pemilikan tersebut diatas, apabila ada gugatan/ keberatan dari pihak lain, ${parties.length > 1 ? 'kami' : 'saya'} akan bertanggung jawab.`,
+          { align: AlignmentType.JUSTIFIED, indentLeft: 300, hanging: 300, spaceAfter: 80, line: 245 }
+        ),
+        fp(
+          `Demikian Surat Pernyataan ini ${parties.length > 1 ? 'kami' : 'saya'} buat dengan sebenarnya dengan penuh tanggung jawab dan ${parties.length > 1 ? 'kami' : 'saya'} bersedia mengangkat sumpah bila diperlukan, apabila pernyataan ini tidak benar ${parties.length > 1 ? 'kami' : 'saya'} bersedia dituntut dihadapan pihak yang berwenang.`,
+          { align: AlignmentType.JUSTIFIED, spaceAfter: 120, line: 245 }
+        ),
+        // Menyetujui Pemilik Berbatasan (kiri) vs Yang membuat Pernyataan (kanan)
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [leftBatasW, rightSignW],
+          layout: TableLayoutType.FIXED,
+          borders: NO_TABLE_BORDERS,
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  width: { size: leftBatasW, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                  children: [
+                    fp('Menyetujui:', { spaceAfter: 30, line: F4_LINE }),
+                    fp('Pemilik yang berbatasan', { spaceAfter: 60, line: F4_LINE }),
+                    new Table({
+                      width: { size: leftBatasW - 140, type: WidthType.DXA },
+                      columnWidths: [1050, 1950, leftBatasW - 3140],
+                      layout: TableLayoutType.FIXED,
+                      borders: NO_TABLE_BORDERS,
+                      rows: batasRows.map(
+                        (b) =>
+                          new TableRow({
+                            children: [
+                              new TableCell({
+                                width: { size: 1050, type: WidthType.DXA },
+                                borders: NO_BORDER,
+                                margins: { top: 20, bottom: 80, left: 0, right: 20 },
+                                children: [fp(b.label, { size: 20, spaceAfter: 0, line: 240 })],
+                              }),
+                              new TableCell({
+                                width: { size: 1950, type: WidthType.DXA },
+                                borders: NO_BORDER,
+                                margins: { top: 20, bottom: 80, left: 0, right: 40 },
+                                children: [fp(`: ${b.value}`, { size: 20, spaceAfter: 0, line: 240 })],
+                              }),
+                              new TableCell({
+                                width: { size: leftBatasW - 3140, type: WidthType.DXA },
+                                borders: NO_BORDER,
+                                margins: { top: 20, bottom: 80, left: 0, right: 0 },
+                                children: [
+                                  fp(b.needSign ? '(                )' : '', {
+                                    size: 20,
+                                    spaceAfter: 0,
+                                    line: 240,
+                                  }),
+                                ],
+                              }),
+                            ],
+                          })
+                      ),
+                    }),
+                  ],
+                }),
+                new TableCell({
+                  width: { size: rightSignW, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 100, right: 0 },
+                  children: [
+                    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: 0,
+                      line: F4_LINE,
+                    }),
+                    fp('Yang membuat Pernyataan', {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
+                      line: F4_LINE,
+                    }),
+                    ...buildNumberedSignerLines(parties, 260),
+                  ],
+                }),
               ],
             }),
           ],
         }),
-      ],
-    }),
-    ...buildSaksiBlocks(saksi1.nama, saksi2.nama, 160),
-  ];
-
-  // 6. GAMBAR SKET TANAH (UNTUK PEMECAHAN)
-  if (isPemecahan) {
-    blocks.push(
-      fp('GAMBAR SKET TANAH RENCANA PEMECAHAN', {
-        pageBreakBefore: true,
-        bold: true,
-        underline: true,
-        align: AlignmentType.CENTER,
-        spaceAfter: 160,
-        line: 260,
-      }),
-      kvTable(
-        [
-          ['Jenis & Nomor Sertipikat', `${sert.jenisHak} ${sert.ringkas}`],
-          ['Luas Bidang Induk', `${sert.luasStr} M²`],
-          ['Letak Tanah', `Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}`],
-          ['Pemegang Hak', sert.pemegangHak],
-        ],
-        { labelPct: 30, spaceAfterRow: 0, line: 250 }
-      ),
-      fp('Rincian Rencana Pecahan Bidang Tanah :', {
-        bold: true,
-        spaceBefore: 120,
-        spaceAfter: 60,
-        line: 250,
-      }),
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [
-          new TableRow({
-            children: ['No', 'Bagian Bidang', 'Luas (m²)', 'Keterangan / Penerima'].map(
-              (h, cIdx) =>
-                new TableCell({
-                  width: {
-                    size: cIdx === 0 ? 8 : cIdx === 1 ? 34 : cIdx === 2 ? 18 : 40,
-                    type: WidthType.PERCENTAGE,
-                  },
-                  borders: THIN_BORDER,
-                  children: [fp(h, { bold: true, align: AlignmentType.CENTER, spaceAfter: 20, line: 240 })],
-                })
-            ),
-          }),
-          ...bidangPecahan.map((b, i) =>
+        fp('SKETSA BIDANG TANAH', {
+          bold: true,
+          spaceBefore: 140,
+          spaceAfter: 60,
+          line: 240,
+        }),
+        // Bingkai SKETSA BIDANG TANAH (kiri gambar sket, kanan keterangan sertipikat & rincian luas)
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [sketImgColW, sketInfoColW],
+          layout: TableLayoutType.FIXED,
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 6, color: '1E293B' },
+            bottom: { style: BorderStyle.SINGLE, size: 6, color: '1E293B' },
+            left: { style: BorderStyle.SINGLE, size: 6, color: '1E293B' },
+            right: { style: BorderStyle.SINGLE, size: 6, color: '1E293B' },
+            insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+            insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+          },
+          rows: [
             new TableRow({
+              height: { value: 3300, rule: HeightRule.ATLEAST },
               children: [
                 new TableCell({
-                  width: { size: 8, type: WidthType.PERCENTAGE },
-                  borders: THIN_BORDER,
-                  children: [fp(String(i + 1), { align: AlignmentType.CENTER, spaceAfter: 20, line: 240 })],
+                  width: { size: sketImgColW, type: WidthType.DXA },
+                  borders: {
+                    top: { style: BorderStyle.SINGLE, size: 6, color: '1E293B' },
+                    bottom: { style: BorderStyle.SINGLE, size: 6, color: '1E293B' },
+                    left: { style: BorderStyle.SINGLE, size: 6, color: '1E293B' },
+                    right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+                  },
+                  margins: { top: 100, bottom: 100, left: 100, right: 80 },
+                  children: sketInlineChildren,
                 }),
                 new TableCell({
-                  width: { size: 34, type: WidthType.PERCENTAGE },
-                  borders: THIN_BORDER,
-                  children: [fp(b.label, { spaceAfter: 20, line: 240 })],
-                }),
-                new TableCell({
-                  width: { size: 18, type: WidthType.PERCENTAGE },
-                  borders: THIN_BORDER,
-                  children: [fp(`${formatNumberId(b.luas_m2)} m²`, { align: AlignmentType.RIGHT, spaceAfter: 20, line: 240 })],
-                }),
-                new TableCell({
-                  width: { size: 40, type: WidthType.PERCENTAGE },
-                  borders: THIN_BORDER,
+                  width: { size: sketInfoColW, type: WidthType.DXA },
+                  borders: {
+                    top: { style: BorderStyle.SINGLE, size: 6, color: '1E293B' },
+                    bottom: { style: BorderStyle.SINGLE, size: 6, color: '1E293B' },
+                    left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+                    right: { style: BorderStyle.SINGLE, size: 6, color: '1E293B' },
+                  },
+                  margins: { top: 140, bottom: 100, left: 100, right: 120 },
                   children: [
                     fp(
-                      [b.atas_nama, b.keterangan].filter(Boolean).join(' · ') || '-',
-                      { spaceAfter: 20, line: 240 }
+                      `Tanah ${sert.jenisHak}. ${sert.isDigital ? `Nibel: ${sert.nibClean}` : sert.ringkas}`,
+                      { size: 19, spaceAfter: 30, line: 240 }
                     ),
+                    fp(
+                      `Seluas ± ${sert.luasStr} M² Desa ${sert.desa}, an ${sert.pemegangHak}`,
+                      { size: 19, spaceAfter: 140, line: 240 }
+                    ),
+                    ...sketItems.map((item) =>
+                      fp(`${item.no}. Luas : ${item.luasText}${item.noteText}`, {
+                        bold: true,
+                        size: 19,
+                        spaceAfter: 50,
+                        line: 240,
+                      })
+                    ),
+                    ...(na?.sertakan_pelepasan_jalan
+                      ? [
+                          fp(
+                            `Dilepaskan Untuk Jalan Luas ± ${formatNumberId(na.pelepasan_jalan_luas_m2 ?? 0)} m²`,
+                            { size: 19, spaceAfter: 40, line: 240 }
+                          ),
+                        ]
+                      : []),
                   ],
                 }),
               ],
-            })
-          ),
-        ],
-      }),
-      fp('', { spaceAfter: 80, line: 160 }),
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                width: { size: 100, type: WidthType.PERCENTAGE },
-                borders: THIN_BORDER,
-                children: [
-                  fp('SKETSA BIDANG TANAH & BATAS-BATAS (UTARA DI ATAS)', {
-                    bold: true,
-                    align: AlignmentType.CENTER,
-                    spaceBefore: 80,
-                    spaceAfter: 1800,
-                    line: 240,
+            }),
+          ],
+        }),
+        fp('', { spaceAfter: 80, line: 160 }),
+        // Saksi-saksi (kiri) & Mengetahui (kanan)
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [4840, F4_CONTENT_WIDTH_DXA - 4840],
+          layout: TableLayoutType.FIXED,
+          borders: NO_TABLE_BORDERS,
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  width: { size: 4840, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 40, bottom: 0, left: 0, right: 120 },
+                  children: [
+                    fp('Saksi-saksi:', { spaceAfter: 120, line: F4_LINE }),
+                    fp(`1. ${saksi1.nama} : _____________________`, {
+                      size: 20,
+                      spaceAfter: 360,
+                      line: F4_LINE,
+                    }),
+                    fp(`2. ${saksi2.nama} : _____________________`, {
+                      size: 20,
+                      spaceAfter: 20,
+                      line: F4_LINE,
+                    }),
+                  ],
+                }),
+                new TableCell({
+                  width: { size: F4_CONTENT_WIDTH_DXA - 4840, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 120, right: 0 },
+                  children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
+                }),
+              ],
+            }),
+          ],
+        }),
+
+        // 6. GAMBAR SKET TANAH (HALAMAN KHUSUS SKET BESAR + KETERANGAN KOTAK ANGKA)
+        fp('GAMBAR SKET TANAH', {
+          pageBreakBefore: true,
+          bold: true,
+          underline: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 180,
+          line: 260,
+        }),
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [F4_CONTENT_WIDTH_DXA],
+          layout: TableLayoutType.FIXED,
+          borders: decodedSket ? NO_TABLE_BORDERS : THIN_TABLE_BORDERS,
+          rows: [
+            new TableRow({
+              height: { value: decodedSket ? 4800 : 5000, rule: HeightRule.ATLEAST },
+              children: [
+                new TableCell({
+                  width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+                  borders: decodedSket ? NO_BORDER : THIN_BORDER,
+                  margins: { top: 80, bottom: 80, left: 80, right: 80 },
+                  children: sketLargeChildren,
+                }),
+              ],
+            }),
+          ],
+        }),
+        fp('KETERANGAN', {
+          bold: true,
+          spaceBefore: 180,
+          spaceAfter: 100,
+          line: 250,
+        }),
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA - 240, type: WidthType.DXA },
+          columnWidths: [640, 220, F4_CONTENT_WIDTH_DXA - 1100],
+          layout: TableLayoutType.FIXED,
+          borders: NO_TABLE_BORDERS,
+          indent: { size: 240, type: WidthType.DXA },
+          rows: [
+            ...sketItems.map(
+              (item) =>
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      width: { size: 640, type: WidthType.DXA },
+                      borders: THIN_BORDER,
+                      margins: { top: 50, bottom: 50, left: 60, right: 60 },
+                      children: [
+                        fp(String(item.no), {
+                          bold: true,
+                          align: AlignmentType.CENTER,
+                          size: 20,
+                          spaceAfter: 0,
+                          line: 230,
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      width: { size: 220, type: WidthType.DXA },
+                      borders: NO_BORDER,
+                      children: [fp('', { spaceAfter: 0 })],
+                    }),
+                    new TableCell({
+                      width: { size: F4_CONTENT_WIDTH_DXA - 1100, type: WidthType.DXA },
+                      borders: NO_BORDER,
+                      margins: { top: 50, bottom: 80, left: 20, right: 0 },
+                      children: [
+                        fp(`Luas : ${item.luasText}${item.noteText}`, {
+                          bold: true,
+                          size: 20,
+                          spaceAfter: 0,
+                          line: 240,
+                        }),
+                      ],
+                    }),
+                  ],
+                })
+            ),
+            ...(na?.sertakan_pelepasan_jalan
+              ? [
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        width: { size: 640, type: WidthType.DXA },
+                        borders: NO_BORDER,
+                        children: [fp('', { spaceAfter: 0 })],
+                      }),
+                      new TableCell({
+                        width: { size: 220, type: WidthType.DXA },
+                        borders: NO_BORDER,
+                        children: [fp('', { spaceAfter: 0 })],
+                      }),
+                      new TableCell({
+                        width: { size: F4_CONTENT_WIDTH_DXA - 1100, type: WidthType.DXA },
+                        borders: NO_BORDER,
+                        margins: { top: 40, bottom: 60, left: 20, right: 0 },
+                        children: [
+                          fp(
+                            `Dilepaskan Untuk Jalan Luas ± ${formatNumberId(na.pelepasan_jalan_luas_m2 ?? 0)} m²${na.pelepasan_jalan_keterangan?.trim() ? ` (${na.pelepasan_jalan_keterangan.trim()})` : ''}`,
+                            { size: 20, spaceAfter: 0, line: 240 }
+                          ),
+                        ],
+                      }),
+                    ],
                   }),
-                  fp(
-                    `Utara: ${record.tanah.batas_utara || '-'} | Timur: ${record.tanah.batas_timur || '-'} | Selatan: ${record.tanah.batas_selatan || '-'} | Barat: ${record.tanah.batas_barat || '-'}`,
-                    { align: AlignmentType.CENTER, spaceAfter: 80, line: 235 }
-                  ),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-      fp('', { spaceAfter: 80, line: 160 }),
-      new Table({
-        width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-        columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
-        layout: TableLayoutType.FIXED,
-        borders: NO_TABLE_BORDERS,
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                width: { size: 4280, type: WidthType.DXA },
-                borders: NO_BORDER,
-                margins: { top: 0, bottom: 0, left: 0, right: 120 },
-                children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
-              }),
-              new TableCell({
-                width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
-                borders: NO_BORDER,
-                margins: { top: 0, bottom: 0, left: 120, right: 0 },
-                children: [
-                  fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-                    align: AlignmentType.CENTER,
-                    spaceBefore: 20,
-                    spaceAfter: 0,
-                    line: F4_LINE,
-                  }),
-                  fp('Pemohon', {
-                    align: AlignmentType.CENTER,
-                    spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                    line: F4_LINE,
-                  }),
-                  ...buildNumberedSignerLines(parties, 260),
-                ],
-              }),
-            ],
-          }),
-        ],
-      })
-    );
-  }
+                ]
+              : []),
+          ],
+        }),
+        fp('', { spaceAfter: 160, line: 160 }),
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+          layout: TableLayoutType.FIXED,
+          borders: NO_TABLE_BORDERS,
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  width: { size: 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                  children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
+                }),
+                new TableCell({
+                  width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 120, right: 0 },
+                  children: [
+                    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                      align: AlignmentType.CENTER,
+                      spaceBefore: 20,
+                      spaceAfter: 0,
+                      line: F4_LINE,
+                    }),
+                    fp('Pemohon', {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
+                      line: F4_LINE,
+                    }),
+                    ...buildNumberedSignerLines(parties, 260),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+      ];
+    })(),
+  ];
 
   // 7. OPSIONAL: PELEPASAN JALAN
   if (na?.sertakan_pelepasan_jalan) {
@@ -2453,94 +2721,305 @@ function buildPemecahanUkurUlangBundle(
     })
   );
 
-  // 10. LAMPIRAN FOTO LOKASI, PATOK BATAS & POLIGON
-  blocks.push(
-    fp('LAMPIRAN FOTO LOKASI BIDANG TANAH, PATOK BATAS & POLIGON', {
+  // 10. LAMPIRAN FOTO LOKASI TAMPAK DEPAN GEOTAGGING, PATOK 1-4 & POLIGON (2 HALAMAN SESUAI STANDAR BPN)
+  blocks.push(...buildFotoLokasiPatokPoligonPages(record));
+
+  return blocks;
+}
+
+function buildFotoLokasiPatokPoligonPages(record: BerkasRecord): Array<Paragraph | Table> {
+  const na = record.non_akta;
+  const sert = getSertipikatInfo(record);
+  const hakPrefix = sert.jenisHak.toLowerCase().includes('milik')
+    ? 'SHM'
+    : sert.jenisHak.toUpperCase();
+  const identSert = sert.isDigital ? `Nibel ${sert.nibClean}` : `No. ${sert.noHakClean}`;
+  const halfW = Math.floor(F4_CONTENT_WIDTH_DXA / 2);
+
+  const polygonLines = (na?.koordinat_poligon || '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const gpsText = na?.koordinat_gps?.trim() || '';
+  const mapsUrl = na?.link_maps?.trim() || '';
+
+  const locationLineRuns: TextRun[] = [];
+  if (gpsText) {
+    locationLineRuns.push(
+      new TextRun({
+        text: gpsText + (mapsUrl ? '  ' : ''),
+        bold: true,
+        size: 20,
+        font: F4_FONT,
+      })
+    );
+  }
+  if (mapsUrl) {
+    locationLineRuns.push(
+      new TextRun({
+        text: mapsUrl,
+        bold: true,
+        underline: {},
+        color: '1D4ED8',
+        size: 20,
+        font: F4_FONT,
+      })
+    );
+  }
+  if (locationLineRuns.length === 0) {
+    locationLineRuns.push(
+      new TextRun({
+        text: '(Koordinat GPS & tautan Google Maps share location bidang tanah)',
+        italics: true,
+        color: '64748B',
+        size: 19,
+        font: F4_FONT,
+      })
+    );
+  }
+
+  const decodedDepan = decodeDataUrlToImage(na?.foto_tampak_depan);
+  const decodedPoligon = decodeDataUrlToImage(na?.foto_poligon);
+
+  const buildNumberedPatokCell = (numLabel: string, dataUrl?: string): Paragraph[] => {
+    const decoded = decodeDataUrlToImage(dataUrl);
+    if (decoded) {
+      return [
+        fp(numLabel, { bold: true, align: AlignmentType.CENTER, spaceBefore: 20, spaceAfter: 60, line: 230 }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 40, line: F4_LINE, lineRule: LineRuleType.AUTO },
+          children: [
+            new ImageRun({
+              data: decoded.bytes,
+              type: decoded.type,
+              transformation: { width: 225, height: 280 },
+            }),
+          ],
+        }),
+      ];
+    }
+    return [
+      fp(numLabel, { bold: true, align: AlignmentType.CENTER, spaceBefore: 20, spaceAfter: 80, line: 230 }),
+      fp('(Tempelkan foto patok batas GPS Map Camera di sini)', {
+        italic: true,
+        align: AlignmentType.CENTER,
+        size: 18,
+        spaceBefore: 900,
+        spaceAfter: 900,
+        line: 230,
+      }),
+    ];
+  };
+
+  const out: Array<Paragraph | Table> = [
+    // HALAMAN A: FOTO LOKASI + TAMPAK DEPAN + KOORDINAT/MAPS + PATOK 1 & 2
+    fp(`FOTO LOKASI ${hakPrefix} ${identSert}`, {
       pageBreakBefore: true,
       bold: true,
-      underline: true,
       align: AlignmentType.CENTER,
-      spaceAfter: 140,
-      line: 255,
+      spaceAfter: 40,
+      line: 250,
     }),
-    kvTable(
-      [
-        ['Sertipikat', `${sert.jenisHak} ${sert.ringkas}`],
-        ['Letak Tanah', `Desa ${sert.desa}, Kec. ${sert.kecamatan}, ${sert.kabupaten}`],
-        ['Koordinat GPS', na?.koordinat_gps?.trim() || '(Isi titik koordinat Lat, Lng)'],
-        ['Tautan Google Maps', na?.link_maps?.trim() || '(Tempel tautan share location)'],
-      ],
-      { labelPct: 28, spaceAfterRow: 0, line: 245 }
-    ),
-    fp('', { spaceAfter: 80, line: 160 }),
+    fp(`DESA ${sert.desa.toUpperCase()} An ${sert.pemegangHak.toUpperCase()} Luas ${sert.luasStr} M²`, {
+      bold: true,
+      align: AlignmentType.CENTER,
+      spaceAfter: 120,
+      line: 250,
+    }),
+    fp('TAMPAK DEPAN', {
+      bold: true,
+      align: AlignmentType.LEFT,
+      spaceAfter: 80,
+      line: 240,
+    }),
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      columnWidths: [F4_CONTENT_WIDTH_DXA],
+      layout: TableLayoutType.FIXED,
+      borders: decodedDepan ? NO_TABLE_BORDERS : THIN_TABLE_BORDERS,
       rows: [
         new TableRow({
           children: [
             new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: THIN_BORDER,
-              children: [
-                fp('FOTO LOKASI TAMPAK DEPAN', {
-                  bold: true,
-                  align: AlignmentType.CENTER,
-                  spaceBefore: 60,
-                  spaceAfter: 1800,
-                  line: 240,
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: THIN_BORDER,
-              children: [
-                fp('GAMBAR POLIGON / CITRA SATELIT', {
-                  bold: true,
-                  align: AlignmentType.CENTER,
-                  spaceBefore: 60,
-                  spaceAfter: 1800,
-                  line: 240,
-                }),
-              ],
-            }),
-          ],
-        }),
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: THIN_BORDER,
-              children: [
-                fp('FOTO PATOK BATAS 1 & 2', {
-                  bold: true,
-                  align: AlignmentType.CENTER,
-                  spaceBefore: 60,
-                  spaceAfter: 1600,
-                  line: 240,
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: THIN_BORDER,
-              children: [
-                fp('FOTO PATOK BATAS 3 & 4', {
-                  bold: true,
-                  align: AlignmentType.CENTER,
-                  spaceBefore: 60,
-                  spaceAfter: 1600,
-                  line: 240,
-                }),
-              ],
+              width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+              borders: decodedDepan ? NO_BORDER : THIN_BORDER,
+              margins: { top: 40, bottom: 40, left: 40, right: 40 },
+              children: decodedDepan
+                ? [
+                    new Paragraph({
+                      alignment: AlignmentType.CENTER,
+                      spacing: { before: 0, after: 40, line: F4_LINE, lineRule: LineRuleType.AUTO },
+                      children: [
+                        new ImageRun({
+                          data: decodedDepan.bytes,
+                          type: decodedDepan.type,
+                          transformation: { width: 495, height: 295 },
+                        }),
+                      ],
+                    }),
+                  ]
+                : [
+                    fp('(Sisipkan / unggah foto lokasi tampak depan bidang tanah GPS Map Camera)', {
+                      italic: true,
+                      align: AlignmentType.CENTER,
+                      size: 19,
+                      spaceBefore: 1100,
+                      spaceAfter: 1100,
+                      line: 240,
+                    }),
+                  ],
             }),
           ],
         }),
       ],
-    })
-  );
+    }),
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 80, after: 100, line: F4_LINE, lineRule: LineRuleType.AUTO },
+      children: locationLineRuns,
+    }),
+    new Table({
+      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      columnWidths: [halfW, F4_CONTENT_WIDTH_DXA - halfW],
+      layout: TableLayoutType.FIXED,
+      borders:
+        decodeDataUrlToImage(na?.foto_patok_1) && decodeDataUrlToImage(na?.foto_patok_2)
+          ? NO_TABLE_BORDERS
+          : THIN_TABLE_BORDERS,
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: halfW, type: WidthType.DXA },
+              borders: decodeDataUrlToImage(na?.foto_patok_1) ? NO_BORDER : THIN_BORDER,
+              margins: { top: 40, bottom: 40, left: 60, right: 60 },
+              children: buildNumberedPatokCell('1', na?.foto_patok_1),
+            }),
+            new TableCell({
+              width: { size: F4_CONTENT_WIDTH_DXA - halfW, type: WidthType.DXA },
+              borders: decodeDataUrlToImage(na?.foto_patok_2) ? NO_BORDER : THIN_BORDER,
+              margins: { top: 40, bottom: 40, left: 60, right: 60 },
+              children: buildNumberedPatokCell('2', na?.foto_patok_2),
+            }),
+          ],
+        }),
+      ],
+    }),
 
-  return blocks;
+    // HALAMAN B: PATOK 3 & 4 + POLIGON CITRA SATELIT + KOORDINAT POLIGON
+    fp('', { pageBreakBefore: true, spaceAfter: 20, line: 120 }),
+    new Table({
+      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      columnWidths: [halfW, F4_CONTENT_WIDTH_DXA - halfW],
+      layout: TableLayoutType.FIXED,
+      borders:
+        decodeDataUrlToImage(na?.foto_patok_3) && decodeDataUrlToImage(na?.foto_patok_4)
+          ? NO_TABLE_BORDERS
+          : THIN_TABLE_BORDERS,
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: halfW, type: WidthType.DXA },
+              borders: decodeDataUrlToImage(na?.foto_patok_3) ? NO_BORDER : THIN_BORDER,
+              margins: { top: 40, bottom: 40, left: 60, right: 60 },
+              children: buildNumberedPatokCell('3', na?.foto_patok_3),
+            }),
+            new TableCell({
+              width: { size: F4_CONTENT_WIDTH_DXA - halfW, type: WidthType.DXA },
+              borders: decodeDataUrlToImage(na?.foto_patok_4) ? NO_BORDER : THIN_BORDER,
+              margins: { top: 40, bottom: 40, left: 60, right: 60 },
+              children: buildNumberedPatokCell('4', na?.foto_patok_4),
+            }),
+          ],
+        }),
+      ],
+    }),
+    fp('POLIGON', {
+      bold: true,
+      align: AlignmentType.LEFT,
+      spaceBefore: 140,
+      spaceAfter: 80,
+      line: 240,
+    }),
+    new Table({
+      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      columnWidths: [F4_CONTENT_WIDTH_DXA],
+      layout: TableLayoutType.FIXED,
+      borders: decodedPoligon ? NO_TABLE_BORDERS : THIN_TABLE_BORDERS,
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+              borders: decodedPoligon ? NO_BORDER : THIN_BORDER,
+              margins: { top: 60, bottom: 60, left: 60, right: 60 },
+              children: decodedPoligon
+                ? [
+                    new Paragraph({
+                      alignment: AlignmentType.CENTER,
+                      spacing: { before: 0, after: 40, line: F4_LINE, lineRule: LineRuleType.AUTO },
+                      children: [
+                        new ImageRun({
+                          data: decodedPoligon.bytes,
+                          type: decodedPoligon.type,
+                          transformation: { width: 455, height: 345 },
+                        }),
+                      ],
+                    }),
+                  ]
+                : [
+                    fp('CITRA SATELIT / POLIGON BIDANG TANAH', {
+                      bold: true,
+                      align: AlignmentType.CENTER,
+                      size: 19,
+                      spaceBefore: 60,
+                      spaceAfter: 60,
+                      line: 240,
+                    }),
+                    fp('(Sisipkan / unggah tangkapan layar peta poligon bidang tanah di sini)', {
+                      italic: true,
+                      align: AlignmentType.CENTER,
+                      size: 19,
+                      spaceBefore: 1100,
+                      spaceAfter: 1100,
+                      line: 240,
+                    }),
+                  ],
+            }),
+          ],
+        }),
+      ],
+    }),
+  ];
+
+  if (polygonLines.length > 0) {
+    out.push(
+      fp('Titik Koordinat Sudut Poligon Bidang Tanah :', {
+        bold: true,
+        size: 19,
+        spaceBefore: 100,
+        spaceAfter: 30,
+        line: 240,
+      })
+    );
+    polygonLines.forEach((coord, idx) => {
+      const letter = String.fromCharCode(97 + idx);
+      const hasPrefix = /^[a-z0-9]+[.)]\s/i.test(coord);
+      out.push(
+        fp(hasPrefix ? coord : `${letter}. ${coord}`, {
+          indentLeft: 300,
+          size: 19,
+          spaceAfter: 15,
+          line: 230,
+        })
+      );
+    });
+  }
+
+  return out;
 }
 
 function buildRalatDataBundle(

@@ -10,6 +10,11 @@ import {
   isWordFilename,
   isWordMimeType,
 } from '../src/utils/wordDocExtractor.ts';
+import {
+  normalizeCadSketchSpec,
+  type AutoCadSketchInput,
+  type CadSketchSpec,
+} from '../src/utils/sketchRefiner.ts';
 
 export interface UploadedDocPayload {
   name: string;
@@ -29,6 +34,11 @@ export interface ExtractDocumentsRequestBody {
 export interface ExtractPersonRequestBody {
   role?: string;
   files?: UploadedDocPayload[];
+}
+
+export interface RefineSketchRequestBody {
+  file?: UploadedDocPayload;
+  context?: AutoCadSketchInput;
 }
 
 export interface ApiHttpError {
@@ -1251,6 +1261,194 @@ Ambil nama (huruf KAPITAL semua), NIK 16 digit, tempat_lahir, tanggal_lahir (DD-
 
   return {
     person: parsed,
+    model,
+    elapsed_ms: elapsedMs,
+  };
+}
+
+export const sketchRefineResponseSchema = {
+  type: Type.OBJECT,
+  properties: {
+    northArrowAngle: {
+      type: Type.NUMBER,
+      description: 'Sudut rotasi panah Utara (derajat, 0 = menghadap lurus ke atas).',
+    },
+    outerPolygon: {
+      type: Type.ARRAY,
+      description:
+        'Daftar titik sudut poligon batas luar bidang tanah searah jarum jam dalam koordinat kanvas x: 180..860, y: 100..520.',
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          x: { type: Type.NUMBER },
+          y: { type: Type.NUMBER },
+        },
+        required: ['x', 'y'],
+      },
+    },
+    subdivisions: {
+      type: Type.ARRAY,
+      description: 'Garis pemisah internal untuk pecahan bidang tanah (kosong jika 1 bidang utuh).',
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          x1: { type: Type.NUMBER },
+          y1: { type: Type.NUMBER },
+          x2: { type: Type.NUMBER },
+          y2: { type: Type.NUMBER },
+          dashed: { type: Type.BOOLEAN },
+        },
+        required: ['x1', 'y1', 'x2', 'y2'],
+      },
+    },
+    lotLabels: {
+      type: Type.ARRAY,
+      description: 'Nomor atau label di dalam masing-masing bagian bidang (mis. "1", "2", "3").',
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          text: { type: Type.STRING },
+          x: { type: Type.NUMBER },
+          y: { type: Type.NUMBER },
+          subtext: { type: Type.STRING },
+        },
+        required: ['text', 'x', 'y'],
+      },
+    },
+    roads: {
+      type: Type.ARRAY,
+      description:
+        'Koridor jalan eksisting (Jalan/Gang) atau jalur tanah yang dilepaskan untuk jalan (isPelepasanJalan=true).',
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          points: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                x: { type: Type.NUMBER },
+                y: { type: Type.NUMBER },
+              },
+              required: ['x', 'y'],
+            },
+          },
+          label: { type: Type.STRING },
+          labelX: { type: Type.NUMBER },
+          labelY: { type: Type.NUMBER },
+          labelAngle: { type: Type.NUMBER },
+          isPelepasanJalan: { type: Type.BOOLEAN },
+        },
+        required: ['points', 'label', 'labelX', 'labelY'],
+      },
+    },
+    edgeLabels: {
+      type: Type.ARRAY,
+      description:
+        'Nama pemilik tetangga / batas non-jalan di sisi luar bidang (utara/selatan angle=0, barat/timur angle=-90).',
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          side: { type: Type.STRING, description: '"utara" | "timur" | "selatan" | "barat" | "lain"' },
+          text: { type: Type.STRING },
+          x: { type: Type.NUMBER },
+          y: { type: Type.NUMBER },
+          angle: { type: Type.NUMBER },
+        },
+        required: ['side', 'text', 'x', 'y'],
+      },
+    },
+    dimensions: {
+      type: Type.ARRAY,
+      description: 'Ukuran panjang sisi dalam meter bila tertulis pada sket kasar (mis. "15 m", "24,5 m").',
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          text: { type: Type.STRING },
+          x: { type: Type.NUMBER },
+          y: { type: Type.NUMBER },
+          angle: { type: Type.NUMBER },
+        },
+        required: ['text', 'x', 'y'],
+      },
+    },
+    detectedBoundaries: {
+      type: Type.OBJECT,
+      properties: {
+        utara: { type: Type.STRING },
+        timur: { type: Type.STRING },
+        selatan: { type: Type.STRING },
+        barat: { type: Type.STRING },
+      },
+    },
+    summary: {
+      type: Type.STRING,
+      description: 'Ringkasan singkat Bahasa Indonesia hasil penyempurnaan sket kasar.',
+    },
+  },
+  required: ['northArrowAngle', 'outerPolygon', 'subdivisions', 'lotLabels', 'roads', 'edgeLabels', 'dimensions', 'summary'],
+};
+
+export async function refineSketchWithGemini(
+  apiKey: string,
+  body: RefineSketchRequestBody
+): Promise<{ spec: CadSketchSpec; model: string; elapsed_ms: number }> {
+  const sanitized = body?.file ? sanitizeUploadedDoc(body.file) : null;
+  if (!sanitized || sanitized.dataBase64.length === 0) {
+    const err = new Error('Unggah foto atau scan gambar sket kasar terlebih dahulu.') as Error & {
+      status?: number;
+    };
+    err.status = 400;
+    throw err;
+  }
+
+  const ai = createGeminiClient(apiKey);
+  const ctx = body?.context ?? {};
+  const bidangSummary = (ctx.bidangPecahan ?? [])
+    .map((b, i) => `${i + 1}. ${b.label || `Bagian ${i + 1}`} (${b.luas_m2 || 0} m²)`)
+    .join('; ');
+
+  const parts: GeminiContentPart[] = [
+    ...buildGeminiFileParts([sanitized]),
+    {
+      text: `Anda adalah juru gambar kadaster ATR/BPN yang menyempurnakan gambar sket bidang tanah kasar (gambar tangan / hasil scan) menjadi gambar teknis CAD vektor hitam-putih yang rapi untuk Lampiran Surat Pernyataan Pemasangan Tanda Batas dan Gambar Sket Tanah.
+
+ATURAN KOORDINAT KANVAS (viewBox 1000 x 640):
+- Area kiri x = 20..120 KHUSUS untuk panah arah Utara (U ↑) yang digambar otomatis. JANGAN menempatkan poligon atau label di x < 145.
+- Gambar poligon utama bidang tanah (outerPolygon) di area x = 200..840, y = 115..510, meluruskan garis tangan yang bengkok namun MEMPERTAHANKAN bentuk geometri sebenarnya dari sket kasar (persegi panjang, trapesium, miring mengikuti jalan, huruf L, segi lima, dll).
+- Jika sket kasar dibagi menjadi beberapa bagian/pecahan, gambar garis pemisah internal lurus yang akurat pada "subdivisions" (titik ujung menyentuh tepat sisi poligon) dan letakkan angka bidang ("1", "2", dst.) tepat di tengah tiap bagian pada "lotLabels".
+- Jika pada sket kasar terdapat Jalan, Gang, atau strip "Dilepaskan Untuk Jalan", gambar sebagai poligon koridor rapi pada "roads" (set isPelepasanJalan=true untuk jalur pelepasan jalan, false untuk jalan eksisting). Putar label jalan vertikal/miring sesuai arah koridor (mis. labelAngle = -85 atau -90 untuk jalan di kanan/kiri, 0 untuk jalan di atas/bawah).
+- Tulis nama pemilik tetangga yang berbatasan pada "edgeLabels" di luar sisi poligon yang sesuai (sisi utara y sekitar 75-95 angle 0, sisi selatan y sekitar 535-565 angle 0, sisi barat x sekitar 165-190 angle -90, sisi timur x sekitar 865-905 angle -90). Jangan duplikasi nama "Jalan" di edgeLabels jika sudah masuk di roads.
+- Jika sket kasar mencantumkan ukuran panjang sisi (mis. "15 m", "20,5 m"), masukkan ke "dimensions".
+- Isi "detectedBoundaries" (utara, timur, selatan, barat) berdasarkan tulisan di gambar sket kasar (atau lengkapi dengan konteks form bila tidak tertulis).
+
+KONTEKS FORM BERKAS (referensi ejaan jika tulisan tangan kurang jelas):
+- Jenis layanan: ${ctx.isPemecahan === false ? 'Pengukuran Ulang (1 bidang)' : 'Pemecahan Bidang'}
+- Batas di form -> Utara: "${ctx.batasUtara || '-'}", Timur: "${ctx.batasTimur || '-'}", Selatan: "${ctx.batasSelatan || '-'}", Barat: "${ctx.batasBarat || '-'}"
+- Daftar bidang pecahan: ${bidangSummary || '(1 bidang utuh)'}
+- Pelepasan jalan di form: ${ctx.sertakanPelepasanJalan ? `Ya, luas ± ${ctx.pelepasanJalanLuasM2 || 0} m² (${ctx.pelepasanJalanKeterangan || 'Dilepaskan Untuk Jalan'})` : 'Tidak'}
+
+Keluarkan HANYA JSON valid sesuai skema.`,
+    },
+  ];
+
+  const attempts: GeminiModelAttempt[] = [
+    { model: 'gemini-4-hydrogen', level: ThinkingLevel.MEDIUM, timeoutMs: 38000 },
+    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 26000 },
+    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 22000 },
+  ];
+
+  const { parsed, model, elapsedMs } = await generateJsonWithFallback(
+    ai,
+    parts,
+    sketchRefineResponseSchema,
+    attempts,
+    'refine-sketch'
+  );
+
+  const spec = normalizeCadSketchSpec(parsed as Partial<CadSketchSpec>, ctx);
+  return {
+    spec,
     model,
     elapsed_ms: elapsedMs,
   };

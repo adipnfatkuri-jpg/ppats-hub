@@ -93,12 +93,13 @@ export interface NonAktaDetail {
   sertakan_pelepasan_jalan?: boolean;
   pelepasan_jalan_luas_m2?: number;
   pelepasan_jalan_keterangan?: string;
+  pelepasan_jalan_sisi?: 'utara' | 'timur' | 'selatan' | 'barat';
   sertakan_beda_nama?: boolean;
   koordinat_gps?: string;
   link_maps?: string;
   koordinat_poligon?: string;
 
-  // Foto geotagging opsional (Data URL base64 untuk Validasi Sertipikat & Analisis Bidang)
+  // Foto geotagging opsional (Data URL base64 untuk Validasi, Analisis, Pemecahan, Ukur Ulang & Waris C)
   foto_tampak_depan?: string;
   foto_patok_1?: string;
   foto_patok_2?: string;
@@ -106,6 +107,7 @@ export interface NonAktaDetail {
   foto_patok_4?: string;
   foto_poligon?: string;
   foto_sket_pecah?: string;
+  foto_sket_kasar?: string;
 
   // Detail Khusus Analisis Bidang (Permohonan Layanan Peta Analisis Penatagunaan Tanah & Rencana Pemecahan)
   analisis_no_hp?: string;

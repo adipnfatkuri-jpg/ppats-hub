@@ -38,51 +38,73 @@ const RenderParagraph: React.FC<{ block: PreviewParagraphBlock; compact?: boolea
   compact,
 }) => {
   const hasText = block.runs.some((r) => r.text.trim().length > 0);
+  const hasImages = Boolean(block.images && block.images.length > 0);
   const textAlign = block.align === 'justify' ? 'justify' : block.align;
   const textIndent = block.hangingPx
     ? -block.hangingPx
     : block.firstLinePx || 0;
 
-  if (!hasText) {
+  if (!hasText && !hasImages) {
     return <div className={compact ? 'h-1.5' : 'h-2.5'} aria-hidden="true" />;
   }
 
   return (
-    <p
-      className={`${compact ? 'text-[11px] leading-[1.35]' : 'text-[12.5px] leading-[1.55]'} text-slate-900 whitespace-pre-line ${
-        block.borderBottom ? 'border-b-2 border-slate-900 pb-1.5 mb-2' : ''
-      }`}
+    <div
       style={{
         textAlign,
         paddingLeft: block.indentLeftPx > 0 ? `${block.indentLeftPx}px` : undefined,
-        textIndent: textIndent !== 0 ? `${textIndent}px` : undefined,
         marginTop: block.spaceBeforePx > 0 ? `${block.spaceBeforePx}px` : undefined,
         marginBottom: block.spaceAfterPx > 0 ? `${block.spaceAfterPx}px` : undefined,
       }}
     >
-      {block.runs.map((run, rIdx) => {
-        const classes = [
-          run.bold ? 'font-bold' : 'font-normal',
-          run.italic ? 'italic' : '',
-          run.underline ? 'underline underline-offset-2' : '',
-        ]
-          .filter(Boolean)
-          .join(' ');
-        const fontSizePx =
-          !compact && run.sizePt && run.sizePt !== 12
-            ? Math.round((run.sizePt / 12) * 12.5 * 10) / 10
-            : undefined;
-        return (
-          <span
-            key={rIdx}
-            className={classes}
-            style={fontSizePx ? { fontSize: `${fontSizePx}px`, lineHeight: 1.35 } : undefined}
-          >
-            {run.text}
-          </span>
-        );
-      })}
-    </p>
+      {hasImages &&
+        block.images!.map((img, iIdx) => (
+          <img
+            key={iIdx}
+            src={img.dataUrl}
+            alt="Lampiran gambar dokumen"
+            className="max-w-full h-auto inline-block rounded border border-slate-200 my-1"
+            style={
+              img.widthPx
+                ? { maxWidth: `${Math.min(img.widthPx, 520)}px` }
+                : undefined
+            }
+          />
+        ))}
+      {hasText && (
+        <p
+          className={`${compact ? 'text-[11px] leading-[1.35]' : 'text-[12.5px] leading-[1.55]'} text-slate-900 whitespace-pre-line ${
+            block.borderBottom ? 'border-b-2 border-slate-900 pb-1.5 mb-2' : ''
+          }`}
+          style={{
+            textIndent: textIndent !== 0 ? `${textIndent}px` : undefined,
+          }}
+        >
+          {block.runs.map((run, rIdx) => {
+            const classes = [
+              run.bold ? 'font-bold' : 'font-normal',
+              run.italic ? 'italic' : '',
+              run.underline ? 'underline underline-offset-2' : '',
+            ]
+              .filter(Boolean)
+              .join(' ');
+            const fontSizePx =
+              !compact && run.sizePt && run.sizePt !== 12
+                ? Math.round((run.sizePt / 12) * 12.5 * 10) / 10
+                : undefined;
+            return (
+              <span
+                key={rIdx}
+                className={classes}
+                style={fontSizePx ? { fontSize: `${fontSizePx}px`, lineHeight: 1.35 } : undefined}
+              >
+                {run.text}
+              </span>
+            );
+          })}
+        </p>
+      )}
+    </div>
   );
 };
 

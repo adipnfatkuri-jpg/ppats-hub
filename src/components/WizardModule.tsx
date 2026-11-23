@@ -40,6 +40,7 @@ import { DocumentReviewPanel } from './DocumentReviewPanel';
 import { DateInputId } from './DateInputId';
 import { GlossyIcon3D, type GlossyTone } from './TactileUI';
 import { WarisCDetailPanel } from './WarisCDetailPanel';
+import { SketchRefinerStudio } from './SketchRefinerStudio';
 import {
   AuditWarning,
   BerkasRecord,
@@ -311,6 +312,7 @@ function createDefaultNonAkta(
     sertakan_pelepasan_jalan: false,
     pelepasan_jalan_luas_m2: 0,
     pelepasan_jalan_keterangan: '',
+    pelepasan_jalan_sisi: 'utara',
     sertakan_beda_nama: false,
     koordinat_gps: '',
     link_maps: '',
@@ -322,6 +324,7 @@ function createDefaultNonAkta(
     foto_patok_4: '',
     foto_poligon: '',
     foto_sket_pecah: '',
+    foto_sket_kasar: '',
     analisis_no_hp: '',
     analisis_tema: 'Kesesuaian Penggunaan Tanah terhadap RTRW atau RDTR, LSD dan LP2B',
     analisis_skala_peta: '1 : 1000',
@@ -4126,7 +4129,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         {(nonAkta.bidang_pecahan ?? []).map((b, bIdx) => (
                           <div
                             key={b.id}
-                            className="p-3 rounded-xl border border-teal-900/10 dark:border-teal-500/20 bg-white dark:bg-[#081E22] grid grid-cols-1 sm:grid-cols-4 gap-2 items-end"
+                            className="p-3 rounded-xl border border-teal-900/10 dark:border-teal-500/20 bg-white dark:bg-[#081E22] grid grid-cols-1 sm:grid-cols-6 gap-2 items-end"
                           >
                             <div className="sm:col-span-2">
                               <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
@@ -4143,7 +4146,26 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                     ),
                                   }))
                                 }
-                                placeholder="Misal: Bagian 1 (Sdr. ...)"
+                                placeholder="Misal: sisa / Bagian 1"
+                                className="input-airy w-full px-2.5 py-1.5"
+                              />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                Penerima / Keterangan (Opsional)
+                              </label>
+                              <input
+                                type="text"
+                                value={b.atas_nama ?? ''}
+                                onChange={(e) =>
+                                  setNonAkta((prev) => ({
+                                    ...prev,
+                                    bidang_pecahan: (prev.bidang_pecahan ?? []).map((x) =>
+                                      x.id === b.id ? { ...x, atas_nama: e.target.value } : x
+                                    ),
+                                  }))
+                                }
+                                placeholder="Misal: Tri Handoko / Bidang Sisa"
                                 className="input-airy w-full px-2.5 py-1.5"
                               />
                             </div>
@@ -4224,7 +4246,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       </div>
 
                       {nonAkta.sertakan_pelepasan_jalan && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl border border-teal-900/10 dark:border-teal-500/20 bg-white dark:bg-[#081E22]">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-xl border border-teal-900/10 dark:border-teal-500/20 bg-white dark:bg-[#081E22]">
                           <div>
                             <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                               Luas Tanah Dilepas untuk Jalan (m²)
@@ -4241,6 +4263,31 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               }
                               className="input-airy w-full px-2.5 py-1.5 font-mono"
                             />
+                          </div>
+                          <div>
+                            <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                              Posisi Jalur Jalan pada Sket
+                            </label>
+                            <select
+                              aria-label="Posisi jalur pelepasan jalan pada sket"
+                              value={nonAkta.pelepasan_jalan_sisi ?? 'utara'}
+                              onChange={(e) =>
+                                setNonAkta({
+                                  ...nonAkta,
+                                  pelepasan_jalan_sisi: e.target.value as
+                                    | 'utara'
+                                    | 'timur'
+                                    | 'selatan'
+                                    | 'barat',
+                                })
+                              }
+                              className="input-airy w-full px-2.5 py-1.5"
+                            >
+                              <option value="utara">Sisi Utara (Atas)</option>
+                              <option value="timur">Sisi Timur (Kanan)</option>
+                              <option value="selatan">Sisi Selatan (Bawah)</option>
+                              <option value="barat">Sisi Barat (Kiri)</option>
+                            </select>
                           </div>
                           <div>
                             <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
@@ -4262,36 +4309,17 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         </div>
                       )}
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
-                            Koordinat GPS Lokasi Bidang (Opsional)
-                          </label>
-                          <input
-                            type="text"
-                            value={nonAkta.koordinat_gps ?? ''}
-                            onChange={(e) =>
-                              setNonAkta({ ...nonAkta, koordinat_gps: e.target.value })
-                            }
-                            placeholder="Contoh: -7.5194, 110.7798"
-                            className="input-airy w-full px-2.5 py-1.5 font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
-                            Link Google Maps / Poligon (Opsional)
-                          </label>
-                          <input
-                            type="text"
-                            value={nonAkta.link_maps ?? ''}
-                            onChange={(e) =>
-                              setNonAkta({ ...nonAkta, link_maps: e.target.value })
-                            }
-                            placeholder="https://maps.google.com/..."
-                            className="input-airy w-full px-2.5 py-1.5"
-                          />
-                        </div>
-                      </div>
+                      {/* Studio Sket Bidang Tanah: Penyempurnaan Sket Kasar (AI) & Generator Sket CAD */}
+                      <SketchRefinerStudio
+                        nonAkta={nonAkta}
+                        setNonAkta={setNonAkta}
+                        tanah={tanah}
+                        setTanah={setTanah}
+                        isPemecahan={
+                          layanan === 'Pemecahan' || layanan === 'Pemecahan/Ukur Ulang'
+                        }
+                        onNotify={onNotify}
+                      />
                     </div>
                   )}
 
@@ -4972,10 +5000,13 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     </div>
                   )}
 
-                  {/* 4c. Detail Khusus Validasi Sertipikat, Analisis Bidang & Waris C (Geotagging & Foto GPS) */}
+                  {/* 4c. Detail Khusus Geotagging, Foto Tampak Depan, Patok 1–4 & Poligon */}
                   {(layanan === 'Validasi Sertipikat' ||
                     layanan === 'Analisis Bidang' ||
-                    layanan === 'Waris C') && (
+                    layanan === 'Waris C' ||
+                    layanan === 'Pemecahan' ||
+                    layanan === 'Ukur Ulang' ||
+                    layanan === 'Pemecahan/Ukur Ulang') && (
                     <div className="sm:col-span-2 border border-teal-900/12 dark:border-teal-500/20 rounded-2xl p-4 bg-[#F6FBFA] dark:bg-[#0A2226] space-y-3">
                       <div className="border-b border-teal-900/10 dark:border-teal-500/20 pb-2">
                         <h3 className="text-xs font-bold text-slate-900 dark:text-white">
@@ -4983,10 +5014,12 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             ? 'Lampiran Geotagging & Foto GPS Map Camera (Validasi Sertipikat)'
                             : layanan === 'Waris C'
                             ? 'Lampiran Geotagging, Foto Patok 1–4 & Peta Poligon (Hal. 15–16 Waris C)'
-                            : 'Data Koordinat Poligon, Geotagging & Foto Lokasi (Analisis Bidang)'}
+                            : layanan === 'Analisis Bidang'
+                            ? 'Data Koordinat Poligon, Geotagging & Foto Lokasi (Analisis Bidang)'
+                            : `Lampiran Foto Lokasi Tampak Depan Geotagging, Patok 1–4 & Poligon (${layanan})`}
                         </h3>
                         <p className="text-[11px] text-slate-600 dark:text-teal-200/75 mt-0.5">
-                          Isi tautan Google Maps dan koordinat lokasi. Unggah foto Tampak Depan, Patok 1–4, dan Poligon jika ingin langsung tercetak ke dalam Word (.DOCX), atau biarkan kosong untuk bingkai siap tempel.
+                          Isi koordinat GPS, tautan Google Maps, serta unggah foto Tampak Depan, Patok 1–4, dan citra Poligon agar langsung tercetak rapi dalam 2 halaman lampiran Word (.DOCX), atau biarkan kosong untuk bingkai siap tempel.
                         </p>
                       </div>
 
@@ -5017,12 +5050,15 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             onChange={(e) =>
                               setNonAkta({ ...nonAkta, koordinat_gps: e.target.value })
                             }
-                            placeholder="-7.52341, 110.76123"
+                            placeholder="-7.514428, 110.809820"
                             className="input-airy w-full px-2.5 py-1.5 font-mono"
                           />
                         </div>
 
-                        {layanan === 'Analisis Bidang' && (
+                        {(layanan === 'Analisis Bidang' ||
+                          layanan === 'Pemecahan' ||
+                          layanan === 'Ukur Ulang' ||
+                          layanan === 'Pemecahan/Ukur Ulang') && (
                           <div className="sm:col-span-2">
                             <label htmlFor="geo-poligon" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                               Titik Koordinat Sudut Poligon (1 titik per baris, opsional)
@@ -5034,7 +5070,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               onChange={(e) =>
                                 setNonAkta({ ...nonAkta, koordinat_poligon: e.target.value })
                               }
-                              placeholder={'-7.530057, 110.779658\n-7.530119, 110.779647\n-7.530143, 110.779764\n-7.530080, 110.779779'}
+                              placeholder={'-7.514428, 110.809986\n-7.514346, 110.809631\n-7.514554, 110.809937\n-7.514486, 110.809596'}
                               className="input-airy w-full px-2.5 py-1.5 font-mono text-xs"
                             />
                           </div>
