@@ -241,6 +241,8 @@ export interface DataPBB {
   nop: string;
   tahun_pajak: string;
   njop_bumi_m2: number;
+  luas_bangunan_m2?: number;
+  njop_bangunan_m2?: number;
   njop_bangunan: number;
 }
 
@@ -264,6 +266,9 @@ export interface ParameterAkta {
   butuh_persetujuan_pasangan?: boolean;
   keterangan_tanpa_persetujuan?: string;
   pihak_penerima_aphb?: string;
+  pihak_penerima_aphb_list?: string[];
+  aphb_jumlah_pemegang_hak?: number;
+  aphb_jumlah_penerima?: number;
   nama_kuasa_bpn: string;
   kuasa_bpn_detail?: PersonBasicInfo;
   saksi_1: string;
@@ -276,22 +281,33 @@ export interface ParameterAkta {
 export interface TaxCalculationResult {
   nilai_kesepakatan: number;
   njop_bumi_total: number;
+  njop_bangunan_total?: number;
   njop_total: number;
   npop: number;
   npoptkp: number;
   npopkp: number;
   bphtb: number;
   pph: number;
+  aphb_aktif?: boolean;
+  aphb_n?: number;
+  aphb_m?: number;
+  aphb_faktor?: number;
+  luas_bumi_kena_pajak?: number;
+  luas_bangunan_kena_pajak?: number;
 }
 
 export interface TaxDraftPrefill {
   layanan: ServiceType;
   luas_m2: number;
   njop_bumi_m2: number;
+  luas_bangunan_m2?: number;
+  njop_bangunan_m2?: number;
   njop_bangunan: number;
   harga_per_m2: number;
   nilai_transaksi_override: number | null;
   npoptkp: number;
+  aphb_jumlah_pemegang_hak?: number;
+  aphb_jumlah_penerima?: number;
 }
 
 export interface BerkasRecord {
@@ -420,6 +436,7 @@ export interface ExtractionApiResponse {
     luas_bangunan_m2?: number;
     njop_bumi_m2: number;
     njop_bumi_total?: number;
+    njop_bangunan_m2?: number;
     njop_bangunan: number;
     nama_wp_pbb?: string;
   };

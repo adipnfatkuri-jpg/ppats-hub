@@ -6,6 +6,8 @@ import { toScanTitleCase, toScanUpperName } from './scanTextCase';
 export interface ObjectTaxScanSyncPayload {
   luas_m2?: number;
   njop_bumi_m2?: number;
+  luas_bangunan_m2?: number;
+  njop_bangunan_m2?: number;
   njop_bangunan?: number;
 }
 
@@ -112,6 +114,50 @@ export function resolveAccurateLuasBumiM2(
 }
 
 /**
+ * Menormalkan & memverifikasi silang Luas Bangunan (m²), NJOP Bangunan per m²,
+ * dan Total NJOP Bangunan dari hasil pemindaian SPPT PBB.
+ */
+export function resolveAccurateBangunanFromPbb(
+  pbb?: ExtractionApiResponse['pbb']
+): {
+  luas_bangunan_m2?: number;
+  njop_bangunan_m2?: number;
+  njop_bangunan?: number;
+} {
+  if (!pbb) return {};
+  let luas = Math.max(0, Number(pbb.luas_bangunan_m2) || 0);
+  let perM2 = Math.max(0, Number(pbb.njop_bangunan_m2) || 0);
+  let total = Math.max(0, Number(pbb.njop_bangunan) || 0);
+
+  // Jika total dan per-m2 terbaca, perbaiki luas yang terpotong OCR (seperti kasus luas bumi)
+  if (perM2 > 0 && total > 0) {
+    const derivedLuas = total / perM2;
+    const isCleanInt = Math.abs(derivedLuas - Math.round(derivedLuas)) < 0.01;
+    if (luas <= 0 && derivedLuas > 0) {
+      luas = isCleanInt ? Math.round(derivedLuas) : Math.round(derivedLuas * 100) / 100;
+    } else if (luas > 0 && isCleanInt && Math.abs(luas * perM2 - total) > perM2 * 0.5) {
+      luas = Math.round(derivedLuas);
+    }
+  }
+
+  // Jika luas dan total terbaca tapi per-m2 belum terbaca, hitung per-m2 dari total / luas
+  if (luas > 0 && total > 0 && perM2 <= 0) {
+    perM2 = Math.round(total / luas);
+  }
+
+  // Jika luas dan per-m2 terbaca, pastikan total selaras dengan luas * perM2
+  if (luas > 0 && perM2 > 0) {
+    total = Math.round(luas * perM2);
+  }
+
+  return {
+    luas_bangunan_m2: luas > 0 ? luas : undefined,
+    njop_bangunan_m2: perM2 > 0 ? perM2 : undefined,
+    njop_bangunan: total > 0 ? total : undefined,
+  };
+}
+
+/**
  * Menggabungkan hasil pemindaian SPPT PBB dan/atau Sertipikat ke formulir BPHTB
  * tanpa menimpa field yang tidak ada di dokumen yang dipindai.
  */
@@ -172,11 +218,14 @@ export function mergeObjectScanIntoBphtbForm(
       ''
   );
 
+  const accurateBangunan = resolveAccurateBangunanFromPbb(pbb);
+
   const hasValidBuildingArea =
-    typeof pbb?.luas_bangunan_m2 === 'number' &&
-    Number.isFinite(pbb.luas_bangunan_m2) &&
-    pbb.luas_bangunan_m2 >= 0 &&
-    Boolean(pbb?.nop?.trim());
+    (accurateBangunan.luas_bangunan_m2 !== undefined && accurateBangunan.luas_bangunan_m2 > 0) ||
+    (typeof pbb?.luas_bangunan_m2 === 'number' &&
+      Number.isFinite(pbb.luas_bangunan_m2) &&
+      pbb.luas_bangunan_m2 >= 0 &&
+      Boolean(pbb?.nop?.trim()));
 
   const nextForm: BphtbSubmissionFormData = {
     ...prev,
@@ -190,7 +239,7 @@ export function mergeObjectScanIntoBphtbForm(
     kecamatan: scannedKec || prev.kecamatan,
     kabupaten: scannedKab || prev.kabupaten,
     luas_bangunan_m2: hasValidBuildingArea
-      ? Math.max(0, pbb!.luas_bangunan_m2!)
+      ? Math.max(0, accurateBangunan.luas_bangunan_m2 ?? pbb?.luas_bangunan_m2 ?? 0)
       : prev.luas_bangunan_m2,
     pemberi_nama: prev.pemberi_nama.trim() ? prev.pemberi_nama : scannedOwner,
   };
@@ -213,9 +262,21 @@ export function mergeObjectScanIntoBphtbForm(
     taxPatch.njop_bumi_m2 = pbb.njop_bumi_m2;
     summaryParts.push(`NJOP Bumi ${formatRupiah(pbb.njop_bumi_m2)}/m²`);
   }
-  if (pbb?.njop_bangunan && pbb.njop_bangunan > 0) {
-    taxPatch.njop_bangunan = pbb.njop_bangunan;
-    summaryParts.push(`NJOP Bangunan ${formatRupiah(pbb.njop_bangunan)}`);
+  if (accurateBangunan.luas_bangunan_m2 && accurateBangunan.luas_bangunan_m2 > 0) {
+    taxPatch.luas_bangunan_m2 = accurateBangunan.luas_bangunan_m2;
+  }
+  if (accurateBangunan.njop_bangunan_m2 && accurateBangunan.njop_bangunan_m2 > 0) {
+    taxPatch.njop_bangunan_m2 = accurateBangunan.njop_bangunan_m2;
+  }
+  if (accurateBangunan.njop_bangunan && accurateBangunan.njop_bangunan > 0) {
+    taxPatch.njop_bangunan = accurateBangunan.njop_bangunan;
+    if (accurateBangunan.luas_bangunan_m2 && accurateBangunan.njop_bangunan_m2) {
+      summaryParts.push(
+        `Bangunan ${formatNumberId(accurateBangunan.luas_bangunan_m2)} m² × ${formatRupiah(accurateBangunan.njop_bangunan_m2)}/m²`
+      );
+    } else {
+      summaryParts.push(`NJOP Bangunan ${formatRupiah(accurateBangunan.njop_bangunan)}`);
+    }
   }
 
   return { nextForm, taxPatch, summaryParts };
@@ -225,7 +286,7 @@ export function mergeObjectScanIntoBphtbForm(
  * Menerapkan hasil pemindaian SPPT PBB dan/atau Sertipikat ke form Perhitungan Pajak
  * secara non-destruktif:
  * - Scan Sertipikat memperbarui luas_m2 (luas sertipikat otoritatif) tanpa menghapus NJOP yang sudah terisi.
- * - Scan SPPT PBB memperbarui NJOP Bumi/m², NJOP Bangunan, serta luas_m2 (jika valid > 0).
+ * - Scan SPPT PBB memperbarui NJOP Bumi/m², Luas & NJOP Bangunan/m², serta luas_m2 (jika valid > 0).
  */
 export function applyObjectScanPatchToTaxDraft(
   prev: TaxDraftPrefill,
@@ -251,11 +312,29 @@ export function applyObjectScanPatchToTaxDraft(
   }
 
   if (
+    typeof patch.luas_bangunan_m2 === 'number' &&
+    Number.isFinite(patch.luas_bangunan_m2) &&
+    patch.luas_bangunan_m2 > 0
+  ) {
+    next.luas_bangunan_m2 = patch.luas_bangunan_m2;
+  }
+
+  if (
+    typeof patch.njop_bangunan_m2 === 'number' &&
+    Number.isFinite(patch.njop_bangunan_m2) &&
+    patch.njop_bangunan_m2 > 0
+  ) {
+    next.njop_bangunan_m2 = patch.njop_bangunan_m2;
+  }
+
+  if (
     typeof patch.njop_bangunan === 'number' &&
     Number.isFinite(patch.njop_bangunan) &&
     patch.njop_bangunan > 0
   ) {
     next.njop_bangunan = patch.njop_bangunan;
+  } else if ((next.luas_bangunan_m2 ?? 0) > 0 && (next.njop_bangunan_m2 ?? 0) > 0) {
+    next.njop_bangunan = Math.round((next.luas_bangunan_m2 ?? 0) * (next.njop_bangunan_m2 ?? 0));
   }
 
   return next;

@@ -8,6 +8,7 @@ import {
   TaxCalculationResult,
 } from '../types/ppats';
 import { extractMonthYearFromDate, toRomanMonth } from './indonesianFormatter';
+import { computeAphbTaxFraction } from './aphbHelpers';
 
 export const AKTA_SERVICE_TYPES: ServiceType[] = ['AJB', 'APHB', 'Akta Hibah'];
 export const NON_AKTA_SERVICE_TYPES: ServiceType[] = [
@@ -40,37 +41,62 @@ export interface CalculateTaxInput {
   luas_m2: number;
   harga_per_m2: number;
   njop_bumi_m2: number;
+  luas_bangunan_m2?: number;
+  njop_bangunan_m2?: number;
   njop_bangunan: number;
   npoptkp: number;
   layanan: ServiceType;
   nilai_transaksi_override?: number | null;
+  aphb_jumlah_pemegang_hak?: number;
+  aphb_jumlah_penerima?: number;
 }
 
 export function calculateLandTaxes(input: CalculateTaxInput): TaxCalculationResult {
   const luas = Math.max(0, Number(input.luas_m2) || 0);
   const hargaM2 = Math.max(0, Number(input.harga_per_m2) || 0);
   const njopBumiM2 = Math.max(0, Number(input.njop_bumi_m2) || 0);
-  const njopBangunan = Math.max(0, Number(input.njop_bangunan) || 0);
+  const luasBangunan = Math.max(0, Number(input.luas_bangunan_m2) || 0);
+  const njopBangunanM2 = Math.max(0, Number(input.njop_bangunan_m2) || 0);
+  const njopBangunanFull =
+    luasBangunan > 0 && njopBangunanM2 > 0
+      ? Math.round(luasBangunan * njopBangunanM2)
+      : Math.max(0, Number(input.njop_bangunan) || 0);
   const npoptkp = Math.max(0, Number(input.npoptkp) || 0);
+
+  const aphbFrac =
+    input.layanan === 'APHB'
+      ? computeAphbTaxFraction(
+          input.aphb_jumlah_pemegang_hak,
+          input.aphb_jumlah_penerima
+        )
+      : { n: 0, m: 0, numerator: 0, faktor: 1, aktif: false };
+
+  const faktor = aphbFrac.aktif ? aphbFrac.faktor : 1;
+  const luasBumiKenaPajak = aphbFrac.aktif
+    ? Math.round(luas * faktor * 100) / 100
+    : luas;
 
   const nilai_kesepakatan =
     input.nilai_transaksi_override !== undefined &&
     input.nilai_transaksi_override !== null &&
     input.nilai_transaksi_override >= 0
       ? Math.round(input.nilai_transaksi_override)
-      : Math.round(luas * hargaM2);
+      : Math.round(luas * faktor * hargaM2);
 
-  const njop_bumi_total = Math.round(luas * njopBumiM2);
-  const njop_total = njop_bumi_total + Math.round(njopBangunan);
+  const njop_bumi_total = Math.round(luas * faktor * njopBumiM2);
+  // NJOP Bangunan tidak diikutkan rumus pembagian APHB — tetap penuh sesuai data SPPT
+  const njop_bangunan_total = Math.round(njopBangunanFull);
+  const njop_total = njop_bumi_total + njop_bangunan_total;
 
   const npop = Math.max(nilai_kesepakatan, njop_total);
   const npopkp = Math.max(0, npop - npoptkp);
   const bphtb = Math.round(npopkp * 0.05);
   const pph = Math.round(npop * 0.025);
 
-  return {
+  const result: TaxCalculationResult = {
     nilai_kesepakatan,
     njop_bumi_total,
+    njop_bangunan_total,
     njop_total,
     npop,
     npoptkp,
@@ -78,6 +104,17 @@ export function calculateLandTaxes(input: CalculateTaxInput): TaxCalculationResu
     bphtb,
     pph,
   };
+
+  if (aphbFrac.aktif) {
+    result.aphb_aktif = true;
+    result.aphb_n = aphbFrac.n;
+    result.aphb_m = aphbFrac.m;
+    result.aphb_faktor = aphbFrac.faktor;
+    result.luas_bumi_kena_pajak = luasBumiKenaPajak;
+    result.luas_bangunan_kena_pajak = luasBangunan;
+  }
+
+  return result;
 }
 
 export interface TaxBreakdownSummary {
@@ -110,10 +147,14 @@ export interface ApplyTaxDraftInput {
   layanan?: ServiceType;
   luas_m2: number;
   njop_bumi_m2: number;
+  luas_bangunan_m2?: number;
+  njop_bangunan_m2?: number;
   njop_bangunan: number;
   harga_per_m2: number;
   nilai_transaksi_override: number | null;
   npoptkp: number;
+  aphb_jumlah_pemegang_hak?: number;
+  aphb_jumlah_penerima?: number;
 }
 
 export function applyTaxCalculationToRecord(
@@ -124,7 +165,12 @@ export function applyTaxCalculationToRecord(
   const layanan = input.layanan ?? record.layanan;
   const luas_m2 = Math.max(0, Number(input.luas_m2) || 0);
   const njop_bumi_m2 = Math.max(0, Number(input.njop_bumi_m2) || 0);
-  const njop_bangunan = Math.max(0, Number(input.njop_bangunan) || 0);
+  const luas_bangunan_m2 = Math.max(0, Number(input.luas_bangunan_m2) || 0);
+  const njop_bangunan_m2 = Math.max(0, Number(input.njop_bangunan_m2) || 0);
+  const njop_bangunan =
+    luas_bangunan_m2 > 0 && njop_bangunan_m2 > 0
+      ? Math.round(luas_bangunan_m2 * njop_bangunan_m2)
+      : Math.max(0, Number(input.njop_bangunan) || 0);
   const harga_per_m2 = Math.max(0, Number(input.harga_per_m2) || 0);
   const npoptkp = Math.max(0, Number(input.npoptkp) || 0);
   const nilai_transaksi_override =
@@ -133,14 +179,27 @@ export function applyTaxCalculationToRecord(
       ? Math.max(0, Number(input.nilai_transaksi_override) || 0)
       : null;
 
+  const aphbN =
+    layanan === 'APHB' && (Number(input.aphb_jumlah_pemegang_hak) || 0) >= 2
+      ? Math.floor(Number(input.aphb_jumlah_pemegang_hak))
+      : undefined;
+  const aphbM =
+    aphbN !== undefined
+      ? Math.min(aphbN, Math.max(1, Math.floor(Number(input.aphb_jumlah_penerima) || 1)))
+      : undefined;
+
   const pajak = calculateLandTaxes({
     luas_m2,
     harga_per_m2,
     njop_bumi_m2,
+    luas_bangunan_m2,
+    njop_bangunan_m2,
     njop_bangunan,
     npoptkp,
     layanan,
     nilai_transaksi_override,
+    aphb_jumlah_pemegang_hak: aphbN,
+    aphb_jumlah_penerima: aphbM,
   });
 
   return {
@@ -153,6 +212,8 @@ export function applyTaxCalculationToRecord(
     pbb: {
       ...record.pbb,
       njop_bumi_m2,
+      luas_bangunan_m2,
+      njop_bangunan_m2,
       njop_bangunan,
     },
     akta: {
@@ -160,6 +221,12 @@ export function applyTaxCalculationToRecord(
       harga_per_m2,
       nilai_transaksi_override,
       npoptkp,
+      ...(aphbN !== undefined
+        ? {
+            aphb_jumlah_pemegang_hak: aphbN,
+            aphb_jumlah_penerima: aphbM,
+          }
+        : {}),
     },
     pajak,
     updated_at: updatedAt,

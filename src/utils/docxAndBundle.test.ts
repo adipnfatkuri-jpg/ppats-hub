@@ -1177,5 +1177,43 @@ test('New Non-Akta sub-bundles (Pengecekan Sertipikat, Validasi Sertipikat, Anal
   assert.equal(stats.pkkpr, 1);
 });
 
+test('APHB with multiple recipients renders pemegang hak bersama wording on Akta and lists all recipients on Lampiran Page 1', async () => {
+  const baseParty = INITIAL_SEED_RECORDS[1].para_pihak[0];
+  const multiAphbRecord = {
+    ...INITIAL_SEED_RECORDS[1],
+    layanan: 'APHB' as const,
+    para_pihak: [
+      { ...baseParty, id: 'm1', peran: 'Pihak I' as const, nama: 'AGUS TRIYONO' },
+      { ...baseParty, id: 'm2', peran: 'Pihak II' as const, nama: 'LESTTORINI' },
+      { ...baseParty, id: 'm3', peran: 'Pihak III' as const, nama: 'PURWANTI' },
+      { ...baseParty, id: 'm4', peran: 'Pihak IV' as const, nama: 'BUDI SANTOSO' },
+    ],
+    akta: {
+      ...INITIAL_SEED_RECORDS[1].akta,
+      pihak_penerima_aphb: 'Pihak III',
+      pihak_penerima_aphb_list: ['Pihak III', 'Pihak IV'],
+      aphb_jumlah_pemegang_hak: 4,
+      aphb_jumlah_penerima: 2,
+    },
+  };
+
+  const files = await generateBundleFiles(multiAphbRecord, DEFAULT_OFFICE_SETTINGS, {});
+  const aktaXml = new PizZip(files[0].bytes).file('word/document.xml')?.asText() ?? '';
+  const lampiranXml = new PizZip(files[1].bytes).file('word/document.xml')?.asText() ?? '';
+
+  assert.ok(
+    aktaXml.includes('Pihak ketiga atas nama PURWANTI dan Pihak keempat atas nama BUDI SANTOSO'),
+    'Akta APHB must name both recipients in penerima_aphb_klausul'
+  );
+  assert.ok(
+    aktaXml.includes('memperoleh dan menjadi pemegang hak bersama dari'),
+    'Multi-recipient APHB must state pemegang hak bersama instead of pemegang tunggal'
+  );
+  assert.ok(lampiranXml.includes('PURWANTI') && lampiranXml.includes('BUDI SANTOSO'));
+  assert.ok(!aktaXml.includes('{{') && !aktaXml.includes('}}'));
+  assert.ok(!lampiranXml.includes('{{') && !lampiranXml.includes('}}'));
+});
+
+
 
 

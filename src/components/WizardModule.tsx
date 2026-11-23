@@ -67,12 +67,21 @@ import {
 } from '../utils/seedData';
 import {
   extractMonthYearFromDate,
+  formatNumberId,
   formatRupiah,
   formatTanggalDDMMYYYY,
   formatTanggalLengkapHuruf,
   todayDdMmYyyy,
 } from '../utils/indonesianFormatter';
-import { resolveAccurateLuasBumiM2 } from '../utils/bphtbObjectScan';
+import {
+  resolveAccurateBangunanFromPbb,
+  resolveAccurateLuasBumiM2,
+} from '../utils/bphtbObjectScan';
+import {
+  computeAphbTaxFraction,
+  getDefaultAphbHolderCount,
+  normalizeAphbRecipientRoles,
+} from '../utils/aphbHelpers';
 import {
   SCAN_DOC_FILE_ACCEPT,
   estimateScanPayloadBytes,
@@ -814,12 +823,20 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
   );
 
   const [pbb, setPbb] = useState<DataPBB>(
-    editingRecord?.pbb ?? {
-      nop: '',
-      tahun_pajak: String(new Date().getFullYear()),
-      njop_bumi_m2: taxPrefill?.njop_bumi_m2 ?? 0,
-      njop_bangunan: taxPrefill?.njop_bangunan ?? 0,
-    }
+    editingRecord?.pbb
+      ? {
+          luas_bangunan_m2: 0,
+          njop_bangunan_m2: 0,
+          ...editingRecord.pbb,
+        }
+      : {
+          nop: '',
+          tahun_pajak: String(new Date().getFullYear()),
+          njop_bumi_m2: taxPrefill?.njop_bumi_m2 ?? 0,
+          luas_bangunan_m2: taxPrefill?.luas_bangunan_m2 ?? 0,
+          njop_bangunan_m2: taxPrefill?.njop_bangunan_m2 ?? 0,
+          njop_bangunan: taxPrefill?.njop_bangunan ?? 0,
+        }
   );
 
   const [aiWarnings, setAiWarnings] = useState<AuditWarning[]>(
@@ -829,6 +846,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
   const [akta, setAkta] = useState<ParameterAkta>(() => {
     if (editingRecord?.akta) {
       const a = editingRecord.akta;
+      const initialAphbRoles = normalizeAphbRecipientRoles(
+        editingRecord.para_pihak || [],
+        a
+      );
       return {
         nomor_pengantar: '',
         butuh_persetujuan_pasangan:
@@ -836,7 +857,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
           editingRecord.para_pihak.some((p) => p.peran === 'Persetujuan Pasangan'),
         keterangan_tanpa_persetujuan:
           a.keterangan_tanpa_persetujuan ?? DEFAULT_TANPA_PERSETUJUAN_TEXT,
-        pihak_penerima_aphb: a.pihak_penerima_aphb ?? 'Pihak II',
+        pihak_penerima_aphb: a.pihak_penerima_aphb ?? initialAphbRoles[0] ?? 'Pihak II',
+        pihak_penerima_aphb_list: a.pihak_penerima_aphb_list ?? initialAphbRoles,
         kuasa_bpn_detail:
           a.kuasa_bpn_detail ?? findPresetPerson(a.nama_kuasa_bpn, settings.profil_kuasa),
         saksi_1_detail:
@@ -865,6 +887,9 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       butuh_persetujuan_pasangan: true,
       keterangan_tanpa_persetujuan: DEFAULT_TANPA_PERSETUJUAN_TEXT,
       pihak_penerima_aphb: 'Pihak II',
+      pihak_penerima_aphb_list: ['Pihak II'],
+      aphb_jumlah_pemegang_hak: taxPrefill?.aphb_jumlah_pemegang_hak,
+      aphb_jumlah_penerima: taxPrefill?.aphb_jumlah_penerima,
       nama_kuasa_bpn: defaultKuasa,
       kuasa_bpn_detail: findPresetPerson(defaultKuasa, settings.profil_kuasa),
       saksi_1: defaultSaksi1,
@@ -1182,11 +1207,14 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       }
 
       if (parsed.pbb) {
+        const accurateBangunan = resolveAccurateBangunanFromPbb(parsed.pbb);
         setPbb({
           nop: parsed.pbb.nop || '',
           tahun_pajak: parsed.pbb.tahun_pajak || String(new Date().getFullYear()),
           njop_bumi_m2: Number(parsed.pbb.njop_bumi_m2) || 0,
-          njop_bangunan: Number(parsed.pbb.njop_bangunan) || 0,
+          luas_bangunan_m2: accurateBangunan.luas_bangunan_m2 ?? 0,
+          njop_bangunan_m2: accurateBangunan.njop_bangunan_m2 ?? 0,
+          njop_bangunan: accurateBangunan.njop_bangunan ?? (Number(parsed.pbb.njop_bangunan) || 0),
         });
       }
 
@@ -1250,18 +1278,33 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     return merged;
   }, [aiWarnings, paraPihak, tanah, pemegangHakInput, akta.butuh_persetujuan_pasangan, layanan]);
 
+  const aphbSelectedRoles = useMemo(
+    () => normalizeAphbRecipientRoles(paraPihak, akta),
+    [paraPihak, akta]
+  );
+
+  const aphbHolderCount = useMemo(() => {
+    const partyCount = paraPihak.filter((p) => p.peran.startsWith('Pihak ')).length;
+    if (partyCount >= 2) return partyCount;
+    return getDefaultAphbHolderCount(paraPihak, akta);
+  }, [paraPihak, akta]);
+
   const taxCalc = useMemo(
     () =>
       calculateLandTaxes({
         luas_m2: tanah.luas_m2,
         harga_per_m2: akta.harga_per_m2,
         njop_bumi_m2: pbb.njop_bumi_m2,
+        luas_bangunan_m2: pbb.luas_bangunan_m2,
+        njop_bangunan_m2: pbb.njop_bangunan_m2,
         njop_bangunan: pbb.njop_bangunan,
         npoptkp: akta.npoptkp,
         layanan,
         nilai_transaksi_override: akta.nilai_transaksi_override,
+        aphb_jumlah_pemegang_hak: layanan === 'APHB' ? aphbHolderCount : undefined,
+        aphb_jumlah_penerima: layanan === 'APHB' ? aphbSelectedRoles.length : undefined,
       }),
-    [tanah.luas_m2, akta, pbb, layanan]
+    [tanah.luas_m2, akta, pbb, layanan, aphbHolderCount, aphbSelectedRoles]
   );
 
   const formattedAktaDate = useMemo(
@@ -1291,6 +1334,17 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
         .filter(Boolean),
     };
 
+    const finalAkta: ParameterAkta =
+      layanan === 'APHB'
+        ? {
+            ...akta,
+            pihak_penerima_aphb: aphbSelectedRoles[0] ?? akta.pihak_penerima_aphb ?? 'Pihak II',
+            pihak_penerima_aphb_list: aphbSelectedRoles,
+            aphb_jumlah_pemegang_hak: aphbHolderCount,
+            aphb_jumlah_penerima: aphbSelectedRoles.length,
+          }
+        : akta;
+
     return {
       id,
       no_urut: noUrut,
@@ -1302,7 +1356,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       tanah: finalTanah,
       pbb,
       audit_warnings: combinedAuditWarnings,
-      akta,
+      akta: finalAkta,
       pajak: taxCalc,
       non_akta: isAktaService(layanan) ? undefined : nonAkta,
       updated_at: new Date().toISOString(),
@@ -3178,6 +3232,58 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     className="input-airy w-full px-2.5 py-1.5 font-mono tabular-nums"
                   />
                 </div>
+                <div>
+                  <label htmlFor="pbb-luas-bangunan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                    Luas Bangunan (m²)
+                  </label>
+                  <input
+                    id="pbb-luas-bangunan"
+                    type="number"
+                    min="0"
+                    value={pbb.luas_bangunan_m2 ?? 0}
+                    onChange={(e) => {
+                      const nextLuasB = Math.max(0, Number(e.target.value) || 0);
+                      const curPerM2 = Math.max(0, pbb.njop_bangunan_m2 ?? 0);
+                      setPbb({
+                        ...pbb,
+                        luas_bangunan_m2: nextLuasB,
+                        njop_bangunan:
+                          nextLuasB > 0 && curPerM2 > 0
+                            ? Math.round(nextLuasB * curPerM2)
+                            : nextLuasB === 0 && curPerM2 > 0
+                            ? 0
+                            : pbb.njop_bangunan,
+                      });
+                    }}
+                    className="input-airy w-full px-2.5 py-1.5 font-mono tabular-nums"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="pbb-njop-bangunan-m2" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                    NJOP Bangunan / m² (Rp)
+                  </label>
+                  <input
+                    id="pbb-njop-bangunan-m2"
+                    type="number"
+                    min="0"
+                    value={pbb.njop_bangunan_m2 ?? 0}
+                    onChange={(e) => {
+                      const nextPerM2 = Math.max(0, Number(e.target.value) || 0);
+                      const curLuasB = Math.max(0, pbb.luas_bangunan_m2 ?? 0);
+                      setPbb({
+                        ...pbb,
+                        njop_bangunan_m2: nextPerM2,
+                        njop_bangunan:
+                          curLuasB > 0 && nextPerM2 > 0
+                            ? Math.round(curLuasB * nextPerM2)
+                            : curLuasB > 0 && nextPerM2 === 0
+                            ? 0
+                            : pbb.njop_bangunan,
+                      });
+                    }}
+                    className="input-airy w-full px-2.5 py-1.5 font-mono tabular-nums"
+                  />
+                </div>
                 <div className="sm:col-span-2">
                   <label htmlFor="pbb-njop-bangunan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
                     Total NJOP Bangunan (Rp)
@@ -3186,9 +3292,18 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     id="pbb-njop-bangunan"
                     type="number"
                     min="0"
-                    value={pbb.njop_bangunan}
+                    value={
+                      (pbb.luas_bangunan_m2 ?? 0) > 0 && (pbb.njop_bangunan_m2 ?? 0) > 0
+                        ? Math.round((pbb.luas_bangunan_m2 ?? 0) * (pbb.njop_bangunan_m2 ?? 0))
+                        : pbb.njop_bangunan
+                    }
                     onChange={(e) =>
-                      setPbb({ ...pbb, njop_bangunan: Number(e.target.value) || 0 })
+                      setPbb({
+                        ...pbb,
+                        luas_bangunan_m2: 0,
+                        njop_bangunan_m2: 0,
+                        njop_bangunan: Number(e.target.value) || 0,
+                      })
                     }
                     className="input-airy w-full px-2.5 py-1.5 font-mono tabular-nums"
                   />
@@ -3414,34 +3529,104 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 </>
               )}
 
-              {layanan === 'APHB' && (
-                <div className="sm:col-span-2 p-3.5 rounded-xl border border-sky-200 dark:border-sky-500/35 bg-sky-50/70 dark:bg-sky-950/45">
-                  <label htmlFor="akta-penerima-aphb" className="block text-sky-950 dark:text-sky-100 font-semibold mb-1.5">
-                    Pihak Penerima Tunggal Hak Bersama (APHB)
-                  </label>
-                  <select
-                    id="akta-penerima-aphb"
-                    value={akta.pihak_penerima_aphb ?? 'Pihak II'}
-                    onChange={(e) =>
-                      setAkta({ ...akta, pihak_penerima_aphb: e.target.value })
-                    }
-                    className="input-airy w-full px-3 py-2"
-                  >
-                    {paraPihak
-                      .filter((p) => p.peran.startsWith('Pihak '))
-                      .sort(
-                        (a, b) =>
-                          parseAdditionalPihakMeta(a.peran).order -
-                          parseAdditionalPihakMeta(b.peran).order
-                      )
-                      .map((p) => (
-                        <option key={p.id} value={p.peran}>
-                          {p.peran} — {p.nama || '(Nama belum diisi)'}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              )}
+              {layanan === 'APHB' && (() => {
+                const orderedAphbParties = paraPihak
+                  .filter((p) => p.peran.startsWith('Pihak '))
+                  .sort(
+                    (a, b) =>
+                      parseAdditionalPihakMeta(a.peran).order -
+                      parseAdditionalPihakMeta(b.peran).order
+                  );
+                const selectedSet = new Set(aphbSelectedRoles);
+                const frac = computeAphbTaxFraction(
+                  aphbHolderCount,
+                  aphbSelectedRoles.length
+                );
+
+                const toggleAphbRecipient = (role: string) => {
+                  const current = new Set(aphbSelectedRoles);
+                  if (current.has(role)) {
+                    if (current.size <= 1) return; // Minimal 1 calon penerima hak
+                    current.delete(role);
+                  } else {
+                    current.add(role);
+                  }
+                  const orderedSelected = orderedAphbParties
+                    .map((p) => p.peran)
+                    .filter((r, idx, arr) => arr.indexOf(r) === idx && current.has(r));
+                  const finalRoles =
+                    orderedSelected.length > 0 ? orderedSelected : [role];
+                  setAkta({
+                    ...akta,
+                    pihak_penerima_aphb: finalRoles[0],
+                    pihak_penerima_aphb_list: finalRoles,
+                    aphb_jumlah_pemegang_hak: aphbHolderCount,
+                    aphb_jumlah_penerima: finalRoles.length,
+                  });
+                };
+
+                return (
+                  <div className="sm:col-span-2 p-4 rounded-xl border border-sky-200 dark:border-sky-500/35 bg-sky-50/70 dark:bg-sky-950/45 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <p className="text-sky-950 dark:text-sky-100 font-semibold">
+                          Calon Pemegang / Penerima Hak Bersama (APHB)
+                        </p>
+                        <p className="text-[11px] text-sky-900/75 dark:text-sky-200/75 mt-0.5">
+                          Centang 1 orang (pemegang tunggal) atau lebih dari 1 orang (pemegang hak bersama selanjutnya).
+                        </p>
+                      </div>
+                      <span className="font-mono text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/85 dark:bg-sky-900/60 text-sky-950 dark:text-sky-100 border border-sky-200 dark:border-sky-600/50 self-start sm:self-auto">
+                        {aphbSelectedRoles.length} dari {aphbHolderCount} Pihak Dipilih
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {orderedAphbParties.map((p) => {
+                        const checked = selectedSet.has(p.peran);
+                        return (
+                          <label
+                            key={p.id}
+                            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border cursor-pointer transition-colors ${
+                              checked
+                                ? 'border-teal-500 bg-teal-50/90 dark:bg-teal-900/55 text-teal-950 dark:text-teal-50 shadow-xs'
+                                : 'border-sky-200/80 dark:border-sky-700/50 bg-white/85 dark:bg-[#092024] text-slate-700 dark:text-teal-100/85 hover:bg-white'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleAphbRecipient(p.peran)}
+                              className="w-4 h-4 rounded accent-teal-600 shrink-0"
+                            />
+                            <span className="text-xs font-semibold truncate">
+                              {p.peran} — {p.nama || '(Nama belum diisi)'}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    {frac.aktif && (
+                      <div className="text-[11px] font-mono text-sky-950 dark:text-sky-100 bg-white/80 dark:bg-[#081C20] px-3 py-2 rounded-xl border border-sky-200/80 dark:border-sky-700/40 flex flex-wrap items-center justify-between gap-2">
+                        <span>
+                          Rumus BPHTB APHB: ({frac.n} − {frac.m}) / {frac.n} ={' '}
+                          <strong>
+                            {frac.numerator}/{frac.n}
+                          </strong>
+                        </span>
+                        <span>
+                          Luas Kena Pajak:{' '}
+                          <strong>
+                            {formatNumberId(taxCalc.luas_bumi_kena_pajak ?? 0)} m²
+                          </strong>{' '}
+                          dari {formatNumberId(tanah.luas_m2)} m²
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {isAkta && (
                 <>

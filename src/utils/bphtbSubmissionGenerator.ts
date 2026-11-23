@@ -550,9 +550,10 @@ export function buildInitialBphtbFormData(
     desa: linkedRecord.tanah.desa || '',
     kecamatan: stripKecPrefix(linkedRecord.tanah.kecamatan || cleanKec),
     kabupaten: stripKabPrefix(linkedRecord.tanah.kabupaten || cleanKab) || cleanKab,
-    luas_bangunan_m2: 0,
+    luas_bangunan_m2: Math.max(0, Number(linkedRecord.pbb.luas_bangunan_m2) || 0),
     keterangan_bangunan:
-      (linkedRecord.pbb.njop_bangunan || 0) > 0
+      (linkedRecord.pbb.njop_bangunan || 0) > 0 ||
+      (linkedRecord.pbb.luas_bangunan_m2 || 0) > 0
         ? 'Tanah dan Bangunan'
         : linkedRecord.tanah.penggunaan_tanah || 'Tanah Pekarangan',
     hubungan_hibah: 'Anak Kandungnya',

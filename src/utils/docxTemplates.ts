@@ -630,9 +630,9 @@ function buildAktaDocument(): Document {
           p('{{#is_sertipikat_digital}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
           pRuns(
             [
-              { text: '{{penerima_aphb_label}} atas nama {{penerima_aphb_nama}}', bold: true },
+              { text: '{{penerima_aphb_klausul}}', bold: true },
               {
-                text: ', memperoleh dan menjadi pemegang tunggal dari {{jenis_hak}} atas sebidang tanah Nibel : {{nib}} / Desa {{desa_tanah}}----------------------------------------------',
+                text: ', memperoleh dan menjadi {{penerima_aphb_status_hak}} dari {{jenis_hak}} atas sebidang tanah Nibel : {{nib}} / Desa {{desa_tanah}}----------------------------------------------',
               },
             ],
             { align: AlignmentType.JUSTIFIED, spaceAfter: 60, line: LINE_SPACING_1_5 }
@@ -641,9 +641,9 @@ function buildAktaDocument(): Document {
           p('{{#is_sertipikat_analog}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
           pRuns(
             [
-              { text: '{{penerima_aphb_label}} atas nama {{penerima_aphb_nama}}', bold: true },
+              { text: '{{penerima_aphb_klausul}}', bold: true },
               {
-                text: ', memperoleh dan menjadi pemegang tunggal dari {{jenis_hak}} Nomor : {{nomor_hak_analog}} / NIB : {{nib}} / Desa {{desa_tanah}}----------------------------------------------',
+                text: ', memperoleh dan menjadi {{penerima_aphb_status_hak}} dari {{jenis_hak}} Nomor : {{nomor_hak_analog}} / NIB : {{nib}} / Desa {{desa_tanah}}----------------------------------------------',
               },
             ],
             { align: AlignmentType.JUSTIFIED, spaceAfter: 60, line: LINE_SPACING_1_5 }

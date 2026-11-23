@@ -44,6 +44,10 @@ import {
   summarizeTaxBreakdown,
 } from '../utils/taxAndAudit';
 import {
+  getDefaultAphbHolderCount,
+  getDefaultAphbRecipientCount,
+} from '../utils/aphbHelpers';
+import {
   BphtbSubmissionFormData,
   SIPAD_BOYOLALI_URL,
   buildInitialBphtbFormData,
@@ -84,15 +88,32 @@ function buildDraftFromRecord(
   record: BerkasRecord,
   settings: OfficeSettings
 ): TaxDraftPrefill {
+  const luasBangunan = Math.max(0, Number(record.pbb?.luas_bangunan_m2) || 0);
+  const njopBangunanM2 = Math.max(0, Number(record.pbb?.njop_bangunan_m2) || 0);
+  const njopBangunanTotal =
+    luasBangunan > 0 && njopBangunanM2 > 0
+      ? Math.round(luasBangunan * njopBangunanM2)
+      : Math.max(0, Number(record.pbb?.njop_bangunan) || 0);
+
   return {
     layanan: record.layanan,
     luas_m2: record.tanah?.luas_m2 ?? 0,
     njop_bumi_m2: record.pbb?.njop_bumi_m2 ?? 0,
-    njop_bangunan: record.pbb?.njop_bangunan ?? 0,
+    luas_bangunan_m2: luasBangunan,
+    njop_bangunan_m2: njopBangunanM2,
+    njop_bangunan: njopBangunanTotal,
     harga_per_m2: record.akta?.harga_per_m2 ?? 0,
     nilai_transaksi_override: record.akta?.nilai_transaksi_override ?? null,
     npoptkp:
       record.akta?.npoptkp ?? getDefaultNpoptkp(record.layanan, settings),
+    aphb_jumlah_pemegang_hak:
+      record.layanan === 'APHB'
+        ? getDefaultAphbHolderCount(record.para_pihak || [], record.akta)
+        : record.akta?.aphb_jumlah_pemegang_hak ?? 2,
+    aphb_jumlah_penerima:
+      record.layanan === 'APHB'
+        ? getDefaultAphbRecipientCount(record.para_pihak || [], record.akta)
+        : record.akta?.aphb_jumlah_penerima ?? 1,
   };
 }
 
@@ -101,10 +122,14 @@ function buildEmptyDraft(settings: OfficeSettings): TaxDraftPrefill {
     layanan: 'AJB',
     luas_m2: 0,
     njop_bumi_m2: 0,
+    luas_bangunan_m2: 0,
+    njop_bangunan_m2: 0,
     njop_bangunan: 0,
     harga_per_m2: 0,
     nilai_transaksi_override: null,
     npoptkp: getDefaultNpoptkp('AJB', settings),
+    aphb_jumlah_pemegang_hak: 2,
+    aphb_jumlah_penerima: 1,
   };
 }
 
@@ -173,10 +198,16 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
         luas_m2: form.luas_m2,
         harga_per_m2: form.harga_per_m2,
         njop_bumi_m2: form.njop_bumi_m2,
+        luas_bangunan_m2: form.luas_bangunan_m2,
+        njop_bangunan_m2: form.njop_bangunan_m2,
         njop_bangunan: form.njop_bangunan,
         npoptkp: form.npoptkp,
         layanan: form.layanan,
         nilai_transaksi_override: form.nilai_transaksi_override,
+        aphb_jumlah_pemegang_hak:
+          form.layanan === 'APHB' ? Math.max(2, form.aphb_jumlah_pemegang_hak ?? 2) : undefined,
+        aphb_jumlah_penerima:
+          form.layanan === 'APHB' ? Math.max(1, form.aphb_jumlah_penerima ?? 1) : undefined,
       }),
     [form]
   );
@@ -231,6 +262,14 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
       ...prev,
       layanan: nextLayanan,
       npoptkp: getDefaultNpoptkp(nextLayanan, settings),
+      aphb_jumlah_pemegang_hak:
+        nextLayanan === 'APHB'
+          ? Math.max(2, prev.aphb_jumlah_pemegang_hak ?? 2)
+          : prev.aphb_jumlah_pemegang_hak,
+      aphb_jumlah_penerima:
+        nextLayanan === 'APHB'
+          ? Math.max(1, prev.aphb_jumlah_penerima ?? 1)
+          : prev.aphb_jumlah_penerima,
     }));
     setBphtbGenerated(null);
   };
@@ -676,6 +715,94 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
               )}
             </div>
 
+            {/* Rumus Khusus BPHTB APHB: ((n - m) / n) × Luas × NJOP */}
+            {form.layanan === 'APHB' && (
+              <div className="rounded-2xl border border-amber-200/90 dark:border-amber-500/35 bg-gradient-to-br from-amber-50/85 via-white to-teal-50/50 dark:from-amber-950/35 dark:via-[#0A2226] dark:to-teal-950/35 p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-bold text-amber-950 dark:text-amber-100">
+                      Parameter Rumus BPHTB APHB — Bagian Hak Baru ((n − m) / n)
+                    </p>
+                    <p className="text-[11px] text-slate-600 dark:text-teal-200/75 mt-0.5">
+                      <strong>n</strong> = jumlah pemegang hak bersama saat ini ·{' '}
+                      <strong>m</strong> = jumlah calon penerima hak selanjutnya (1 nama atau lebih).
+                    </p>
+                  </div>
+                  {taxResult.aphb_aktif && (
+                    <span className="font-mono text-[11px] font-bold px-2.5 py-1 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-100 border border-amber-300/80 dark:border-amber-600/50">
+                      Bagian Kena Pajak: {(taxResult.aphb_n ?? 2) - (taxResult.aphb_m ?? 1)}/
+                      {taxResult.aphb_n ?? 2}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label
+                      htmlFor="tax-aphb-n"
+                      className="block text-slate-700 dark:text-teal-100/90 font-semibold mb-1"
+                    >
+                      Jumlah Pemegang Hak Saat Ini (n)
+                    </label>
+                    <input
+                      id="tax-aphb-n"
+                      type="number"
+                      min="2"
+                      value={form.aphb_jumlah_pemegang_hak ?? 2}
+                      onChange={(e) => {
+                        const nextN = Math.max(2, Math.floor(Number(e.target.value) || 2));
+                        const curM = Math.max(1, Math.floor(form.aphb_jumlah_penerima ?? 1));
+                        setForm({
+                          ...form,
+                          aphb_jumlah_pemegang_hak: nextN,
+                          aphb_jumlah_penerima: Math.min(nextN, curM),
+                        });
+                      }}
+                      className="input-airy w-full px-3 py-2 font-mono tabular-nums text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="tax-aphb-m"
+                      className="block text-slate-700 dark:text-teal-100/90 font-semibold mb-1"
+                    >
+                      Jumlah Calon Penerima Hak (m)
+                    </label>
+                    <input
+                      id="tax-aphb-m"
+                      type="number"
+                      min="1"
+                      max={Math.max(2, form.aphb_jumlah_pemegang_hak ?? 2)}
+                      value={form.aphb_jumlah_penerima ?? 1}
+                      onChange={(e) => {
+                        const curN = Math.max(2, Math.floor(form.aphb_jumlah_pemegang_hak ?? 2));
+                        const nextM = Math.min(
+                          curN,
+                          Math.max(1, Math.floor(Number(e.target.value) || 1))
+                        );
+                        setForm({
+                          ...form,
+                          aphb_jumlah_penerima: nextM,
+                        });
+                      }}
+                      className="input-airy w-full px-3 py-2 font-mono tabular-nums text-sm"
+                    />
+                  </div>
+                </div>
+
+                {taxResult.aphb_aktif && (
+                  <p className="text-[11px] font-mono text-amber-950 dark:text-amber-200 bg-white/80 dark:bg-[#081C20] px-3 py-2 rounded-xl border border-amber-200/80 dark:border-amber-700/40">
+                    Luas Tanah Kena Pajak: ({taxResult.aphb_n} − {taxResult.aphb_m}) /{' '}
+                    {taxResult.aphb_n} × {formatNumberId(form.luas_m2)} m² ={' '}
+                    <strong>{formatNumberId(taxResult.luas_bumi_kena_pajak ?? 0)} m²</strong>
+                    {(form.luas_bangunan_m2 ?? 0) > 0 && (
+                      <span> · NJOP Bangunan tetap penuh sesuai SPPT</span>
+                    )}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label
@@ -723,6 +850,66 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
 
               <div>
                 <label
+                  htmlFor="tax-luas-bangunan"
+                  className="block text-slate-600 dark:text-teal-200/85 font-semibold mb-1.5"
+                >
+                  Luas Bangunan (m² · SPPT)
+                </label>
+                <input
+                  id="tax-luas-bangunan"
+                  type="number"
+                  min="0"
+                  value={form.luas_bangunan_m2 ?? 0}
+                  onChange={(e) => {
+                    const nextLuasB = Math.max(0, Number(e.target.value) || 0);
+                    const curPerM2 = Math.max(0, form.njop_bangunan_m2 ?? 0);
+                    setForm({
+                      ...form,
+                      luas_bangunan_m2: nextLuasB,
+                      njop_bangunan:
+                        nextLuasB > 0 && curPerM2 > 0
+                          ? Math.round(nextLuasB * curPerM2)
+                          : nextLuasB === 0 && curPerM2 > 0
+                          ? 0
+                          : form.njop_bangunan,
+                    });
+                  }}
+                  className="input-airy w-full px-3.5 py-2.5 font-mono tabular-nums text-sm"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="tax-njop-bangunan-m2"
+                  className="block text-slate-600 dark:text-teal-200/85 font-semibold mb-1.5"
+                >
+                  NJOP Bangunan per m² (Rp · SPPT)
+                </label>
+                <input
+                  id="tax-njop-bangunan-m2"
+                  type="number"
+                  min="0"
+                  value={form.njop_bangunan_m2 ?? 0}
+                  onChange={(e) => {
+                    const nextPerM2 = Math.max(0, Number(e.target.value) || 0);
+                    const curLuasB = Math.max(0, form.luas_bangunan_m2 ?? 0);
+                    setForm({
+                      ...form,
+                      njop_bangunan_m2: nextPerM2,
+                      njop_bangunan:
+                        curLuasB > 0 && nextPerM2 > 0
+                          ? Math.round(curLuasB * nextPerM2)
+                          : curLuasB > 0 && nextPerM2 === 0
+                          ? 0
+                          : form.njop_bangunan,
+                    });
+                  }}
+                  className="input-airy w-full px-3.5 py-2.5 font-mono tabular-nums text-sm"
+                />
+              </div>
+
+              <div>
+                <label
                   htmlFor="tax-njop-bangunan"
                   className="block text-slate-600 dark:text-teal-200/85 font-semibold mb-1.5"
                 >
@@ -732,15 +919,26 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                   id="tax-njop-bangunan"
                   type="number"
                   min="0"
-                  value={form.njop_bangunan}
+                  value={
+                    (form.luas_bangunan_m2 ?? 0) > 0 && (form.njop_bangunan_m2 ?? 0) > 0
+                      ? Math.round((form.luas_bangunan_m2 ?? 0) * (form.njop_bangunan_m2 ?? 0))
+                      : form.njop_bangunan
+                  }
                   onChange={(e) =>
                     setForm({
                       ...form,
+                      luas_bangunan_m2: 0,
+                      njop_bangunan_m2: 0,
                       njop_bangunan: Number(e.target.value) || 0,
                     })
                   }
                   className="input-airy w-full px-3.5 py-2.5 font-mono tabular-nums text-sm"
                 />
+                <p className="text-[11px] text-slate-500 dark:text-teal-200/65 mt-1">
+                  {(form.luas_bangunan_m2 ?? 0) > 0 && (form.njop_bangunan_m2 ?? 0) > 0
+                    ? `Otomatis SPPT: ${formatNumberId(form.luas_bangunan_m2 ?? 0)} m² × ${formatRupiah(form.njop_bangunan_m2 ?? 0)}/m²`
+                    : 'Isi Luas & NJOP Bangunan/m² dari SPPT, atau ketik total manual.'}
+                </p>
               </div>
 
               <div>
@@ -845,10 +1043,22 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
             </div>
 
             <div className="divide-y divide-teal-900/10 dark:divide-teal-400/15 text-xs border border-teal-900/10 dark:border-teal-400/15 rounded-2xl overflow-hidden">
+              {taxResult.aphb_aktif && (
+                <div className="px-4 py-2.5 bg-amber-50/90 dark:bg-amber-950/45 flex items-center justify-between gap-2">
+                  <span className="text-amber-950 dark:text-amber-100 font-semibold">
+                    Rumus APHB ({taxResult.aphb_n} − {taxResult.aphb_m}) / {taxResult.aphb_n} ×{' '}
+                    {formatNumberId(form.luas_m2)} m²
+                  </span>
+                  <span className="font-mono font-bold text-amber-950 dark:text-amber-100 tabular-nums whitespace-nowrap">
+                    {formatNumberId(taxResult.luas_bumi_kena_pajak ?? 0)} m² kena pajak
+                  </span>
+                </div>
+              )}
               <div className="px-4 py-2.5 bg-[#F4FAF8] dark:bg-[#092024] flex items-center justify-between gap-2">
                 <span className="text-slate-600 dark:text-teal-200/80">
-                  NJOP Bumi Total ({formatNumberId(form.luas_m2)} m² ×{' '}
-                  {formatRupiah(form.njop_bumi_m2)})
+                  {taxResult.aphb_aktif
+                    ? `NJOP Bumi Kena Pajak (${formatNumberId(taxResult.luas_bumi_kena_pajak ?? 0)} m² × ${formatRupiah(form.njop_bumi_m2)})`
+                    : `NJOP Bumi Total (${formatNumberId(form.luas_m2)} m² × ${formatRupiah(form.njop_bumi_m2)})`}
                 </span>
                 <span className="font-mono font-medium text-slate-900 dark:text-teal-50 tabular-nums whitespace-nowrap">
                   {formatRupiah(taxResult.njop_bumi_total)}
@@ -856,9 +1066,22 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
               </div>
               <div className="px-4 py-2.5 bg-white dark:bg-[#0D262A] flex items-center justify-between gap-2">
                 <span className="text-slate-600 dark:text-teal-200/80">
-                  Total NJOP PBB (Bumi + Bangunan)
+                  {(form.luas_bangunan_m2 ?? 0) > 0 && (form.njop_bangunan_m2 ?? 0) > 0
+                    ? `NJOP Bangunan (${formatNumberId(form.luas_bangunan_m2 ?? 0)} m² × ${formatRupiah(form.njop_bangunan_m2 ?? 0)})`
+                    : 'NJOP Bangunan'}
                 </span>
                 <span className="font-mono font-medium text-slate-900 dark:text-teal-50 tabular-nums whitespace-nowrap">
+                  {formatRupiah(
+                    taxResult.njop_bangunan_total ??
+                      Math.max(0, taxResult.njop_total - taxResult.njop_bumi_total)
+                  )}
+                </span>
+              </div>
+              <div className="px-4 py-2.5 bg-[#F4FAF8] dark:bg-[#092024] flex items-center justify-between gap-2">
+                <span className="font-medium text-slate-700 dark:text-teal-100">
+                  Total NJOP PBB (Bumi + Bangunan)
+                </span>
+                <span className="font-mono font-semibold text-slate-900 dark:text-teal-50 tabular-nums whitespace-nowrap">
                   {formatRupiah(taxResult.njop_total)}
                 </span>
               </div>
@@ -1096,21 +1319,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
           form={bphtbForm}
           onChangeForm={setBphtbForm}
           onSyncTaxFromObjectScan={(patch) => {
-            setForm((prev) => ({
-              ...prev,
-              luas_m2:
-                patch.luas_m2 !== undefined && patch.luas_m2 > 0
-                  ? patch.luas_m2
-                  : prev.luas_m2,
-              njop_bumi_m2:
-                patch.njop_bumi_m2 !== undefined && patch.njop_bumi_m2 > 0
-                  ? patch.njop_bumi_m2
-                  : prev.njop_bumi_m2,
-              njop_bangunan:
-                patch.njop_bangunan !== undefined && patch.njop_bangunan > 0
-                  ? patch.njop_bangunan
-                  : prev.njop_bangunan,
-            }));
+            setForm((prev) => applyObjectScanPatchToTaxDraft(prev, patch, 'both'));
           }}
           onResetFromSource={() => {
             setBphtbForm(
@@ -1279,8 +1488,21 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
               </td>
               <td className="border border-slate-400 px-3 py-2 font-mono">
                 {formatNumberId(form.luas_m2)} m² ({terbilangLuas(form.luas_m2)})
+                {taxResult.aphb_aktif &&
+                  ` · Kena Pajak APHB (${taxResult.aphb_n} − ${taxResult.aphb_m})/${taxResult.aphb_n}: ${formatNumberId(taxResult.luas_bumi_kena_pajak ?? 0)} m²`}
               </td>
             </tr>
+            {(form.luas_bangunan_m2 ?? 0) > 0 && (
+              <tr>
+                <td className="border border-slate-400 px-3 py-2 font-medium">
+                  Bangunan (SPPT)
+                </td>
+                <td className="border border-slate-400 px-3 py-2 font-mono">
+                  {formatNumberId(form.luas_bangunan_m2 ?? 0)} m² ×{' '}
+                  {formatRupiah(form.njop_bangunan_m2 ?? 0)}/m²
+                </td>
+              </tr>
+            )}
             <tr>
               <td className="border border-slate-400 px-3 py-2 font-medium">
                 Total NJOP PBB (Bumi + Bangunan)

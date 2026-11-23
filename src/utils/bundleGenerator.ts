@@ -27,6 +27,7 @@ import { buildNonAktaLampiranBuffer } from './nonAktaTemplates';
 import { formatPpatsTtl } from './ppatsProfileHelper';
 import { TEMPLATE_DOCS_META } from './seedData';
 import { isAktaService } from './taxAndAudit';
+import { resolveAphbRecipients } from './aphbHelpers';
 
 function saveBlob(blob: Blob, fileName: string) {
   const mod = FileSaver as unknown as {
@@ -496,21 +497,19 @@ export function buildTemplateContext(
     return `Para Pihak (${pihakTerpisah[0].peran_title} sampai dengan ${pihakTerpisah[pihakTerpisah.length - 1].peran_title})`;
   })();
 
-  // Pihak penerima hak tunggal untuk APHB
-  const preferredAphbRole = record.akta.pihak_penerima_aphb || 'Pihak II';
-  const aphbWinnerMapped =
-    pihakTerpisah.find((p) => p.peran === preferredAphbRole) ??
-    pihakTerpisah.find((p) => p.peran === 'Pihak II') ??
-    pihakTerpisah[pihakTerpisah.length - 1];
-  const aphbWinnerMeta = parseAdditionalPihakMeta(aphbWinnerMapped?.peran || 'Pihak II');
-  const aphbPemberiList = aphbWinnerMapped
-    ? pihakTerpisah.filter((p) => p.no_urut_pihak !== aphbWinnerMapped.no_urut_pihak)
-    : pihakTerpisah;
+  // Pihak penerima hak APHB (mendukung 1 penerima tunggal maupun 2+ penerima hak bersama)
+  const aphbSummary = resolveAphbRecipients(
+    pihakTerpisah,
+    record.akta,
+    (peran) => parseAdditionalPihakMeta(peran)
+  );
+  const aphbPrimaryWinner = aphbSummary.recipients[0] ?? pihakTerpisah[pihakTerpisah.length - 1];
+  const aphbPemberiList = aphbSummary.givers;
 
   // Penerima / Pembeli untuk lampiran (Permohonan, Surat Kuasa, Ket BPHTB, Penguasaan Fisik, Keabsahan Dokumen)
-  const penerimaObj = isAphb ? aphbWinnerMapped ?? p2Primary : p2Primary;
+  const penerimaObj = isAphb ? aphbPrimaryWinner ?? p2Primary : p2Primary;
   const penerimaRingkas = isAphb
-    ? aphbWinnerMapped?.nama || '-'
+    ? aphbSummary.recipients.map((p) => p.nama).join(', ') || '-'
     : pihakKedua.map((p) => p.nama).join(', ') || '-';
 
   // Pemilik awal untuk Surat Pernyataan SPPT/PBB
@@ -536,7 +535,7 @@ export function buildTemplateContext(
     ? (aphbPemberiList.length > 0 ? aphbPemberiList : pihakTerpisah).map((p) => p.nama).join('\n') || '-'
     : pihakPertama.map((p) => p.nama).join('\n') || '-';
   const ketPihak2Names = isAphb
-    ? aphbWinnerMapped?.nama || '-'
+    ? aphbSummary.recipients.map((p) => p.nama).join('\n') || '-'
     : pihakKedua.map((p) => p.nama).join('\n') || '-';
 
   // Daftar penandatangan Pemrosesan Data Pribadi (Hal. 9): seluruh pihak termasuk pembeli/penerima, TIDAK termasuk Persetujuan Pasangan
@@ -778,8 +777,10 @@ export function buildTemplateContext(
     ada_persetujuan_pasangan: adaPersetujuanPasangan,
     tanpa_persetujuan: tanpaPersetujuan,
     keterangan_tanpa_persetujuan: keteranganTanpaPersetujuan,
-    penerima_aphb_label: aphbWinnerMeta.peran_lower,
-    penerima_aphb_nama: (aphbWinnerMapped?.nama || '-').toUpperCase(),
+    penerima_aphb_label: aphbSummary.penerimaLabel,
+    penerima_aphb_nama: aphbSummary.penerimaNamaUpper,
+    penerima_aphb_klausul: aphbSummary.penerimaKlausul,
+    penerima_aphb_status_hak: aphbSummary.penerimaStatusHak,
     penerima_nama: penerimaObj.nama,
     penerima_ttl: penerimaObj.ttl,
     penerima_pekerjaan: penerimaObj.pekerjaan,
@@ -858,6 +859,8 @@ export function buildTemplateContext(
     nop: record.pbb.nop || '-',
     tahun_pajak: record.pbb.tahun_pajak || '-',
     njop_bumi_m2_rp: formatRupiah(record.pbb.njop_bumi_m2),
+    luas_bangunan_m2: formatNumberId(record.pbb.luas_bangunan_m2 ?? 0),
+    njop_bangunan_m2_rp: formatRupiah(record.pbb.njop_bangunan_m2 ?? 0),
     njop_bangunan_rp: formatRupiah(record.pbb.njop_bangunan),
     njop_total_rp: formatRupiah(record.pajak.njop_total),
     nilai_transaksi_rp: formatRupiah(record.pajak.nilai_kesepakatan),

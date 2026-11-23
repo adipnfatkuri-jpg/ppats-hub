@@ -120,4 +120,23 @@ test('extractDashboardParties returns explicit Pihak I / Pemohon and Pihak Pener
   assert.equal(warisSummary.pihakPertamaText, 'H. SUPARMAN');
   assert.equal(warisSummary.pihakPenerimaLabel, 'Ahli Waris');
   assert.equal(warisSummary.pihakPenerimaText, 'SITI AMINAH, BUDI SANTOSO');
+
+  // APHB with 2 designated recipients (multi-recipient)
+  const aphbMultiRecord: BerkasRecord = {
+    ...INITIAL_SEED_RECORDS[1],
+    para_pihak: [
+      { ...INITIAL_SEED_RECORDS[1].para_pihak[0], peran: 'Pihak I', nama: 'SUTARNO' },
+      { ...INITIAL_SEED_RECORDS[1].para_pihak[1], peran: 'Pihak II', nama: 'SUTARNI' },
+      { ...INITIAL_SEED_RECORDS[1].para_pihak[1], id: 'p-3', peran: 'Pihak III', nama: 'BAGUS PRATAMA' },
+    ],
+    akta: {
+      ...INITIAL_SEED_RECORDS[1].akta,
+      pihak_penerima_aphb: 'Pihak II',
+      pihak_penerima_aphb_list: ['Pihak II', 'Pihak III'],
+    },
+  };
+  const aphbMultiSummary = extractDashboardParties(aphbMultiRecord);
+  assert.equal(aphbMultiSummary.pihakPenerimaLabel, 'Penerima (2 Pihak)');
+  assert.equal(aphbMultiSummary.pihakPenerimaText, 'SUTARNI, BAGUS PRATAMA');
+  assert.equal(aphbMultiSummary.pihakPertamaText, 'SUTARNO');
 });

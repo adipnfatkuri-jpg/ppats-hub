@@ -5,7 +5,10 @@ import {
   ParaPihak,
   PersonBasicInfo,
 } from '../types/ppats';
-import { resolveAccurateLuasBumiM2 } from './bphtbObjectScan';
+import {
+  resolveAccurateBangunanFromPbb,
+  resolveAccurateLuasBumiM2,
+} from './bphtbObjectScan';
 import { resolveJenisSertipikat } from './bundleGenerator';
 import { formatNumberId, formatRupiah } from './indonesianFormatter';
 import {
@@ -155,6 +158,8 @@ export function mergeObjectScanIntoWizardTanahPbb(
   const nextPemegangHakInput =
     scannedHolders.length > 0 ? scannedHolders.join(', ') : prevPemegangHakInput;
 
+  const accurateBangunan = resolveAccurateBangunanFromPbb(scannedPbb);
+
   const nextPbb: DataPBB = {
     nop: scannedPbb?.nop?.trim() || prevPbb.nop,
     tahun_pajak: scannedPbb?.tahun_pajak?.trim() || prevPbb.tahun_pajak,
@@ -162,10 +167,12 @@ export function mergeObjectScanIntoWizardTanahPbb(
       scannedPbb?.njop_bumi_m2 && scannedPbb.njop_bumi_m2 > 0
         ? scannedPbb.njop_bumi_m2
         : prevPbb.njop_bumi_m2,
+    luas_bangunan_m2:
+      accurateBangunan.luas_bangunan_m2 ?? prevPbb.luas_bangunan_m2,
+    njop_bangunan_m2:
+      accurateBangunan.njop_bangunan_m2 ?? prevPbb.njop_bangunan_m2,
     njop_bangunan:
-      scannedPbb?.njop_bangunan && scannedPbb.njop_bangunan > 0
-        ? scannedPbb.njop_bangunan
-        : prevPbb.njop_bangunan,
+      accurateBangunan.njop_bangunan ?? prevPbb.njop_bangunan,
   };
 
   const summaryParts: string[] = [];
@@ -180,6 +187,11 @@ export function mergeObjectScanIntoWizardTanahPbb(
   if (scannedDesa) summaryParts.push(`Desa ${scannedDesa}`);
   if (scannedPbb?.njop_bumi_m2 && scannedPbb.njop_bumi_m2 > 0) {
     summaryParts.push(`NJOP ${formatRupiah(scannedPbb.njop_bumi_m2)}/m²`);
+  }
+  if (accurateBangunan.luas_bangunan_m2 && accurateBangunan.njop_bangunan_m2) {
+    summaryParts.push(
+      `Bangunan ${formatNumberId(accurateBangunan.luas_bangunan_m2)} m² × ${formatRupiah(accurateBangunan.njop_bangunan_m2)}/m²`
+    );
   }
 
   return { nextTanah, nextPbb, nextPemegangHakInput, summaryParts };

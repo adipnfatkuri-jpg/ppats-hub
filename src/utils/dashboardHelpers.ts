@@ -1,5 +1,6 @@
 import { BerkasRecord, BerkasStatus } from '../types/ppats';
 import { isAktaService } from './taxAndAudit';
+import { normalizeAphbRecipientRoles } from './aphbHelpers';
 
 export const VALID_BERKAS_STATUSES: readonly BerkasStatus[] = [
   '1. Pemberkasan',
@@ -99,19 +100,27 @@ export function extractDashboardParties(record: BerkasRecord): DashboardPartySum
     pihakPenerimaLabel = 'Penerima Hibah (II)';
     pihakPenerimaText = p2Names.join(', ') || '-';
   } else if (record.layanan === 'APHB') {
-    const designatedRole = record.akta?.pihak_penerima_aphb?.trim();
-    if (designatedRole) {
+    const hasExplicitRecipients = Boolean(
+      (record.akta?.pihak_penerima_aphb_list && record.akta.pihak_penerima_aphb_list.length > 0) ||
+        record.akta?.pihak_penerima_aphb?.trim()
+    );
+    if (hasExplicitRecipients) {
+      const designatedRoles = normalizeAphbRecipientRoles(pihakList, record.akta);
+      const roleSet = new Set(designatedRoles);
       const designatedNames = pihakList
-        .filter((p) => p.peran === designatedRole)
+        .filter((p) => roleSet.has(p.peran))
         .map((p) => p.nama.trim())
         .filter(Boolean);
       const otherNames = pihakList
-        .filter((p) => p.peran !== designatedRole)
+        .filter((p) => !roleSet.has(p.peran))
         .map((p) => p.nama.trim())
         .filter(Boolean);
       pihakPertamaLabel = otherNames.length > 1 ? 'Para Pihak' : 'Pihak I';
       pihakPertamaText = otherNames.join(', ') || p1Names.join(', ') || '-';
-      pihakPenerimaLabel = `Penerima (${designatedRole})`;
+      pihakPenerimaLabel =
+        designatedRoles.length > 1
+          ? `Penerima (${designatedRoles.length} Pihak)`
+          : `Penerima (${designatedRoles[0]})`;
       pihakPenerimaText = designatedNames.join(', ') || '-';
     } else {
       pihakPertamaLabel = 'Pihak I';

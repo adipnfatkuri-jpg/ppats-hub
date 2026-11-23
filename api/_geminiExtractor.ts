@@ -81,7 +81,8 @@ const pbbSchemaProperties = {
   luas_bangunan_m2: { type: Type.NUMBER, description: 'Luas BANGUNAN m2 (0 bila kosong).' },
   njop_bumi_m2: { type: Type.NUMBER, description: 'NJOP Bumi per m2 (Rp).' },
   njop_bumi_total: { type: Type.NUMBER, description: 'TOTAL NJOP Bumi (Rp).' },
-  njop_bangunan: { type: Type.NUMBER, description: 'Total NJOP Bangunan (Rp).' },
+  njop_bangunan_m2: { type: Type.NUMBER, description: 'NJOP Bangunan per m2 (Rp, kolom NJOP PER M2 baris BANGUNAN, 0 bila kosong).' },
+  njop_bangunan: { type: Type.NUMBER, description: 'Total NJOP Bangunan (Rp, kolom TOTAL NJOP baris BANGUNAN).' },
   nama_wp_pbb: { type: Type.STRING, description: 'Nama Wajib Pajak kolom kanan SPPT.' },
 };
 
@@ -108,6 +109,7 @@ export const objectExtractionResponseSchema = {
         'luas_bangunan_m2',
         'njop_bumi_m2',
         'njop_bumi_total',
+        'njop_bangunan_m2',
         'njop_bangunan',
         'nama_wp_pbb',
       ],
@@ -188,6 +190,7 @@ export const extractionResponseSchema = {
         'luas_bangunan_m2',
         'njop_bumi_m2',
         'njop_bumi_total',
+        'njop_bangunan_m2',
         'njop_bangunan',
         'nama_wp_pbb',
       ],

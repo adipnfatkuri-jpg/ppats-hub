@@ -327,3 +327,69 @@ test('filterNonAktaRecords and summarizeNonAktaStats manage Non-Akta rekap & tra
   );
 });
 
+test('calculateLandTaxes computes SPPT per-m2 NJOP Bangunan and APHB ((n - m) / n) taxable area accurately', () => {
+  // 1. AJB with per-m2 NJOP Bangunan from SPPT (50 m2 x Rp 800.000 = Rp 40.000.000)
+  const ajbWithBldg = calculateLandTaxes({
+    luas_m2: 200,
+    harga_per_m2: 0,
+    njop_bumi_m2: 1_000_000,
+    luas_bangunan_m2: 50,
+    njop_bangunan_m2: 800_000,
+    njop_bangunan: 0,
+    npoptkp: 80_000_000,
+    layanan: 'AJB',
+  });
+  assert.equal(ajbWithBldg.njop_bumi_total, 200_000_000);
+  assert.equal(ajbWithBldg.njop_bangunan_total, 40_000_000);
+  assert.equal(ajbWithBldg.njop_total, 240_000_000);
+  assert.equal(ajbWithBldg.npopkp, 160_000_000);
+  assert.equal(ajbWithBldg.bphtb, 8_000_000);
+
+  // 2. APHB exact user case: n=5 pemegang hak, m=1 calon penerima, luas=200 m2 -> 160 m2 kena pajak
+  // NJOP Bangunan TIDAK ikut rumus APHB (tetap penuh 50 m2 x 800.000 = 40.000.000)
+  const aphb1 = calculateLandTaxes({
+    luas_m2: 200,
+    harga_per_m2: 0,
+    njop_bumi_m2: 1_000_000,
+    luas_bangunan_m2: 50,
+    njop_bangunan_m2: 800_000,
+    njop_bangunan: 40_000_000,
+    npoptkp: 80_000_000,
+    layanan: 'APHB',
+    aphb_jumlah_pemegang_hak: 5,
+    aphb_jumlah_penerima: 1,
+  });
+  assert.equal(aphb1.aphb_aktif, true);
+  assert.equal(aphb1.aphb_n, 5);
+  assert.equal(aphb1.aphb_m, 1);
+  assert.equal(aphb1.luas_bumi_kena_pajak, 160);
+  assert.equal(aphb1.luas_bangunan_kena_pajak, 50);
+  assert.equal(aphb1.njop_bumi_total, 160_000_000);
+  assert.equal(aphb1.njop_bangunan_total, 40_000_000);
+  assert.equal(aphb1.njop_total, 200_000_000);
+  assert.equal(aphb1.npopkp, 120_000_000);
+  assert.equal(aphb1.bphtb, 6_000_000);
+
+  // 3. APHB dialihkan kepada 2 nama (n=5, m=2) -> (5 - 2)/5 x 200 = 120 m2 kena pajak, NJOP Bangunan tetap penuh 40.000.000
+  const aphb2 = calculateLandTaxes({
+    luas_m2: 200,
+    harga_per_m2: 0,
+    njop_bumi_m2: 1_000_000,
+    luas_bangunan_m2: 50,
+    njop_bangunan_m2: 800_000,
+    njop_bangunan: 40_000_000,
+    npoptkp: 80_000_000,
+    layanan: 'APHB',
+    aphb_jumlah_pemegang_hak: 5,
+    aphb_jumlah_penerima: 2,
+  });
+  assert.equal(aphb2.luas_bumi_kena_pajak, 120);
+  assert.equal(aphb2.luas_bangunan_kena_pajak, 50);
+  assert.equal(aphb2.njop_bumi_total, 120_000_000);
+  assert.equal(aphb2.njop_bangunan_total, 40_000_000);
+  assert.equal(aphb2.njop_total, 160_000_000);
+  assert.equal(aphb2.npopkp, 80_000_000);
+  assert.equal(aphb2.bphtb, 4_000_000);
+});
+
+

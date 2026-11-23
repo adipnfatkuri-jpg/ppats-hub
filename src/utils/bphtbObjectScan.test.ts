@@ -4,6 +4,7 @@ import {
   applyObjectScanPatchToTaxDraft,
   mergeObjectScanIntoBphtbForm,
   normalizeObjekRtRw,
+  resolveAccurateBangunanFromPbb,
   resolveAccurateLuasBumiM2,
   splitLokasiAndRtRw,
 } from './bphtbObjectScan';
@@ -150,4 +151,59 @@ test('applyObjectScanPatchToTaxDraft merges SPPT PBB then Sertipikat without wip
   assert.equal(afterSertipikat.luas_m2, 196);
   assert.equal(afterSertipikat.njop_bumi_m2, 464000);
   assert.equal(afterSertipikat.njop_bangunan, 35000000);
+});
+
+test('resolveAccurateBangunanFromPbb cross-checks SPPT luas_bangunan_m2, njop_bangunan_m2, and total NJOP Bangunan', () => {
+  // Derives njop_bangunan_m2 when SPPT OCR reads luas + total
+  assert.deepEqual(
+    resolveAccurateBangunanFromPbb({
+      nop: '33.09.110.005.015-0200.0',
+      tahun_pajak: '2026',
+      luas_bangunan_m2: 60,
+      njop_bumi_m2: 500000,
+      njop_bangunan: 48000000,
+    }),
+    {
+      luas_bangunan_m2: 60,
+      njop_bangunan_m2: 800000,
+      njop_bangunan: 48000000,
+    }
+  );
+
+  // Computes total accurately from luas x per-m2
+  assert.deepEqual(
+    resolveAccurateBangunanFromPbb({
+      nop: '33.09.110.005.015-0200.0',
+      tahun_pajak: '2026',
+      luas_bangunan_m2: 50,
+      njop_bumi_m2: 500000,
+      njop_bangunan_m2: 968000,
+      njop_bangunan: 0,
+    }),
+    {
+      luas_bangunan_m2: 50,
+      njop_bangunan_m2: 968000,
+      njop_bangunan: 48400000,
+    }
+  );
+
+  // Applies per-m2 building fields into TaxDraftPrefill
+  const patched = applyObjectScanPatchToTaxDraft(
+    {
+      layanan: 'AJB',
+      luas_m2: 200,
+      njop_bumi_m2: 600000,
+      luas_bangunan_m2: 0,
+      njop_bangunan_m2: 0,
+      njop_bangunan: 0,
+      harga_per_m2: 0,
+      nilai_transaksi_override: null,
+      npoptkp: 80000000,
+    },
+    { luas_bangunan_m2: 50, njop_bangunan_m2: 968000 },
+    'sppt'
+  );
+  assert.equal(patched.luas_bangunan_m2, 50);
+  assert.equal(patched.njop_bangunan_m2, 968000);
+  assert.equal(patched.njop_bangunan, 48400000);
 });
