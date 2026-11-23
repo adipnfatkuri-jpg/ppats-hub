@@ -160,6 +160,7 @@ service cloud.firestore {
         && data.keys().hasOnly([
           'officeId', 'nama_kecamatan', 'nama_kabupaten', 'nama_provinsi',
           'nama_ppats', 'jabatan_ppats', 'nip_ppats',
+          'nik_ppats', 'tempat_lahir_ppats', 'tanggal_lahir_ppats', 'alamat_ppats',
           'sk_ppats_nomor', 'sk_ppats_tanggal', 'sk_ppats_penerbit',
           'alamat_kantor', 'telepon_kantor',
           'daftar_saksi', 'daftar_kuasa_bpn', 'profil_saksi', 'profil_kuasa',
@@ -174,6 +175,10 @@ service cloud.firestore {
         && isValidString(data.nama_ppats, 0, 160)
         && isValidString(data.jabatan_ppats, 0, 160)
         && isValidString(data.nip_ppats, 0, 80)
+        && isValidOptionalString(data, 'nik_ppats', 40)
+        && isValidOptionalString(data, 'tempat_lahir_ppats', 100)
+        && isValidOptionalString(data, 'tanggal_lahir_ppats', 40)
+        && isValidOptionalString(data, 'alamat_ppats', 400)
         && isValidOptionalString(data, 'sk_ppats_nomor', 160)
         && isValidOptionalString(data, 'sk_ppats_tanggal', 60)
         && isValidOptionalString(data, 'sk_ppats_penerbit', 200)
@@ -212,7 +217,7 @@ service cloud.firestore {
         && isValidString(data.kode_berkas, 1, 80)
         && isValidString(data.tanggal_masuk, 0, 40)
         && data.layanan in [
-          'AJB', 'APHB', 'Akta Hibah', 'Turun Waris',
+          'AJB', 'APHB', 'Akta Hibah', 'Turun Waris', 'Waris C',
           'Pemecahan', 'Ukur Ulang', 'Ralat Data',
           'Pengecekan Sertipikat', 'Validasi Sertipikat',
           'Analisis Bidang', 'Permohonan PKKPR',
@@ -426,6 +431,7 @@ service cloud.firestore {
           && incoming().diff(existing()).affectedKeys().hasOnly([
             'nama_kecamatan', 'nama_kabupaten', 'nama_provinsi',
             'nama_ppats', 'jabatan_ppats', 'nip_ppats',
+            'nik_ppats', 'tempat_lahir_ppats', 'tanggal_lahir_ppats', 'alamat_ppats',
             'sk_ppats_nomor', 'sk_ppats_tanggal', 'sk_ppats_penerbit',
             'alamat_kantor', 'telepon_kantor',
             'daftar_saksi', 'daftar_kuasa_bpn', 'profil_saksi', 'profil_kuasa',

@@ -147,6 +147,18 @@ export function buildCloudOfficeConfigPayload(
   if (settings.nama_provinsi !== undefined) {
     payload.nama_provinsi = clampString(settings.nama_provinsi, 120);
   }
+  if (settings.nik_ppats !== undefined) {
+    payload.nik_ppats = clampString(settings.nik_ppats, 40);
+  }
+  if (settings.tempat_lahir_ppats !== undefined) {
+    payload.tempat_lahir_ppats = clampString(settings.tempat_lahir_ppats, 100);
+  }
+  if (settings.tanggal_lahir_ppats !== undefined) {
+    payload.tanggal_lahir_ppats = clampString(settings.tanggal_lahir_ppats, 40);
+  }
+  if (settings.alamat_ppats !== undefined) {
+    payload.alamat_ppats = clampString(settings.alamat_ppats, 400);
+  }
   if (settings.sk_ppats_nomor !== undefined) {
     payload.sk_ppats_nomor = clampString(settings.sk_ppats_nomor, 160);
   }
@@ -225,6 +237,22 @@ function docDataToOfficeSettings(data: Record<string, unknown>): OfficeSettings 
     nama_ppats: String(data.nama_ppats ?? DEFAULT_OFFICE_SETTINGS.nama_ppats),
     jabatan_ppats: String(data.jabatan_ppats ?? DEFAULT_OFFICE_SETTINGS.jabatan_ppats),
     nip_ppats: String(data.nip_ppats ?? DEFAULT_OFFICE_SETTINGS.nip_ppats),
+    nik_ppats:
+      typeof data.nik_ppats === 'string'
+        ? data.nik_ppats
+        : DEFAULT_OFFICE_SETTINGS.nik_ppats,
+    tempat_lahir_ppats:
+      typeof data.tempat_lahir_ppats === 'string'
+        ? data.tempat_lahir_ppats
+        : DEFAULT_OFFICE_SETTINGS.tempat_lahir_ppats,
+    tanggal_lahir_ppats:
+      typeof data.tanggal_lahir_ppats === 'string'
+        ? data.tanggal_lahir_ppats
+        : DEFAULT_OFFICE_SETTINGS.tanggal_lahir_ppats,
+    alamat_ppats:
+      typeof data.alamat_ppats === 'string'
+        ? data.alamat_ppats
+        : DEFAULT_OFFICE_SETTINGS.alamat_ppats,
     sk_ppats_nomor:
       typeof data.sk_ppats_nomor === 'string'
         ? data.sk_ppats_nomor

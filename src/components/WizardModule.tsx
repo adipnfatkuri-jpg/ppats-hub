@@ -96,6 +96,10 @@ import {
   mergeWarisCScanIntoState,
 } from '../utils/warisScanHelper';
 import {
+  buildPpatsSettingsPatchFromNonAkta,
+  resolveDefaultPpatsIdentity,
+} from '../utils/ppatsProfileHelper';
+import {
   AKTA_SERVICE_TYPES,
   NON_AKTA_SERVICE_TYPES,
   calculateLandTaxes,
@@ -132,6 +136,7 @@ interface WizardModuleProps {
   settings: OfficeSettings;
   customTemplates: Partial<Record<TemplateDocKey, CustomTemplateEntry>>;
   onSaveRecord: (record: BerkasRecord) => Promise<void>;
+  onSaveSettings?: (next: OfficeSettings) => Promise<void>;
   onCancelEdit: () => void;
   onFinishToDashboard: (savedCode: string) => void;
   onFinishAndCreateNew: (savedCode: string) => void;
@@ -317,10 +322,18 @@ function createDefaultNonAkta(
     analisis_alasan_tabel: 'dihibahkan ke anak',
     analisis_rencana_jalan_luas_m2: 0,
     pengecekan_kuasa_mode: 'ppats',
-    ppats_ttl: '',
-    ppats_nik: '',
-    ppats_pekerjaan: `Camat ${_kecName.replace(/^Kecamatan\s+/i, '').trim() || '-'} / PPATS`,
-    ppats_alamat: settings.alamat_kantor || '',
+    ...(() => {
+      const ppatsDef = resolveDefaultPpatsIdentity({
+        ...settings,
+        nama_kecamatan: _kecName || settings.nama_kecamatan,
+      });
+      return {
+        ppats_ttl: ppatsDef.ttl,
+        ppats_nik: ppatsDef.nik,
+        ppats_pekerjaan: ppatsDef.pekerjaan,
+        ppats_alamat: ppatsDef.alamat,
+      };
+    })(),
     pkkpr_nomor_surat: '',
     pkkpr_lampiran: '1 (Satu) Berkas',
     pkkpr_jenis_kegiatan: 'Non Berusaha',
@@ -354,6 +367,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
   settings,
   customTemplates,
   onSaveRecord,
+  onSaveSettings,
   onCancelEdit,
   onFinishToDashboard,
   onFinishAndCreateNew,
@@ -361,6 +375,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
   onOpenTaxCalculator,
   onNotify,
 }) => {
+  const [savingPpatsProfile, setSavingPpatsProfile] = useState(false);
   const today = useMemo(() => todayDdMmYyyy(), []);
   const nextSuggestion = useMemo(
     () => suggestNextAktaNumber(existingRecords, today),
@@ -4265,67 +4280,119 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       </div>
 
                       {(nonAkta.pengecekan_kuasa_mode ?? 'ppats') === 'ppats' && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                          <div>
-                            <label htmlFor="cek-ppats-ttl" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
-                              Tempat / Tanggal Lahir PPATS (Opsional)
-                            </label>
-                            <input
-                              id="cek-ppats-ttl"
-                              type="text"
-                              value={nonAkta.ppats_ttl ?? ''}
-                              onChange={(e) =>
-                                setNonAkta({ ...nonAkta, ppats_ttl: e.target.value })
-                              }
-                              placeholder="Contoh: Boyolali, 12-04-1978"
-                              className="input-airy w-full px-2.5 py-1.5"
-                            />
+                        <div className="space-y-3 pt-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label htmlFor="cek-ppats-ttl" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                Tempat / Tanggal Lahir PPATS (Opsional)
+                              </label>
+                              <input
+                                id="cek-ppats-ttl"
+                                type="text"
+                                value={nonAkta.ppats_ttl ?? ''}
+                                onChange={(e) =>
+                                  setNonAkta({ ...nonAkta, ppats_ttl: e.target.value })
+                                }
+                                placeholder="Contoh: Boyolali, 12-04-1978"
+                                className="input-airy w-full px-2.5 py-1.5"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="cek-ppats-nik" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                Nomor KTP (NIK) PPATS (Opsional)
+                              </label>
+                              <input
+                                id="cek-ppats-nik"
+                                type="text"
+                                value={nonAkta.ppats_nik ?? ''}
+                                onChange={(e) =>
+                                  setNonAkta({ ...nonAkta, ppats_nik: e.target.value })
+                                }
+                                placeholder="3309..."
+                                className="input-airy w-full px-2.5 py-1.5 font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="cek-ppats-pekerjaan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                Pekerjaan / Jabatan PPATS
+                              </label>
+                              <input
+                                id="cek-ppats-pekerjaan"
+                                type="text"
+                                value={nonAkta.ppats_pekerjaan ?? ''}
+                                onChange={(e) =>
+                                  setNonAkta({ ...nonAkta, ppats_pekerjaan: e.target.value })
+                                }
+                                placeholder={`Camat ${(settings.nama_kecamatan || '').replace(/^Kecamatan\s+/i, '')} / PPATS`}
+                                className="input-airy w-full px-2.5 py-1.5"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="cek-ppats-alamat" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
+                                Alamat Kantor / Domisili PPATS
+                              </label>
+                              <input
+                                id="cek-ppats-alamat"
+                                type="text"
+                                value={nonAkta.ppats_alamat ?? ''}
+                                onChange={(e) =>
+                                  setNonAkta({ ...nonAkta, ppats_alamat: e.target.value })
+                                }
+                                placeholder={settings.alamat_ppats || settings.alamat_kantor}
+                                className="input-airy w-full px-2.5 py-1.5"
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <label htmlFor="cek-ppats-nik" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
-                              Nomor KTP (NIK) PPATS (Opsional)
-                            </label>
-                            <input
-                              id="cek-ppats-nik"
-                              type="text"
-                              value={nonAkta.ppats_nik ?? ''}
-                              onChange={(e) =>
-                                setNonAkta({ ...nonAkta, ppats_nik: e.target.value })
-                              }
-                              placeholder="3309..."
-                              className="input-airy w-full px-2.5 py-1.5 font-mono"
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor="cek-ppats-pekerjaan" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
-                              Pekerjaan / Jabatan PPATS
-                            </label>
-                            <input
-                              id="cek-ppats-pekerjaan"
-                              type="text"
-                              value={nonAkta.ppats_pekerjaan ?? ''}
-                              onChange={(e) =>
-                                setNonAkta({ ...nonAkta, ppats_pekerjaan: e.target.value })
-                              }
-                              placeholder={`Camat ${(settings.nama_kecamatan || '').replace(/^Kecamatan\s+/i, '')} / PPATS`}
-                              className="input-airy w-full px-2.5 py-1.5"
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor="cek-ppats-alamat" className="block text-slate-700 dark:text-teal-100/90 font-medium mb-1">
-                              Alamat Kantor / Domisili PPATS
-                            </label>
-                            <input
-                              id="cek-ppats-alamat"
-                              type="text"
-                              value={nonAkta.ppats_alamat ?? ''}
-                              onChange={(e) =>
-                                setNonAkta({ ...nonAkta, ppats_alamat: e.target.value })
-                              }
-                              placeholder={settings.alamat_kantor}
-                              className="input-airy w-full px-2.5 py-1.5"
-                            />
-                          </div>
+                          {onSaveSettings && (
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-teal-900/10 dark:border-teal-500/15">
+                              <span className="text-[11px] text-slate-500 dark:text-teal-200/70">
+                                Simpan NIK, TTL &amp; Alamat ini sebagai default kantor agar otomatis terisi di berkas berikutnya.
+                              </span>
+                              <button
+                                type="button"
+                                disabled={savingPpatsProfile}
+                                onClick={async () => {
+                                  setSavingPpatsProfile(true);
+                                  try {
+                                    const nextSettings = buildPpatsSettingsPatchFromNonAkta(
+                                      settings,
+                                      {
+                                        nama_ppats: akta.nama_ppats,
+                                        nip_ppats: akta.nip_ppats,
+                                        ppats_nik: nonAkta.ppats_nik,
+                                        ppats_ttl: nonAkta.ppats_ttl,
+                                        ppats_alamat: nonAkta.ppats_alamat,
+                                      }
+                                    );
+                                    await onSaveSettings(nextSettings);
+                                    onNotify(
+                                      'Data PPATS (NIK, Tanggal Lahir & Alamat) berhasil disimpan ke Profil Kantor.',
+                                      'success'
+                                    );
+                                  } catch (err) {
+                                    onNotify(
+                                      err instanceof Error
+                                        ? err.message
+                                        : 'Gagal menyimpan data PPATS ke Profil Kantor.',
+                                      'error'
+                                    );
+                                  } finally {
+                                    setSavingPpatsProfile(false);
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-teal-600/35 bg-white dark:bg-[#081E22] text-teal-800 dark:text-teal-200 hover:bg-teal-50 dark:hover:bg-[#103036] text-xs font-semibold transition-colors disabled:opacity-60"
+                              >
+                                {savingPpatsProfile ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Save className="w-3.5 h-3.5" />
+                                )}
+                                <span>
+                                  {savingPpatsProfile ? 'Menyimpan...' : 'Simpan ke Profil PPATS'}
+                                </span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

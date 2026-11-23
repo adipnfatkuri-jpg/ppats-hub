@@ -24,6 +24,7 @@ import {
 } from './indonesianFormatter';
 import { generateDefaultDocxBuffer } from './docxTemplates';
 import { buildNonAktaLampiranBuffer } from './nonAktaTemplates';
+import { formatPpatsTtl } from './ppatsProfileHelper';
 import { TEMPLATE_DOCS_META } from './seedData';
 import { isAktaService } from './taxAndAudit';
 
@@ -873,6 +874,13 @@ export function buildTemplateContext(
     jabatan_camat: jabatanCamat,
     jabatan_camat_upper: jabatanCamat.toUpperCase(),
     nip_ppats: record.akta.nip_ppats || settings.nip_ppats,
+    nik_ppats: settings.nik_ppats || '-',
+    tempat_lahir_ppats: settings.tempat_lahir_ppats || '-',
+    tanggal_lahir_ppats: settings.tanggal_lahir_ppats
+      ? formatTanggalDDMMYYYY(settings.tanggal_lahir_ppats) || settings.tanggal_lahir_ppats
+      : '-',
+    ttl_ppats: formatPpatsTtl(settings) || '-',
+    alamat_ppats: settings.alamat_ppats || settings.alamat_kantor || '-',
     sk_ppats_nomor: settings.sk_ppats_nomor || '-',
     sk_ppats_tanggal: settings.sk_ppats_tanggal || '-',
     sk_ppats_penerbit:

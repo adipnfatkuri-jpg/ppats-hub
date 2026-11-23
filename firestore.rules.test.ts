@@ -36,7 +36,7 @@ test('Dirty Dozen #6: PII isolation on /users/{userId} and /members/{memberUid}'
 });
 
 test('Dirty Dozen #7, #8, #9: Terminal state locking, immutable ownership, and strict request.time timestamps', () => {
-  assert.match(rulesText, /existing\(\)\.status != '5\. Selesai'/);
+  assert.match(rulesText, /!\(existing\(\)\.status in \['5\. Selesai', '11\. Selesai'\]\)/);
   assert.match(rulesText, /incoming\(\)\.createdByUid == existing\(\)\.createdByUid/);
   assert.match(rulesText, /incoming\(\)\.createdAt == existing\(\)\.createdAt/);
   assert.match(rulesText, /incoming\(\)\.createdAt == request\.time/);
@@ -70,3 +70,21 @@ test('Blueprint synchronization: all collections in firebase-blueprint.json have
   assert.match(rulesText, /match \/berkas\/\{berkasId\}/);
   assert.match(rulesText, /match \/templates\/\{templateKey\}/);
 });
+
+test('OfficeConfig PPATS personal identity fields & Waris C layanan stay synchronized between blueprint and rules', () => {
+  const officeProps = blueprint.entities?.OfficeConfig?.properties || {};
+  assert.equal(officeProps.nik_ppats?.maxLength, 40);
+  assert.equal(officeProps.tempat_lahir_ppats?.maxLength, 100);
+  assert.equal(officeProps.tanggal_lahir_ppats?.maxLength, 40);
+  assert.equal(officeProps.alamat_ppats?.maxLength, 400);
+
+  assert.match(rulesText, /isValidOptionalString\(data, 'nik_ppats', 40\)/);
+  assert.match(rulesText, /isValidOptionalString\(data, 'tempat_lahir_ppats', 100\)/);
+  assert.match(rulesText, /isValidOptionalString\(data, 'tanggal_lahir_ppats', 40\)/);
+  assert.match(rulesText, /isValidOptionalString\(data, 'alamat_ppats', 400\)/);
+
+  const layananEnum: string[] = blueprint.entities?.BerkasCloudRecord?.properties?.layanan?.enum || [];
+  assert.ok(layananEnum.includes('Waris C'));
+  assert.match(rulesText, /'Waris C'/);
+});
+

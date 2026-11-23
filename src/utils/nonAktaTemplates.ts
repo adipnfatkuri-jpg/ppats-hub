@@ -29,6 +29,7 @@ import {
 } from './indonesianFormatter';
 import { LAMPIRAN_MARGINS, PAPER_SIZE_F4_TWIPS } from './docxTemplates';
 import { resolveAnalisisBidangConfig } from './analisisBidangHelper';
+import { formatPpatsTtl } from './ppatsProfileHelper';
 import { buildWarisCBundle } from './warisCTemplates';
 
 const F4_FONT = 'Bookman Old Style';
@@ -3054,10 +3055,14 @@ function buildPengecekanSertipikatBundle(
   const penerima = isPpatsMode
     ? {
         nama: record.akta.nama_ppats || settings.nama_ppats || '-',
-        ttl: na?.ppats_ttl?.trim() || '-',
+        ttl: na?.ppats_ttl?.trim() || formatPpatsTtl(settings) || '-',
         pekerjaan: na?.ppats_pekerjaan?.trim() || `Camat ${kecClean || '-'} / PPATS`,
-        nik: na?.ppats_nik?.trim() || '-',
-        alamatSingkat: na?.ppats_alamat?.trim() || settings.alamat_kantor || '-',
+        nik: na?.ppats_nik?.trim() || settings.nik_ppats?.trim() || '-',
+        alamatSingkat:
+          na?.ppats_alamat?.trim() ||
+          settings.alamat_ppats?.trim() ||
+          settings.alamat_kantor ||
+          '-',
         nip: record.akta.nip_ppats || settings.nip_ppats || '-',
       }
     : {

@@ -318,6 +318,10 @@ export interface OfficeSettings {
   nama_ppats: string;
   jabatan_ppats: string;
   nip_ppats: string;
+  nik_ppats?: string;
+  tempat_lahir_ppats?: string;
+  tanggal_lahir_ppats?: string;
+  alamat_ppats?: string;
   sk_ppats_nomor?: string;
   sk_ppats_tanggal?: string;
   sk_ppats_penerbit?: string;

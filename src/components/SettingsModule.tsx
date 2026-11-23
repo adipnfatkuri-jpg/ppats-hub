@@ -27,7 +27,9 @@ import { SUPPORTED_TEMPLATE_TAGS } from '../utils/docxTemplates';
 import { scanPersonFromFiles } from '../utils/personScan';
 import { SCAN_DOC_FILE_ACCEPT } from '../utils/imageOptimizer';
 import { toScanUpperName } from '../utils/scanTextCase';
+import { mergeScannedKtpIntoPpatsSettings } from '../utils/ppatsProfileHelper';
 import { CloudTeamPanel, type CloudTeamPanelProps } from './CloudTeamPanel';
+import { DateInputId } from './DateInputId';
 import { GlossyIcon3D } from './TactileUI';
 
 interface SettingsModuleProps {
@@ -88,6 +90,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   const [expandedSaksiIdx, setExpandedSaksiIdx] = useState<number | null>(null);
   const [expandedKuasaIdx, setExpandedKuasaIdx] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [scanningPpats, setScanningPpats] = useState(false);
   const [scanningTarget, setScanningTarget] = useState<{
     kind: 'saksi' | 'kuasa';
     idx: number | 'new';
@@ -359,6 +362,31 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
     }
   };
 
+  const handleScanPpatsKtp = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = '';
+    if (fileList.length === 0) return;
+
+    setScanningPpats(true);
+    try {
+      const result = await scanPersonFromFiles(fileList, 'Pejabat PPATS');
+      const nextForm = mergeScannedKtpIntoPpatsSettings(form, result.person);
+      setForm(nextForm);
+      await onSaveSettings(nextForm);
+      onNotify(
+        `Scan KTP PPATS berhasil! NIK (${nextForm.nik_ppats || 'belum terbaca'}), TTL & Alamat domisili tersimpan.`,
+        'success'
+      );
+    } catch (err) {
+      onNotify(
+        err instanceof Error ? err.message : 'Gagal memindai KTP Pejabat PPATS.',
+        'error'
+      );
+    } finally {
+      setScanningPpats(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-start gap-3.5">
@@ -462,6 +490,93 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               onChange={(e) => setForm({ ...form, nip_ppats: e.target.value })}
               className="input-airy w-full px-3 py-2 text-sm font-mono"
             />
+          </div>
+          <div className="md:col-span-2 rounded-2xl border border-teal-900/12 dark:border-teal-500/20 bg-[#F6FBFA] dark:bg-[#0A2226] p-4 space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 border-b border-teal-900/10 dark:border-teal-500/15 pb-3">
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-teal-50">
+                  Identitas Pribadi PPATS (NIK, Tanggal Lahir &amp; Alamat Domisili)
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-teal-200/75 mt-0.5">
+                  Tersimpan permanen di profil kantor &amp; otomatis terisi pada Surat Kuasa Pengecekan Sertipikat serta template dokumen PPATS.
+                </p>
+              </div>
+              <label
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-teal-600/30 bg-white dark:bg-[#081E22] text-teal-800 dark:text-teal-200 hover:bg-teal-50 dark:hover:bg-[#103036] text-xs font-semibold cursor-pointer transition-colors whitespace-nowrap shrink-0 ${
+                  scanningPpats ? 'opacity-60 pointer-events-none' : ''
+                }`}
+              >
+                {scanningPpats ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <ScanLine className="w-3.5 h-3.5" />
+                )}
+                <span>{scanningPpats ? 'Memindai KTP...' : 'Scan KTP PPATS'}</span>
+                <input
+                  type="file"
+                  accept={SCAN_DOC_FILE_ACCEPT}
+                  disabled={scanningPpats}
+                  onChange={handleScanPpatsKtp}
+                  className="sr-only"
+                />
+              </label>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              <div>
+                <label htmlFor="set-nik-ppats" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
+                  NIK PPATS (KTP)
+                </label>
+                <input
+                  id="set-nik-ppats"
+                  type="text"
+                  maxLength={40}
+                  value={form.nik_ppats ?? ''}
+                  onChange={(e) => setForm({ ...form, nik_ppats: e.target.value })}
+                  placeholder="3309... (16 digit NIK)"
+                  className="input-airy w-full px-3 py-2 text-sm font-mono"
+                />
+              </div>
+              <div>
+                <label htmlFor="set-tempat-lahir-ppats" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
+                  Tempat Lahir PPATS
+                </label>
+                <input
+                  id="set-tempat-lahir-ppats"
+                  type="text"
+                  maxLength={100}
+                  value={form.tempat_lahir_ppats ?? ''}
+                  onChange={(e) => setForm({ ...form, tempat_lahir_ppats: e.target.value })}
+                  placeholder="Contoh: Boyolali"
+                  className="input-airy w-full px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="set-tanggal-lahir-ppats" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
+                  Tanggal Lahir PPATS
+                </label>
+                <DateInputId
+                  id="set-tanggal-lahir-ppats"
+                  value={form.tanggal_lahir_ppats ?? ''}
+                  onChange={(v) => setForm({ ...form, tanggal_lahir_ppats: v })}
+                  placeholder="DD-MM-YYYY"
+                  className="input-airy w-full px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="md:col-span-3">
+                <label htmlFor="set-alamat-ppats" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">
+                  Alamat Lengkap PPATS (Sesuai KTP / Domisili)
+                </label>
+                <input
+                  id="set-alamat-ppats"
+                  type="text"
+                  maxLength={400}
+                  value={form.alamat_ppats ?? ''}
+                  onChange={(e) => setForm({ ...form, alamat_ppats: e.target.value })}
+                  placeholder="Contoh: Dukuh Krajan RT 001/RW 002, Desa Sindon, Kecamatan Ngemplak, Kabupaten Boyolali"
+                  className="input-airy w-full px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
           </div>
           <div>
             <label htmlFor="set-provinsi" className="block text-xs font-medium text-slate-700 dark:text-teal-100/90 mb-1">

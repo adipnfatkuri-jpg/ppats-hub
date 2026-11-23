@@ -64,6 +64,7 @@ export const SUPPORTED_TEMPLATE_TAGS: TemplateTagDocItem[] = [
   { tag: '{{nilai_transaksi_rp}} / {{nilai_transaksi_terbilang}}', desc: 'Nilai transaksi/kesepakatan angka & terbilang' },
   { tag: '{{npop_rp}} / {{npoptkp_rp}} / {{bphtb_rp}} / {{bphtb_terbilang}} / {{pph_rp}} / {{pph_terbilang}}', desc: 'Rincian perhitungan BPHTB (5%) & PPh Final (2,5%)' },
   { tag: '{{nama_ppats}} / {{jabatan_ppats}} / {{nip_ppats}}', desc: 'Identitas Pejabat PPATS' },
+  { tag: '{{nik_ppats}} / {{ttl_ppats}} / {{tempat_lahir_ppats}} / {{tanggal_lahir_ppats}} / {{alamat_ppats}}', desc: 'NIK, Tempat/Tanggal Lahir & Alamat Domisili Pejabat PPATS' },
   { tag: '{{sk_ppats_nomor}} / {{sk_ppats_tanggal}} / {{sk_ppats_penerbit}}', desc: 'SK Pengangkatan PPATS dari Kakanwil BPN' },
   { tag: '{{nama_kecamatan}} / {{nama_kabupaten}} / {{nama_provinsi}} / {{alamat_kantor}} / {{telepon_kantor}}', desc: 'Profil wilayah kerja dan alamat kantor PPATS' },
   { tag: '{{kuasa_bpn_nama}} / {{kuasa_bpn_ttl}} / {{kuasa_bpn_pekerjaan}} / {{kuasa_bpn_nik}} / {{kuasa_bpn_alamat}}', desc: 'Identitas lengkap staf kuasa pengurusan di BPN' },

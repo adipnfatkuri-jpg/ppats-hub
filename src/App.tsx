@@ -780,6 +780,7 @@ export default function App() {
                 settings={settings}
                 customTemplates={customTemplates}
                 onSaveRecord={handleSaveRecord}
+                onSaveSettings={handleSaveSettings}
                 onCancelEdit={() => {
                   setEditingRecord(null);
                   setTaxPrefill(null);

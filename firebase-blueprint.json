@@ -212,6 +212,22 @@
           "type": "string",
           "maxLength": 80
         },
+        "nik_ppats": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "tempat_lahir_ppats": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "tanggal_lahir_ppats": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "alamat_ppats": {
+          "type": "string",
+          "maxLength": 400
+        },
         "sk_ppats_nomor": {
           "type": "string",
           "maxLength": 160
@@ -319,6 +335,7 @@
             "APHB",
             "Akta Hibah",
             "Turun Waris",
+            "Waris C",
             "Pemecahan",
             "Ukur Ulang",
             "Ralat Data",
