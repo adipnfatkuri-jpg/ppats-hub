@@ -3,11 +3,14 @@ import {
   BorderStyle,
   Document,
   Footer,
+  LeaderType,
   LineRuleType,
   Packer,
   PageBreak,
   PageNumber,
   Paragraph,
+  Tab,
+  TabStopType,
   Table,
   TableCell,
   TableLayoutType,
@@ -207,9 +210,220 @@ const THIN_BORDER = {
 const AKTA_CONTENT_WIDTH_DXA =
   PAPER_SIZE_A4_TWIPS.width - STANDARD_PAGE_MARGINS.left - STANDARD_PAGE_MARGINS.right;
 
+// Posisi tab-stop kanan dengan 20 twips (~0,35 mm) safety margin agar tidak pernah wrap di Word/LibreOffice/Docs
+const AKTA_TAB_RIGHT_DXA = AKTA_CONTENT_WIDTH_DXA - 20;
+
 // Jarak tanda tangan nyaman untuk menempelkan Meterai Rp 10.000 (~2,3 cm) + tanda tangan basah / stempel
 const SIGNATURE_SPACE_METERAI = 1440; // 1.0 inch = 2,54 cm
 const SIGNATURE_SPACE_STANDARD = 1320; // ~2,33 cm
+
+/**
+ * Paragraf Akta dengan garis hubung pengaman (`------`) otomatis rata tepi kanan
+ * menggunakan OOXML TabStop RIGHT + LeaderType.HYPHEN agar tidak pernah turun baris.
+ */
+function aktaDashParagraph(
+  text: string,
+  opts?: {
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+    align?: (typeof AlignmentType)[keyof typeof AlignmentType];
+    size?: number;
+    spaceAfter?: number;
+    spaceBefore?: number;
+    line?: number;
+    font?: string;
+    indentLeft?: number;
+    pageBreakBefore?: boolean;
+  }
+): Paragraph {
+  const size = opts?.size ?? BASIC_FONT_SIZE;
+  const font = opts?.font ?? AKTA_FONT;
+  return new Paragraph({
+    alignment: opts?.align ?? AlignmentType.JUSTIFIED,
+    pageBreakBefore: opts?.pageBreakBefore ?? false,
+    indent: opts?.indentLeft ? { left: opts.indentLeft } : undefined,
+    tabStops: [
+      {
+        type: TabStopType.RIGHT,
+        position: AKTA_TAB_RIGHT_DXA,
+        leader: LeaderType.HYPHEN,
+      },
+    ],
+    spacing: {
+      before: opts?.spaceBefore ?? 0,
+      after: opts?.spaceAfter ?? PARAGRAPH_AFTER_1_5,
+      line: opts?.line ?? LINE_SPACING_1_5,
+    },
+    children: [
+      new TextRun({
+        text,
+        bold: opts?.bold ?? false,
+        italics: opts?.italic ?? false,
+        underline: opts?.underline ? {} : undefined,
+        size,
+        font,
+      }),
+      new TextRun({
+        children: [new Tab()],
+        size,
+        font,
+      }),
+    ],
+  });
+}
+
+/**
+ * Paragraf multi-run Akta dengan garis hubung pengaman otomatis rata tepi kanan.
+ */
+function aktaDashRuns(
+  runs: Array<{ text: string; bold?: boolean; italic?: boolean; underline?: boolean; size?: number }>,
+  opts?: {
+    align?: (typeof AlignmentType)[keyof typeof AlignmentType];
+    spaceAfter?: number;
+    spaceBefore?: number;
+    line?: number;
+    indentLeft?: number;
+    font?: string;
+  }
+): Paragraph {
+  const font = opts?.font ?? AKTA_FONT;
+  return new Paragraph({
+    alignment: opts?.align ?? AlignmentType.JUSTIFIED,
+    indent: opts?.indentLeft ? { left: opts.indentLeft } : undefined,
+    tabStops: [
+      {
+        type: TabStopType.RIGHT,
+        position: AKTA_TAB_RIGHT_DXA,
+        leader: LeaderType.HYPHEN,
+      },
+    ],
+    spacing: {
+      before: opts?.spaceBefore ?? 0,
+      after: opts?.spaceAfter ?? PARAGRAPH_AFTER_1_5,
+      line: opts?.line ?? LINE_SPACING_1_5,
+    },
+    children: [
+      ...runs.map(
+        (r) =>
+          new TextRun({
+            text: r.text,
+            bold: r.bold ?? false,
+            italics: r.italic ?? false,
+            underline: r.underline ? {} : undefined,
+            size: r.size ?? BASIC_FONT_SIZE,
+            font,
+          })
+      ),
+      new TextRun({
+        children: [new Tab()],
+        size: BASIC_FONT_SIZE,
+        font,
+      }),
+    ],
+  });
+}
+
+/**
+ * Judul tengah diapit garis hubung simetris kiri-kanan (mis. `--- PIHAK PERTAMA ---`, `--- Pasal 1 ---`, `--- KHUSUS ---`)
+ * menggunakan TabStop CENTER + RIGHT dengan LeaderType.HYPHEN sehingga selalu tepat 1 baris penuh.
+ */
+export function aktaCenteredDashHeading(
+  label: string,
+  opts?: {
+    bold?: boolean;
+    underline?: boolean;
+    size?: number;
+    spaceBefore?: number;
+    spaceAfter?: number;
+    line?: number;
+    font?: string;
+    contentWidthDxa?: number;
+  }
+): Paragraph {
+  const size = opts?.size ?? BASIC_FONT_SIZE;
+  const font = opts?.font ?? AKTA_FONT;
+  const bold = opts?.bold ?? false;
+  const rightPos = (opts?.contentWidthDxa ?? AKTA_CONTENT_WIDTH_DXA) - 20;
+  const centerPos = Math.round(rightPos / 2);
+  const trimmed = label.trim();
+
+  const labelRuns: TextRun[] = opts?.underline
+    ? [
+        new TextRun({ text: ' ', bold, size, font }),
+        new TextRun({ text: trimmed, bold, underline: {}, size, font }),
+        new TextRun({ text: ' ', bold, size, font }),
+      ]
+    : [new TextRun({ text: ` ${trimmed} `, bold, size, font })];
+
+  return new Paragraph({
+    alignment: AlignmentType.LEFT,
+    tabStops: [
+      {
+        type: TabStopType.CENTER,
+        position: centerPos,
+        leader: LeaderType.HYPHEN,
+      },
+      {
+        type: TabStopType.RIGHT,
+        position: rightPos,
+        leader: LeaderType.HYPHEN,
+      },
+    ],
+    spacing: {
+      before: opts?.spaceBefore ?? 0,
+      after: opts?.spaceAfter ?? 60,
+      line: opts?.line ?? LINE_SPACING_1_5,
+    },
+    children: [
+      new TextRun({
+        children: [new Tab()],
+        bold,
+        size,
+        font,
+      }),
+      ...labelRuns,
+      new TextRun({
+        children: [new Tab()],
+        bold,
+        size,
+        font,
+      }),
+    ],
+  });
+}
+
+/**
+ * Baris daftar batas / letak tanah (`- Utara : ... ------`) dengan titik dua sejajar vertikal
+ * dan garis hubung pengaman rata tepi kanan.
+ */
+function aktaKeyValueDashLine(label: string, value: string, spaceAfter = 40): Paragraph {
+  return new Paragraph({
+    alignment: AlignmentType.LEFT,
+    indent: { left: 240 },
+    tabStops: [
+      {
+        type: TabStopType.LEFT,
+        position: 1900,
+      },
+      {
+        type: TabStopType.RIGHT,
+        position: AKTA_TAB_RIGHT_DXA,
+        leader: LeaderType.HYPHEN,
+      },
+    ],
+    spacing: {
+      after: spaceAfter,
+      line: LINE_SPACING_1_5,
+    },
+    children: [
+      new TextRun({ text: `-   ${label}`, size: BASIC_FONT_SIZE, font: AKTA_FONT }),
+      new TextRun({ children: [new Tab()], size: BASIC_FONT_SIZE, font: AKTA_FONT }),
+      new TextRun({ text: `: ${value} `, size: BASIC_FONT_SIZE, font: AKTA_FONT }),
+      new TextRun({ children: [new Tab()], size: BASIC_FONT_SIZE, font: AKTA_FONT }),
+    ],
+  });
+}
 
 function makeBorderlessRow(
   leftText: string,
@@ -372,12 +586,9 @@ function aktaFooter(): Footer {
 function pertanianPasal3Block(): Paragraph[] {
   return [
     p('{{#is_pertanian}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-    p('------------------------------------------ Pasal 3 ---------------------------------------', {
-      align: AlignmentType.CENTER,
-      spaceAfter: 60,
-    }),
-    p(
-      'Pihak Kedua dengan ini menyatakan bahwa perjanjian {{perbuatan_pertanian}} ini kepemilikan tanahnya tidak melanggar ketentuan maksimum penguasaan tanah menurut peraturan perundang-undangan yang berlaku sebagaimana tercantum dalam pernyataan tanggal : {{tanggal_pernyataan_pertanian}}.-----------------------------------------',
+    aktaCenteredDashHeading('Pasal 3', { spaceAfter: 60 }),
+    aktaDashParagraph(
+      'Pihak Kedua dengan ini menyatakan bahwa perjanjian {{perbuatan_pertanian}} ini kepemilikan tanahnya tidak melanggar ketentuan maksimum penguasaan tanah menurut peraturan perundang-undangan yang berlaku sebagaimana tercantum dalam pernyataan tanggal : {{tanggal_pernyataan_pertanian}}.',
       { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
     ),
     p('{{/is_pertanian}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
@@ -404,7 +615,7 @@ function buildAktaDocument(): Document {
           p('Nomor : {{nomor_akta}}', { bold: true, align: AlignmentType.CENTER, size: BASIC_FONT_SIZE, spaceAfter: 60 }),
           p('Lembar Pertama', { bold: true, align: AlignmentType.CENTER, size: BASIC_FONT_SIZE, spaceAfter: 180 }),
 
-          pRuns(
+          aktaDashRuns(
             [
               {
                 text: 'Pada hari ini, {{hari_akta}}, Tanggal {{tanggal_angka}} ({{tanggal_akta_huruf}}) {{bulan_akta}} Tahun {{tahun_angka}} ({{tahun_akta_huruf}}), hadir dihadapan Saya, ',
@@ -419,7 +630,7 @@ function buildAktaDocument(): Document {
               { text: ' dan berkantor di ' },
               { text: '{{nama_kecamatan}}, {{nama_kabupaten}}', bold: true },
               {
-                text: ' dengan dihadiri oleh saksi-saksi yang saya kenal dan akan disebut pada bagian akhir akta ini : -------------------------------------------------',
+                text: ' dengan dihadiri oleh saksi-saksi yang saya kenal dan akan disebut pada bagian akhir akta ini : ',
               },
             ],
             { align: AlignmentType.JUSTIFIED, spaceAfter: 140, line: LINE_SPACING_1_5 }
@@ -428,86 +639,85 @@ function buildAktaDocument(): Document {
           // ==================== PARA PIHAK (AJB / HIBAH: Pihak I & II; APHB: Terpisah I..XX+) ====================
           p('{{#is_not_aphb}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
           p('{{#pihak_pertama}}', { align: AlignmentType.LEFT, spaceAfter: 20, line: 240 }),
-          pRuns(
+          aktaDashRuns(
             [
               { text: '{{no_urut_pihak}}. ', bold: true },
               { text: '{{sebutan}} {{nama}}, ', bold: true },
               {
-                text: 'Warga Negara Indonesia, lahir di {{tempat_lahir}} pada tanggal {{tanggal_lahir}}, Pekerjaan {{pekerjaan}}, bertempat tinggal di {{alamat_lengkap}}. Pemegang Kartu Penduduk Nomor : {{nik}}.-------------------------------------------------------',
+                text: 'Warga Negara Indonesia, lahir di {{tempat_lahir}} pada tanggal {{tanggal_lahir}}, Pekerjaan {{pekerjaan}}, bertempat tinggal di {{alamat_lengkap}}. Pemegang Kartu Penduduk Nomor : {{nik}}.',
               },
             ],
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           p('{{/pihak_pertama}}', { align: AlignmentType.LEFT, spaceAfter: 20, line: 240 }),
 
-          p('Selaku {{pihak1_selaku}}, untuk selanjutnya dalam akta ini disebut : ---------------', {
+          aktaDashParagraph('Selaku {{pihak1_selaku}}, untuk selanjutnya dalam akta ini disebut : ', {
             align: AlignmentType.JUSTIFIED,
             indentLeft: 360,
             spaceAfter: 60,
           }),
-          p('--------------------------------------- PIHAK PERTAMA -------------------------------------', {
+          aktaCenteredDashHeading('PIHAK PERTAMA', {
             bold: true,
-            align: AlignmentType.CENTER,
             spaceAfter: 140,
           }),
 
           // PERSETUJUAN PASANGAN / TANPA PERSETUJUAN (untuk AJB/Hibah ditulis setelah Pihak I seperti contoh)
           p('{{#ada_persetujuan_pasangan}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
           p('{{#persetujuan_pasangan}}', { align: AlignmentType.LEFT, spaceAfter: 20, line: 240 }),
-          p(
-            'Menurut keterangannya dalam melakukan perbuatan hukum ini telah mendapatkan persetujuan dari Pasangannya yang bernama {{sebutan}} {{nama}}, Warga Negara Indonesia, lahir di {{tempat_lahir}} pada tanggal {{tanggal_lahir}}, Pekerjaan {{pekerjaan}}, bertempat tinggal di {{alamat_lengkap}}. Pemegang Kartu Penduduk Nomor : {{nik}}.-----------',
+          aktaDashParagraph(
+            'Menurut keterangannya dalam melakukan perbuatan hukum ini telah mendapatkan persetujuan dari Pasangannya yang bernama {{sebutan}} {{nama}}, Warga Negara Indonesia, lahir di {{tempat_lahir}} pada tanggal {{tanggal_lahir}}, Pekerjaan {{pekerjaan}}, bertempat tinggal di {{alamat_lengkap}}. Pemegang Kartu Penduduk Nomor : {{nik}}.',
             { align: AlignmentType.JUSTIFIED, indentLeft: 360, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           p('{{/persetujuan_pasangan}}', { align: AlignmentType.LEFT, spaceAfter: 20, line: 240 }),
           p('{{/ada_persetujuan_pasangan}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
 
           p('{{#tanpa_persetujuan}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          p(
-            '{{keterangan_tanpa_persetujuan}}-----------------------------------------------------------------',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 360, spaceAfter: 100, line: LINE_SPACING_1_5 }
-          ),
+          aktaDashParagraph('{{keterangan_tanpa_persetujuan}}', {
+            align: AlignmentType.JUSTIFIED,
+            indentLeft: 360,
+            spaceAfter: 100,
+            line: LINE_SPACING_1_5,
+          }),
           p('{{/tanpa_persetujuan}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
 
           // PIHAK KEDUA
           p('{{#pihak_kedua}}', { align: AlignmentType.LEFT, spaceAfter: 20, line: 240 }),
-          pRuns(
+          aktaDashRuns(
             [
               { text: '{{no_urut_pihak}}. ', bold: true },
               { text: '{{sebutan}} {{nama}}, ', bold: true },
               {
-                text: 'Warga Negara Indonesia, lahir di {{tempat_lahir}} pada tanggal {{tanggal_lahir}}, Pekerjaan {{pekerjaan}}, bertempat tinggal di {{alamat_lengkap}}. Pemegang Kartu Penduduk Nomor : {{nik}}.---------------------------------------------------------',
+                text: 'Warga Negara Indonesia, lahir di {{tempat_lahir}} pada tanggal {{tanggal_lahir}}, Pekerjaan {{pekerjaan}}, bertempat tinggal di {{alamat_lengkap}}. Pemegang Kartu Penduduk Nomor : {{nik}}.',
               },
             ],
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           p('{{/pihak_kedua}}', { align: AlignmentType.LEFT, spaceAfter: 20, line: 240 }),
 
-          p('Selaku {{pihak2_selaku}}, untuk selanjutnya dalam akta ini disebut : --------------', {
+          aktaDashParagraph('Selaku {{pihak2_selaku}}, untuk selanjutnya dalam akta ini disebut : ', {
             align: AlignmentType.JUSTIFIED,
             indentLeft: 360,
             spaceAfter: 60,
           }),
-          p('--------------------------------------- PIHAK KEDUA ----------------------------------------', {
+          aktaCenteredDashHeading('PIHAK KEDUA', {
             bold: true,
-            align: AlignmentType.CENTER,
             spaceAfter: 140,
           }),
 
           // Fallback jika ada Pihak III+ pada layanan non-APHB
           p('{{#pihak_lanjutan}}', { align: AlignmentType.LEFT, spaceAfter: 20, line: 240 }),
-          pRuns(
+          aktaDashRuns(
             [
               { text: '{{no_urut_pihak}}. ', bold: true },
               { text: '{{sebutan}} {{nama}}, ', bold: true },
               {
-                text: 'Warga Negara Indonesia, lahir di {{tempat_lahir}} pada tanggal {{tanggal_lahir}}, Pekerjaan {{pekerjaan}}, bertempat tinggal di {{alamat_lengkap}}. Pemegang Kartu Penduduk Nomor : {{nik}}.---------------------------------------------------------',
+                text: 'Warga Negara Indonesia, lahir di {{tempat_lahir}} pada tanggal {{tanggal_lahir}}, Pekerjaan {{pekerjaan}}, bertempat tinggal di {{alamat_lengkap}}. Pemegang Kartu Penduduk Nomor : {{nik}}.',
               },
             ],
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('-------------------------------------- {{peran_label_upper}} ---------------------------------------', {
+          aktaCenteredDashHeading('{{peran_label_upper}}', {
             bold: true,
-            align: AlignmentType.CENTER,
             spaceAfter: 140,
           }),
           p('{{/pihak_lanjutan}}', { align: AlignmentType.LEFT, spaceAfter: 20, line: 240 }),
@@ -517,464 +727,393 @@ function buildAktaDocument(): Document {
           // dan persetujuan / tanpa persetujuan ditulis SETELAH pihak terakhir
           p('{{#is_aphb}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
           p('{{#pihak_terpisah}}', { align: AlignmentType.LEFT, spaceAfter: 20, line: 240 }),
-          pRuns(
+          aktaDashRuns(
             [
               { text: '{{no_urut_pihak}}. ', bold: true },
               { text: '{{sebutan}} {{nama}}, ', bold: true },
               {
-                text: 'Warga Negara Indonesia, lahir di {{tempat_lahir}} pada tanggal {{tanggal_lahir}}, Pekerjaan {{pekerjaan}}, bertempat tinggal di {{alamat_lengkap}}. Pemegang Kartu Penduduk Nomor : {{nik}}.-------------------------------------------------------',
+                text: 'Warga Negara Indonesia, lahir di {{tempat_lahir}} pada tanggal {{tanggal_lahir}}, Pekerjaan {{pekerjaan}}, bertempat tinggal di {{alamat_lengkap}}. Pemegang Kartu Penduduk Nomor : {{nik}}.',
               },
             ],
             { align: AlignmentType.JUSTIFIED, spaceAfter: 80, line: LINE_SPACING_1_5 }
           ),
-          p('Untuk selanjutnya dalam akta ini disebut : ------------------------------------------------', {
+          aktaDashParagraph('Untuk selanjutnya dalam akta ini disebut : ', {
             align: AlignmentType.JUSTIFIED,
             indentLeft: 360,
             spaceAfter: 60,
           }),
-          p('-------------------------------------- {{peran_label_upper}} ---------------------------------------', {
+          aktaCenteredDashHeading('{{peran_label_upper}}', {
             bold: true,
-            align: AlignmentType.CENTER,
             spaceAfter: 120,
           }),
           p('{{/pihak_terpisah}}', { align: AlignmentType.LEFT, spaceAfter: 20, line: 240 }),
 
           p('{{#ada_persetujuan_pasangan}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
           p('{{#persetujuan_pasangan}}', { align: AlignmentType.LEFT, spaceAfter: 20, line: 240 }),
-          p(
-            'Menurut keterangannya dalam melakukan perbuatan hukum ini telah mendapatkan persetujuan dari Pasangannya yang bernama {{sebutan}} {{nama}}, Warga Negara Indonesia, lahir di {{tempat_lahir}} pada tanggal {{tanggal_lahir}}, Pekerjaan {{pekerjaan}}, bertempat tinggal di {{alamat_lengkap}}. Pemegang Kartu Penduduk Nomor : {{nik}}.-----------',
+          aktaDashParagraph(
+            'Menurut keterangannya dalam melakukan perbuatan hukum ini telah mendapatkan persetujuan dari Pasangannya yang bernama {{sebutan}} {{nama}}, Warga Negara Indonesia, lahir di {{tempat_lahir}} pada tanggal {{tanggal_lahir}}, Pekerjaan {{pekerjaan}}, bertempat tinggal di {{alamat_lengkap}}. Pemegang Kartu Penduduk Nomor : {{nik}}.',
             { align: AlignmentType.JUSTIFIED, indentLeft: 360, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           p('{{/persetujuan_pasangan}}', { align: AlignmentType.LEFT, spaceAfter: 20, line: 240 }),
           p('{{/ada_persetujuan_pasangan}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
 
           p('{{#tanpa_persetujuan}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          p(
-            '{{keterangan_tanpa_persetujuan}}-----------------------------------------------------------------',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 360, spaceAfter: 100, line: LINE_SPACING_1_5 }
-          ),
+          aktaDashParagraph('{{keterangan_tanpa_persetujuan}}', {
+            align: AlignmentType.JUSTIFIED,
+            indentLeft: 360,
+            spaceAfter: 100,
+            line: LINE_SPACING_1_5,
+          }),
           p('{{/tanpa_persetujuan}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
           p('{{/is_aphb}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
 
-          p(
-            'Para penghadap dikenal oleh saya, Pejabat Pembuat Akta Tanah Sementara {{jabatan_ppats}}. {{kalimat_perbuatan_pihak}}-----------------------------------------------------------------------------',
+          aktaDashParagraph(
+            'Para penghadap dikenal oleh saya, Pejabat Pembuat Akta Tanah Sementara {{jabatan_ppats}}. {{kalimat_perbuatan_pihak}}',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 120, line: LINE_SPACING_1_5 }
           ),
           p('{{#is_sertipikat_digital}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          p(
-            '{{jenis_hak}} Nibel : {{nib}}/Desa {{desa_tanah}}, Kecamatan {{kecamatan_tanah}}, {{kabupaten_tanah}} atas sebidang tanah seluas : {{luas_m2}} M2 ({{luas_terbilang}}) ---------------------------------------------------------------------------',
+          aktaDashParagraph(
+            '{{jenis_hak}} Nibel : {{nib}}/Desa {{desa_tanah}}, Kecamatan {{kecamatan_tanah}}, {{kabupaten_tanah}} atas sebidang tanah seluas : {{luas_m2}} M2 ({{luas_terbilang}}) ',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           p('{{/is_sertipikat_digital}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
           p('{{#is_sertipikat_analog}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          p(
-            '{{jenis_hak}} Nomor : {{nomor_hak_analog}} /Desa {{desa_tanah}}, Kecamatan {{kecamatan_tanah}}, {{kabupaten_tanah}} atas sebidang tanah sebagaimana diuraikan dalam Surat Ukur tanggal : {{surat_ukur_tanggal}} , Nomor: {{surat_ukur_nomor}}, seluas : {{luas_m2}} M2 ({{luas_terbilang}}) Dengan Nomor Identifikasi Bidang tanah (NIB) : {{nib}}---------------------------------------------------------------------------',
+          aktaDashParagraph(
+            '{{jenis_hak}} Nomor : {{nomor_hak_analog}} /Desa {{desa_tanah}}, Kecamatan {{kecamatan_tanah}}, {{kabupaten_tanah}} atas sebidang tanah sebagaimana diuraikan dalam Surat Ukur tanggal : {{surat_ukur_tanggal}} , Nomor: {{surat_ukur_nomor}}, seluas : {{luas_m2}} M2 ({{luas_terbilang}}) Dengan Nomor Identifikasi Bidang tanah (NIB) : {{nib}} ',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           p('{{/is_sertipikat_analog}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          p('Dengan batas-batas :-----------------------------------------------------------------', {
+          aktaDashParagraph('Dengan batas-batas : ', {
             align: AlignmentType.LEFT,
             spaceAfter: 60,
           }),
-          p('  -   Utara     : {{batas_utara}} ----------------------------------------------------', { align: AlignmentType.LEFT, spaceAfter: 40 }),
-          p('  -   Timur     : {{batas_timur}} ----------------------------------------------------', { align: AlignmentType.LEFT, spaceAfter: 40 }),
-          p('  -   Selatan   : {{batas_selatan}} --------------------------------------------------', { align: AlignmentType.LEFT, spaceAfter: 40 }),
-          p('  -   Barat     : {{batas_barat}} ----------------------------------------------------', { align: AlignmentType.LEFT, spaceAfter: 100 }),
+          aktaKeyValueDashLine('Utara', '{{batas_utara}}', 40),
+          aktaKeyValueDashLine('Timur', '{{batas_timur}}', 40),
+          aktaKeyValueDashLine('Selatan', '{{batas_selatan}}', 40),
+          aktaKeyValueDashLine('Barat', '{{batas_barat}}', 100),
 
-          p('Berdasarkan alat-alat bukti berupa : -------------------------------------------', {
+          aktaDashParagraph('Berdasarkan alat-alat bukti berupa : ', {
             align: AlignmentType.LEFT,
             spaceAfter: 60,
           }),
           p('{{#is_sertipikat_digital}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          p('1. Sertipikat {{jenis_hak}} Nibel : {{nib}} Desa {{desa_tanah}}------------', {
+          aktaDashParagraph('1. Sertipikat {{jenis_hak}} Nibel : {{nib}} Desa {{desa_tanah}}.', {
             align: AlignmentType.JUSTIFIED,
             indentLeft: 200,
             spaceAfter: 40,
           }),
           p('{{/is_sertipikat_digital}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
           p('{{#is_sertipikat_analog}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          p('1. Sertipikat {{jenis_hak}} Nomor : {{nomor_hak_analog}} NIB : {{nib}} Surat Ukur Tgl. {{surat_ukur_tanggal}} Nomor : {{surat_ukur_nomor}} Desa {{desa_tanah}}------------', {
-            align: AlignmentType.JUSTIFIED,
-            indentLeft: 200,
-            spaceAfter: 40,
-          }),
+          aktaDashParagraph(
+            '1. Sertipikat {{jenis_hak}} Nomor : {{nomor_hak_analog}} NIB : {{nib}} Surat Ukur Tgl. {{surat_ukur_tanggal}} Nomor : {{surat_ukur_nomor}} Desa {{desa_tanah}}.',
+            {
+              align: AlignmentType.JUSTIFIED,
+              indentLeft: 200,
+              spaceAfter: 40,
+            }
+          ),
           p('{{/is_sertipikat_analog}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          p('2. Foto copy Kartu Tanda Penduduk dan Kartu Keluarga Para Penghadap.', {
+          aktaDashParagraph('2. Foto copy Kartu Tanda Penduduk dan Kartu Keluarga Para Penghadap.', {
             align: AlignmentType.JUSTIFIED,
             indentLeft: 200,
             spaceAfter: 40,
           }),
-          p('3. Foto copy SPPT PBB NOP: {{nop}} Tahun {{tahun_pajak}}.-----------------------------', {
+          aktaDashParagraph('3. Foto copy SPPT PBB NOP: {{nop}} Tahun {{tahun_pajak}}.', {
             align: AlignmentType.JUSTIFIED,
             indentLeft: 200,
             spaceAfter: 40,
           }),
-          p('4. SSPD BPHTB, SSP PPh.--------------------------------------------------------------------------', {
+          aktaDashParagraph('4. SSPD BPHTB, SSP PPh.', {
             align: AlignmentType.JUSTIFIED,
             indentLeft: 200,
             spaceAfter: 100,
           }),
 
-          p('Terletak di : -------------------------------------------------------------------------', { align: AlignmentType.LEFT, spaceAfter: 40 }),
-          p('  -   Propinsi  : {{provinsi_tanah}} --------------------------------------------------', { align: AlignmentType.LEFT, spaceAfter: 40 }),
-          p('  -   Kabupaten : {{kabupaten_tanah}} ------------------------------------------------', { align: AlignmentType.LEFT, spaceAfter: 40 }),
-          p('  -   Kecamatan : {{kecamatan_tanah}} ------------------------------------------------', { align: AlignmentType.LEFT, spaceAfter: 40 }),
-          p('  -   Desa      : {{desa_tanah}} -----------------------------------------------------', { align: AlignmentType.LEFT, spaceAfter: 100 }),
+          aktaDashParagraph('Terletak di : ', { align: AlignmentType.LEFT, spaceAfter: 40 }),
+          aktaKeyValueDashLine('Propinsi', '{{provinsi_tanah}}', 40),
+          aktaKeyValueDashLine('Kabupaten', '{{kabupaten_tanah}}', 40),
+          aktaKeyValueDashLine('Kecamatan', '{{kecamatan_tanah}}', 40),
+          aktaKeyValueDashLine('Desa', '{{desa_tanah}}', 100),
 
           // ==================== 1. KLAUSUL & PASAL KHUSUS APHB ====================
           p('{{#is_aphb}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          p(
-            'Selanjutnya dalam akta ini disebut “Hak Bersama”. Para pihak selanjutnya menerangkan bahwa mereka telah sepakat untuk mengakhiri pemilikan Hak Bersama tersebut, dan untuk dengan ini menyepakati pembagian Hak Bersama tersebut sebagai berikut : ------------------------------------------------',
+          aktaDashParagraph(
+            'Selanjutnya dalam akta ini disebut “Hak Bersama”. Para pihak selanjutnya menerangkan bahwa mereka telah sepakat untuk mengakhiri pemilikan Hak Bersama tersebut, dan untuk dengan ini menyepakati pembagian Hak Bersama tersebut sebagai berikut : ',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           p('{{#is_sertipikat_digital}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          pRuns(
+          aktaDashRuns(
             [
               { text: '{{penerima_aphb_klausul}}', bold: true },
               {
-                text: ', memperoleh dan menjadi {{penerima_aphb_status_hak}} dari {{jenis_hak}} atas sebidang tanah Nibel : {{nib}} / Desa {{desa_tanah}}----------------------------------------------',
+                text: ', memperoleh dan menjadi {{penerima_aphb_status_hak}} dari {{jenis_hak}} atas sebidang tanah Nibel : {{nib}} / Desa {{desa_tanah}} ',
               },
             ],
             { align: AlignmentType.JUSTIFIED, spaceAfter: 60, line: LINE_SPACING_1_5 }
           ),
           p('{{/is_sertipikat_digital}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
           p('{{#is_sertipikat_analog}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          pRuns(
+          aktaDashRuns(
             [
               { text: '{{penerima_aphb_klausul}}', bold: true },
               {
-                text: ', memperoleh dan menjadi {{penerima_aphb_status_hak}} dari {{jenis_hak}} Nomor : {{nomor_hak_analog}} / NIB : {{nib}} / Desa {{desa_tanah}}----------------------------------------------',
+                text: ', memperoleh dan menjadi {{penerima_aphb_status_hak}} dari {{jenis_hak}} Nomor : {{nomor_hak_analog}} / NIB : {{nib}} / Desa {{desa_tanah}} ',
               },
             ],
             { align: AlignmentType.JUSTIFIED, spaceAfter: 60, line: LINE_SPACING_1_5 }
           ),
           p('{{/is_sertipikat_analog}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          p('sebagaimana telah diuraikan di atas .---------------------------------------------', {
+          aktaDashParagraph('sebagaimana telah diuraikan di atas.', {
             align: AlignmentType.JUSTIFIED,
             spaceAfter: 100,
             line: LINE_SPACING_1_5,
           }),
-          p('Pembagian Hak Bersama diatas juga meliputi : --------------------------------', {
+          aktaDashParagraph('Pembagian Hak Bersama diatas juga meliputi : ', {
             align: AlignmentType.LEFT,
             spaceAfter: 60,
           }),
-          p(
-            'Tanah beserta segala sesuatu yang tumbuh, berdiri dan tertanam diatas tanah tersebut tanpa terkecuali. ---------------------------------------------------',
+          aktaDashParagraph(
+            'Tanah beserta segala sesuatu yang tumbuh, berdiri dan tertanam diatas tanah tersebut tanpa terkecuali.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('Selanjutnya para pihak menerangkan bahwa : ---------------------------------', {
+          aktaDashParagraph('Selanjutnya para pihak menerangkan bahwa : ', {
             align: AlignmentType.LEFT,
             spaceAfter: 60,
           }),
-          p(
-            'Dalam pembagian hak bersama ini tidak terdapat kelebihan nilai yang diperoleh oleh salah satu pihak. --------------------------------------------------',
+          aktaDashParagraph(
+            'Dalam pembagian hak bersama ini tidak terdapat kelebihan nilai yang diperoleh oleh salah satu pihak.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('Pembagian hak bersama ini dilakukan dengan syarat-syarat lebih lanjut sebagai berikut : ----------------------------------------------------------------------', {
+          aktaDashParagraph('Pembagian hak bersama ini dilakukan dengan syarat-syarat lebih lanjut sebagai berikut : ', {
             align: AlignmentType.JUSTIFIED,
             spaceAfter: 100,
             line: LINE_SPACING_1_5,
           }),
 
-          p('------------------------------------------Pasal 1----------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Mulai hari ini yang diuraikan dalam akta ini telah menjadi milik masing-masing pihak yang memperolehnya dan karenanya segala keuntungan yang didapat dari, dan segala kerugian / beban atas hak tersebut diatas menjadi hak / beban pihak yang memperoleh hak.-----------------------------',
+          aktaCenteredDashHeading('Pasal 1', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Mulai hari ini yang diuraikan dalam akta ini telah menjadi milik masing-masing pihak yang memperolehnya dan karenanya segala keuntungan yang didapat dari, dan segala kerugian / beban atas hak tersebut diatas menjadi hak / beban pihak yang memperoleh hak.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('------------------------------------------Pasal 2.---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Hak tersebut diterima oleh masing-masing pihak yang memperolehnya menurut keadaan sebagaimana didapatinya pada hari ini dan masing-masing pihak dengan ini menyatakan tidak akan mengadakan segala tuntutan mengenai kerusakan dan / atau cacat yang tampak dan / atau tidak tampak. -------------------------------------------------------------------------',
+          aktaCenteredDashHeading('Pasal 2', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Hak tersebut diterima oleh masing-masing pihak yang memperolehnya menurut keadaan sebagaimana didapatinya pada hari ini dan masing-masing pihak dengan ini menyatakan tidak akan mengadakan segala tuntutan mengenai kerusakan dan / atau cacat yang tampak dan / atau tidak tampak.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           ...pertanianPasal3Block(),
-          p('------------------------------------------Pasal {{no_pasal_pengukuran}}.---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Dalam hal terdapat perbedaan luas tanah yang diuraikan dalam pembagian hak bersama ini dengan hasil pengukuran oleh instansi Badan Pertanahan {{kabupaten_tanah}}, maka para pihak akan menerima hasil pengukuran instansi Badan Pertanahan {{kabupaten_tanah}} tersebut. ---------------------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_pengukuran}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Dalam hal terdapat perbedaan luas tanah yang diuraikan dalam pembagian hak bersama ini dengan hasil pengukuran oleh instansi Badan Pertanahan {{kabupaten_tanah}}, maka para pihak akan menerima hasil pengukuran instansi Badan Pertanahan {{kabupaten_tanah}} tersebut.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('------------------------------------------Pasal {{no_pasal_keabsahan}}.--------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Semua pihak menjamin bahwa surat tanda bukti hak atas tanahnya adalah satu-satunya yang sah, tidak pernah dipalsukan dan tidak pernah dibuat duplikatnya oleh instansi yang berwenang atas permintaannya. Para pihak menjamin bahwa pembagian tersebut di atas adalah kesepakatan bersama. Sehubungan dengan hal tersebut maka semua pihak menyatakan tegas membebaskan Pejabat Pembuat Akta Tanah Sementara dari segala tuntutan berupa apapun juga mengenai hal-hal tersebut. --------------------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_keabsahan}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Semua pihak menjamin bahwa surat tanda bukti hak atas tanahnya adalah satu-satunya yang sah, tidak pernah dipalsukan dan tidak pernah dibuat duplikatnya oleh instansi yang berwenang atas permintaannya. Para pihak menjamin bahwa pembagian tersebut di atas adalah kesepakatan bersama. Sehubungan dengan hal tersebut maka semua pihak menyatakan tegas membebaskan Pejabat Pembuat Akta Tanah Sementara dari segala tuntutan berupa apapun juga mengenai hal-hal tersebut.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('------------------------------------------Pasal {{no_pasal_domisili}}.---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Para pihak dalam hal ini dengan segala akibatnya memilih tempat kediaman hukum yang umum dan tidak berubah pada Kantor Panitera Pengadilan Negeri {{kabupaten_tanah}}.---------------------------------------------------------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_domisili}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Para pihak dalam hal ini dengan segala akibatnya memilih tempat kediaman hukum yang umum dan tidak berubah pada Kantor Panitera Pengadilan Negeri {{kabupaten_tanah}}.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('------------------------------------------Pasal {{no_pasal_biaya}}.---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Biaya pembuatan akta ini, uang saksi dan segala biaya mengenai peralihan hak ini, dibayar oleh pihak penerima.---------------------------------------------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_biaya}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Biaya pembuatan akta ini, uang saksi dan segala biaya mengenai peralihan hak ini, dibayar oleh pihak penerima.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           p('{{/is_aphb}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
 
           // ==================== 2. KLAUSUL & PASAL KHUSUS JUAL BELI (AJB) ====================
           p('{{#is_ajb}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          p('Jual beli ini meliputi pula : ------------------------------------------------------', { align: AlignmentType.LEFT, spaceAfter: 60 }),
-          p(
-            'Tanah dan bangunan, berikut segala sesuatu yang terdapat diatas bidang tanah hak tersebut yang menurut sifat, peruntukannya atau menurut penetapan Undang-Undang dapat dianggap sebagai barang tidak bergerak. Selanjutnya semua yang diuraikan di atas dalam akta ini disebut “Obyek Jual Beli” .-----------------------------------------------------------------------------',
+          aktaDashParagraph('Jual beli ini meliputi pula : ', { align: AlignmentType.LEFT, spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Tanah dan bangunan, berikut segala sesuatu yang terdapat diatas bidang tanah hak tersebut yang menurut sifat, peruntukannya atau menurut penetapan Undang-Undang dapat dianggap sebagai barang tidak bergerak. Selanjutnya semua yang diuraikan di atas dalam akta ini disebut “Obyek Jual Beli”.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 120, line: LINE_SPACING_1_5 }
           ),
-          p('Pihak Pertama dan Pihak Kedua menerangkan bahwa : -----------------------', { align: AlignmentType.LEFT, spaceAfter: 80 }),
-          p(
-            'a. Jual beli ini dilakukan dengan harga {{nilai_transaksi_rp}} ({{nilai_transaksi_terbilang}})----------------------------------------------------------------',
+          aktaDashParagraph('Pihak Pertama dan Pihak Kedua menerangkan bahwa : ', { align: AlignmentType.LEFT, spaceAfter: 80 }),
+          aktaDashParagraph(
+            'a. Jual beli ini dilakukan dengan harga {{nilai_transaksi_rp}} ({{nilai_transaksi_terbilang}}).',
             { indentLeft: 200, align: AlignmentType.JUSTIFIED, spaceAfter: 60, line: LINE_SPACING_1_5 }
           ),
-          p(
-            'b. Pihak Pertama mengaku telah menerima sepenuhnya uang tersebut diatas dari Pihak Kedua dan untuk penerimaan uang tersebut, akta ini berlaku pula sebagai tanda penerimaan yang sah (kwitansi).--------------',
+          aktaDashParagraph(
+            'b. Pihak Pertama mengaku telah menerima sepenuhnya uang tersebut diatas dari Pihak Kedua dan untuk penerimaan uang tersebut, akta ini berlaku pula sebagai tanda penerimaan yang sah (kwitansi).',
             { indentLeft: 200, align: AlignmentType.JUSTIFIED, spaceAfter: 60, line: LINE_SPACING_1_5 }
           ),
-          p('c. Jual beli ini dilakukan dengan syarat-syarat sebagai berikut : ------------', {
+          aktaDashParagraph('c. Jual beli ini dilakukan dengan syarat-syarat sebagai berikut : ', {
             align: AlignmentType.JUSTIFIED,
             indentLeft: 200,
             spaceAfter: 100,
           }),
 
-          p('------------------------------------------- Pasal 1 ---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Mulai hari ini obyek Jual Beli yang diuraikan dalam akta ini telah menjadi hak milik Pihak Kedua dan karenanya segala keuntungan yang didapat dari, dan segala kerugian/beban atas obyek Jual Beli tersebut di atas menjadi hak/beban Pihak Kedua.---------------------------------------------------',
+          aktaCenteredDashHeading('Pasal 1', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Mulai hari ini obyek Jual Beli yang diuraikan dalam akta ini telah menjadi hak milik Pihak Kedua dan karenanya segala keuntungan yang didapat dari, dan segala kerugian/beban atas obyek Jual Beli tersebut di atas menjadi hak/beban Pihak Kedua.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('----------------------------------------- Pasal 2 ----------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Pihak Pertama Menjamin, bahwa obyek Jual Beli tersebut diatas tidak tersangkut dalam satu sengketa, bebas dari sitaan, tidak terikat sebagai jaminan untuk sesuatu utang yang tidak tercatat dalam sertipikat, dan bebas dari beban-beban lain--------------------------------------------------------',
+          aktaCenteredDashHeading('Pasal 2', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Pihak Pertama Menjamin, bahwa obyek Jual Beli tersebut diatas tidak tersangkut dalam satu sengketa, bebas dari sitaan, tidak terikat sebagai jaminan untuk sesuatu utang yang tidak tercatat dalam sertipikat, dan bebas dari beban-beban lain.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           ...pertanianPasal3Block(),
-          p('------------------------------------------ Pasal {{no_pasal_pengukuran}} ----------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Dalam hal terdapat perbedaan luas tanah yang menjadi obyek Jual Beli dalam akta ini dengan hasil pengukuran oleh instansi Badan Pertanahan {{kabupaten_tanah}}, maka para pihak akan menerima hasil pengukuran instansi Badan Pertanahan {{kabupaten_tanah}} tersebut dengan tidak mempermasalahkan dan tidak akan saling mengadakan gugatan.-----------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_pengukuran}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Dalam hal terdapat perbedaan luas tanah yang menjadi obyek Jual Beli dalam akta ini dengan hasil pengukuran oleh instansi Badan Pertanahan {{kabupaten_tanah}}, maka para pihak akan menerima hasil pengukuran instansi Badan Pertanahan {{kabupaten_tanah}} tersebut dengan tidak mempermasalahkan dan tidak akan saling mengadakan gugatan.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('------------------------------------------ Pasal {{no_pasal_keabsahan}} --------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            '- Pihak pertama menjamin bahwa surat tanda bukti hak atas tanahnya adalah satu-satunya yang sah, tidak pernah dipalsukan dan tidak pernah dibuat duplikatnya oleh instansi yang berwenang atas permintaannya .--',
+          aktaCenteredDashHeading('Pasal {{no_pasal_keabsahan}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            '- Pihak pertama menjamin bahwa surat tanda bukti hak atas tanahnya adalah satu-satunya yang sah, tidak pernah dipalsukan dan tidak pernah dibuat duplikatnya oleh instansi yang berwenang atas permintaannya.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 60, line: LINE_SPACING_1_5 }
           ),
-          p(
-            '- Pihak Kedua telah melihat dan mengetahui keadaan tanah serta bukti surat kepemilikan atas tanah tersebut dan menerangkan dapat menerima sebagaimana mestinya .--------------------------------------------',
+          aktaDashParagraph(
+            '- Pihak Kedua telah melihat dan mengetahui keadaan tanah serta bukti surat kepemilikan atas tanah tersebut dan menerangkan dapat menerima sebagaimana mestinya.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 60, line: LINE_SPACING_1_5 }
           ),
-          p(
-            '- Menurut keterangan para Pihak dokumen-dokumen penyertanya adalah asli dan tidak dipalsukan.----------------------------------------------',
+          aktaDashParagraph(
+            '- Menurut keterangan para Pihak dokumen-dokumen penyertanya adalah asli dan tidak dipalsukan.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 60, line: LINE_SPACING_1_5 }
           ),
-          p(
-            '- Sehubungan dengan hal tersebut maka para pihak menyatakan dengan tegas membebaskan Pejabat Pembuat Akta Tanah dari segala Tuntutan berupa apapun mengenai hal-hal tersebut.----------------------------------',
+          aktaDashParagraph(
+            '- Sehubungan dengan hal tersebut maka para pihak menyatakan dengan tegas membebaskan Pejabat Pembuat Akta Tanah dari segala Tuntutan berupa apapun mengenai hal-hal tersebut.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('------------------------------------------- Pasal {{no_pasal_domisili}} --------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Kedua belah pihak dalam hal ini dengan segala akibatnya memilih tempat kediaman hukum yang umum dan tidak berubah pada Kantor Panitera Pengadilan Negeri {{kabupaten_tanah}} .-------------------------------------------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_domisili}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Kedua belah pihak dalam hal ini dengan segala akibatnya memilih tempat kediaman hukum yang umum dan tidak berubah pada Kantor Panitera Pengadilan Negeri {{kabupaten_tanah}}.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('-------------------------------------------- Pasal {{no_pasal_biaya}} -------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Biaya pembuatan akta ini, uang saksi dan segala biaya peralihan hak ini dibayar oleh Pihak Penerima .-------------------------------------------------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_biaya}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Biaya pembuatan akta ini, uang saksi dan segala biaya peralihan hak ini dibayar oleh Pihak Penerima.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           p('{{/is_ajb}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
 
           // ==================== 3. KLAUSUL & PASAL KHUSUS AKTA HIBAH ====================
           p('{{#is_hibah}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          p('Hibah ini meliputi pula : ------------------------------------------------------------', { align: AlignmentType.LEFT, spaceAfter: 60 }),
-          p(
-            'Berikut segala sesuatu yang terdapat diatas bidang tanah hak tersebut yang menurut sifat, peruntukannya atau menurut penetapan Undang-Undang dapat dianggap sebagai barang tidak bergerak. -----------------------',
+          aktaDashParagraph('Hibah ini meliputi pula : ', { align: AlignmentType.LEFT, spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Berikut segala sesuatu yang terdapat diatas bidang tanah hak tersebut yang menurut sifat, peruntukannya atau menurut penetapan Undang-Undang dapat dianggap sebagai barang tidak bergerak.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 80, line: LINE_SPACING_1_5 }
           ),
-          p('Selanjutnya semua yang diuraikan di atas dalam akta ini disebut “Obyek Hibah”-----------------------------------------------------------------------------------', {
+          aktaDashParagraph('Selanjutnya semua yang diuraikan di atas dalam akta ini disebut “Obyek Hibah”.', {
             align: AlignmentType.JUSTIFIED,
             spaceAfter: 80,
             line: LINE_SPACING_1_5,
           }),
-          p('Pihak Pertama dan Pihak Kedua menerangkan bahwa hibah ini dilakukan dengan syarat-syarat sebagai berikut : -------------------------------------------', {
+          aktaDashParagraph('Pihak Pertama dan Pihak Kedua menerangkan bahwa hibah ini dilakukan dengan syarat-syarat sebagai berikut : ', {
             align: AlignmentType.JUSTIFIED,
             spaceAfter: 100,
             line: LINE_SPACING_1_5,
           }),
 
-          p('-------------------------------------------Pasal 1--------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Mulai hari ini obyek Hibah yang diuraikan dalam akta ini telah menjadi hak milik Pihak Kedua dan karenanya segala keuntungan yang didapat dari, dan segala kerugian/ beban atas obyek Hibah tersebut di atas menjadi hak/ beban Pihak Kedua.------------------------------------------------------------',
+          aktaCenteredDashHeading('Pasal 1', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Mulai hari ini obyek Hibah yang diuraikan dalam akta ini telah menjadi hak milik Pihak Kedua dan karenanya segala keuntungan yang didapat dari, dan segala kerugian/ beban atas obyek Hibah tersebut di atas menjadi hak/ beban Pihak Kedua.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('-----------------------------------------Pasal 2-----------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Pihak Pertama Menjamin, bahwa obyek Hibah tersebut diatas tidak tersangkut dalam satu sengketa, bebas dari sitaan, tidak terikat sebagai jaminan untuk sesuatu utang yang tidak tercatat dalam sertipikat, dan bebas dari beban-beban lainnya yang berupa apapun.-------------------------',
+          aktaCenteredDashHeading('Pasal 2', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Pihak Pertama Menjamin, bahwa obyek Hibah tersebut diatas tidak tersangkut dalam satu sengketa, bebas dari sitaan, tidak terikat sebagai jaminan untuk sesuatu utang yang tidak tercatat dalam sertipikat, dan bebas dari beban-beban lainnya yang berupa apapun.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           ...pertanianPasal3Block(),
-          p('------------------------------------------Pasal {{no_pasal_pengukuran}}---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Dalam hal terdapat perbedaan luas tanah yang menjadi obyek Hibah dalam akta ini dengan hasil pengukuran oleh instansi Badan Pertanahan {{kabupaten_tanah}}, maka para pihak akan menerima hasil pengukuran instansi Badan Pertanahan {{kabupaten_tanah}} tersebut dengan tidak mempermasalahkan dan tidak akan saling mengadakan gugatan.-----------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_pengukuran}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Dalam hal terdapat perbedaan luas tanah yang menjadi obyek Hibah dalam akta ini dengan hasil pengukuran oleh instansi Badan Pertanahan {{kabupaten_tanah}}, maka para pihak akan menerima hasil pengukuran instansi Badan Pertanahan {{kabupaten_tanah}} tersebut dengan tidak mempermasalahkan dan tidak akan saling mengadakan gugatan.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('-------------------------------------------Pasal {{no_pasal_penerimaan_hibah}}---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Pihak Kedua mengaku telah menerima {{penggunaan_tanah}} yang menjadi obyek Hibah tersebut dari Pihak Pertama.------------------------------------------------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_penerimaan_hibah}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Pihak Kedua mengaku telah menerima {{penggunaan_tanah}} yang menjadi obyek Hibah tersebut dari Pihak Pertama.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('----------------------------------------Pasal {{no_pasal_penjaminan_hibah}}-----------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Para pihak dengan ini menjamin kebenaran semua data-data atau dokumen-dokumen yang disampaikan kepada saya selaku Pejabat Pembuat Akta Tanah Sementara, bilamana dikemudian hari ternyata timbul masalah atau ada tuntutan hukum dari pihak yang berkepentingan maka para pihak akan bertanggung jawab atas segala resiko yang timbul dari saya selaku Pejabat Pembuat Akta Tanah Sementara dibebaskan dari segala tuntutan hukum.--------------------------------------------------------------------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_penjaminan_hibah}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Para pihak dengan ini menjamin kebenaran semua data-data atau dokumen-dokumen yang disampaikan kepada saya selaku Pejabat Pembuat Akta Tanah Sementara, bilamana dikemudian hari ternyata timbul masalah atau ada tuntutan hukum dari pihak yang berkepentingan maka para pihak akan bertanggung jawab atas segala resiko yang timbul dari saya selaku Pejabat Pembuat Akta Tanah Sementara dibebaskan dari segala tuntutan hukum.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('--------------------------------------------Pasal {{no_pasal_domisili}}--------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Kedua belah pihak dalam hal ini dengan segala akibatnya memilih tempat kediaman hukum yang umum dan tidak berubah pada Kantor Panitera Pengadilan Negeri {{kabupaten_tanah}}.----------------------------------------------------------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_domisili}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Kedua belah pihak dalam hal ini dengan segala akibatnya memilih tempat kediaman hukum yang umum dan tidak berubah pada Kantor Panitera Pengadilan Negeri {{kabupaten_tanah}}.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('-------------------------------------------Pasal {{no_pasal_biaya}}---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Biaya pembuatan akta ini, uang saksi dan segala biaya peralihan hak ini dibayar oleh Pihak Penerima.-------------------------------------------------------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_biaya}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Biaya pembuatan akta ini, uang saksi dan segala biaya peralihan hak ini dibayar oleh Pihak Penerima.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           p('{{/is_hibah}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
 
           // ==================== 4. KLAUSUL & PASAL LAYANAN LAINNYA (WARIS / PEMECAHAN) ====================
           p('{{#is_lainnya}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
-          p('Peralihan hak ini meliputi pula : ------------------------------------------------------', { align: AlignmentType.LEFT, spaceAfter: 60 }),
-          p(
-            'Tanah dan bangunan, berikut segala sesuatu yang terdapat diatas bidang tanah hak tersebut yang menurut sifat, peruntukannya atau menurut penetapan Undang-Undang dapat dianggap sebagai barang tidak bergerak. Selanjutnya semua yang diuraikan di atas dalam akta ini disebut "Obyek Peralihan Hak".-----------------------------------------------------------------------------',
+          aktaDashParagraph('Peralihan hak ini meliputi pula : ', { align: AlignmentType.LEFT, spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Tanah dan bangunan, berikut segala sesuatu yang terdapat diatas bidang tanah hak tersebut yang menurut sifat, peruntukannya atau menurut penetapan Undang-Undang dapat dianggap sebagai barang tidak bergerak. Selanjutnya semua yang diuraikan di atas dalam akta ini disebut "Obyek Peralihan Hak".',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 120, line: LINE_SPACING_1_5 }
           ),
-          p('------------------------------------------- Pasal 1 ---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Mulai hari ini obyek yang diuraikan dalam akta ini telah menjadi hak milik Pihak Kedua dan karenanya segala keuntungan yang didapat dari, dan segala kerugian/beban atas obyek tersebut di atas menjadi hak/beban Pihak Kedua.---------------------------------------------------',
+          aktaCenteredDashHeading('Pasal 1', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Mulai hari ini obyek yang diuraikan dalam akta ini telah menjadi hak milik Pihak Kedua dan karenanya segala keuntungan yang didapat dari, dan segala kerugian/beban atas obyek tersebut di atas menjadi hak/beban Pihak Kedua.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('------------------------------------------- Pasal 2 ---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Pihak Pertama menjamin, bahwa obyek tersebut diatas tidak tersangkut dalam satu sengketa, bebas dari sitaan, tidak terikat sebagai jaminan untuk sesuatu utang yang tidak tercatat dalam sertipikat, dan bebas dari beban-beban lain.--------------------------------------------------------',
+          aktaCenteredDashHeading('Pasal 2', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Pihak Pertama menjamin, bahwa obyek tersebut diatas tidak tersangkut dalam satu sengketa, bebas dari sitaan, tidak terikat sebagai jaminan untuk sesuatu utang yang tidak tercatat dalam sertipikat, dan bebas dari beban-beban lain.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           ...pertanianPasal3Block(),
-          p('------------------------------------------- Pasal {{no_pasal_pengukuran}} ---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Dalam hal terdapat perbedaan luas tanah yang menjadi obyek dalam akta ini dengan hasil pengukuran oleh instansi Badan Pertanahan {{kabupaten_tanah}}, maka para pihak akan menerima hasil pengukuran instansi Badan Pertanahan {{kabupaten_tanah}} tersebut dengan tidak mempermasalahkan dan tidak akan saling mengadakan gugatan.-----------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_pengukuran}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Dalam hal terdapat perbedaan luas tanah yang menjadi obyek dalam akta ini dengan hasil pengukuran oleh instansi Badan Pertanahan {{kabupaten_tanah}}, maka para pihak akan menerima hasil pengukuran instansi Badan Pertanahan {{kabupaten_tanah}} tersebut dengan tidak mempermasalahkan dan tidak akan saling mengadakan gugatan.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('------------------------------------------- Pasal {{no_pasal_keabsahan}} ---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Para pihak menjamin bahwa surat tanda bukti hak atas tanah serta dokumen-dokumen penyertanya adalah asli, sah, dan membebaskan Pejabat Pembuat Akta Tanah Sementara dari segala tuntutan berupa apapun mengenai hal-hal tersebut.----------------------------------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_keabsahan}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Para pihak menjamin bahwa surat tanda bukti hak atas tanah serta dokumen-dokumen penyertanya adalah asli, sah, dan membebaskan Pejabat Pembuat Akta Tanah Sementara dari segala tuntutan berupa apapun mengenai hal-hal tersebut.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('------------------------------------------- Pasal {{no_pasal_domisili}} ---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Kedua belah pihak dalam hal ini dengan segala akibatnya memilih tempat kediaman hukum yang umum dan tidak berubah pada Kantor Panitera Pengadilan Negeri {{kabupaten_tanah}}.-------------------------------------------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_domisili}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Kedua belah pihak dalam hal ini dengan segala akibatnya memilih tempat kediaman hukum yang umum dan tidak berubah pada Kantor Panitera Pengadilan Negeri {{kabupaten_tanah}}.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          p('------------------------------------------- Pasal {{no_pasal_biaya}} ---------------------------------------', {
-            align: AlignmentType.CENTER,
-            spaceAfter: 60,
-          }),
-          p(
-            'Biaya pembuatan akta ini, uang saksi dan segala biaya peralihan hak ini dibayar oleh Pihak Penerima.-------------------------------------------------',
+          aktaCenteredDashHeading('Pasal {{no_pasal_biaya}}', { spaceAfter: 60 }),
+          aktaDashParagraph(
+            'Biaya pembuatan akta ini, uang saksi dan segala biaya peralihan hak ini dibayar oleh Pihak Penerima.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
           p('{{/is_lainnya}}', { align: AlignmentType.LEFT, spaceAfter: 0, line: 240 }),
 
           // ==================== SAKSI-SAKSI ====================
-          p(
-            'Akhirnya hadir juga dihadapan saya, dengan dihadiri oleh saksi-saksi yang sama dan disebutkan pada akhir akta ini.--------------------------------------',
+          aktaDashParagraph(
+            'Akhirnya hadir juga dihadapan saya, dengan dihadiri oleh saksi-saksi yang sama dan disebutkan pada akhir akta ini.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          pRuns(
+          aktaDashRuns(
             [
               { text: '1. ', bold: true },
               { text: '{{saksi_1_nama}}, ', bold: true },
               {
-                text: 'Warga Negara Indonesia, lahir di {{saksi_1_tempat_lahir}}, tanggal {{saksi_1_tanggal_lahir}}, Pekerjaan {{saksi_1_pekerjaan}}, bertempat tinggal di {{saksi_1_alamat}}. Pemegang Kartu Tanda Penduduk Nomor : {{saksi_1_nik}}--------------------------------------------------------------',
+                text: 'Warga Negara Indonesia, lahir di {{saksi_1_tempat_lahir}}, tanggal {{saksi_1_tanggal_lahir}}, Pekerjaan {{saksi_1_pekerjaan}}, bertempat tinggal di {{saksi_1_alamat}}. Pemegang Kartu Tanda Penduduk Nomor : {{saksi_1_nik}}.',
               },
             ],
             { align: AlignmentType.JUSTIFIED, indentLeft: 200, spaceAfter: 100, line: LINE_SPACING_1_5 }
           ),
-          pRuns(
+          aktaDashRuns(
             [
               { text: '2. ', bold: true },
               { text: '{{saksi_2_nama}}, ', bold: true },
               {
-                text: 'Warga Negara Indonesia, lahir di {{saksi_2_tempat_lahir}}, tanggal {{saksi_2_tanggal_lahir}}, Pekerjaan {{saksi_2_pekerjaan}}, bertempat tinggal di {{saksi_2_alamat}}. Pemegang Kartu Tanda Penduduk Nomor : {{saksi_2_nik}}.-----------------------------------',
+                text: 'Warga Negara Indonesia, lahir di {{saksi_2_tempat_lahir}}, tanggal {{saksi_2_tanggal_lahir}}, Pekerjaan {{saksi_2_pekerjaan}}, bertempat tinggal di {{saksi_2_alamat}}. Pemegang Kartu Tanda Penduduk Nomor : {{saksi_2_nik}}.',
               },
             ],
             { align: AlignmentType.JUSTIFIED, indentLeft: 200, spaceAfter: 120, line: LINE_SPACING_1_5 }
           ),
 
-          p(
-            'Sebagai saksi-saksi dan setelah dibacakan serta dijelaskan, maka sebagai bukti kebenaran pernyataan yang dikemukakan oleh {{daftar_sebutan_para_pihak}} tersebut diatas, akta ini ditanda tangani/cap ibu jari oleh {{daftar_sebutan_para_pihak}}, para saksi dan saya PPATS, sebanyak 2 (dua) rangkap asli, yaitu 1 (satu) rangkap lembar pertama disimpan di kantor saya, dan 1 (satu) rangkap lembar kedua disampaikan kepada Kantor Pertanahan {{kabupaten_tanah}}, untuk keperluan pendaftaran peralihan hak dalam akta ini.--------------------------------------------------------',
+          aktaDashParagraph(
+            'Sebagai saksi-saksi dan setelah dibacakan serta dijelaskan, maka sebagai bukti kebenaran pernyataan yang dikemukakan oleh {{daftar_sebutan_para_pihak}} tersebut diatas, akta ini ditanda tangani/cap ibu jari oleh {{daftar_sebutan_para_pihak}}, para saksi dan saya PPATS, sebanyak 2 (dua) rangkap asli, yaitu 1 (satu) rangkap lembar pertama disimpan di kantor saya, dan 1 (satu) rangkap lembar kedua disampaikan kepada Kantor Pertanahan {{kabupaten_tanah}}, untuk keperluan pendaftaran peralihan hak dalam akta ini.',
             { align: AlignmentType.JUSTIFIED, spaceAfter: 200, line: LINE_SPACING_1_5 }
           ),
 
@@ -1828,14 +1967,16 @@ function buildLampiranBundelDocument(): Document {
             ],
             { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: LAMPIRAN_LINE }
           ),
-          lpRuns(
-            [
-              { text: '----------------------------------------------' },
-              { text: 'KHUSUS', bold: true, underline: true },
-              { text: '---------------------------------------------' },
-            ],
-            { align: AlignmentType.CENTER, spaceBefore: 140, spaceAfter: 100, line: LAMPIRAN_LINE }
-          ),
+          aktaCenteredDashHeading('KHUSUS', {
+            bold: true,
+            underline: true,
+            size: LAMPIRAN_SIZE,
+            font: LAMPIRAN_FONT,
+            spaceBefore: 140,
+            spaceAfter: 100,
+            line: LAMPIRAN_LINE,
+            contentWidthDxa: LAMPIRAN_CONTENT_WIDTH_DXA,
+          }),
           lp(
             '-  Untuk dan atas nama Pemberi Kuasa untuk mendaftarkan permohonan Peralihan Hak Sertipikat ke Kantor Badan Pertanahan Nasional {{kabupaten_tanah}}.',
             { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 240, spaceAfter: 60, line: LAMPIRAN_LINE }

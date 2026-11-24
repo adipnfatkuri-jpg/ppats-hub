@@ -33,11 +33,15 @@ interface DocumentReviewPanelProps {
   onEditStep: (step: 2 | 3) => void;
 }
 
+const DASH_LEADER_FILL = '-'.repeat(180);
+
 const RenderParagraph: React.FC<{ block: PreviewParagraphBlock; compact?: boolean }> = ({
   block,
   compact,
 }) => {
-  const hasText = block.runs.some((r) => r.text.trim().length > 0);
+  const hasText =
+    block.runs.some((r) => r.text.trim().length > 0) ||
+    Boolean(block.keyValueLabelRuns?.some((r) => r.text.trim().length > 0));
   const hasImages = Boolean(block.images && block.images.length > 0);
   const textAlign = block.align === 'justify' ? 'justify' : block.align;
   const textIndent = block.hangingPx
@@ -48,10 +52,36 @@ const RenderParagraph: React.FC<{ block: PreviewParagraphBlock; compact?: boolea
     return <div className={compact ? 'h-1.5' : 'h-2.5'} aria-hidden="true" />;
   }
 
+  const renderRunList = (runs: PreviewParagraphBlock['runs']) =>
+    runs.map((run, rIdx) => {
+      const classes = [
+        run.bold ? 'font-bold' : 'font-normal',
+        run.italic ? 'italic' : '',
+        run.underline ? 'underline underline-offset-2' : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
+      const fontSizePx =
+        !compact && run.sizePt && run.sizePt !== 12
+          ? Math.round((run.sizePt / 12) * 12.5 * 10) / 10
+          : undefined;
+      return (
+        <span
+          key={rIdx}
+          className={classes}
+          style={fontSizePx ? { fontSize: `${fontSizePx}px`, lineHeight: 1.35 } : undefined}
+        >
+          {run.text}
+        </span>
+      );
+    });
+
+  const textBaseClass = `${compact ? 'text-[11px] leading-[1.35]' : 'text-[12.5px] leading-[1.55]'} text-slate-900`;
+
   return (
     <div
       style={{
-        textAlign,
+        textAlign: block.dashLeader === 'center-flanked' ? 'left' : textAlign,
         paddingLeft: block.indentLeftPx > 0 ? `${block.indentLeftPx}px` : undefined,
         marginTop: block.spaceBeforePx > 0 ? `${block.spaceBeforePx}px` : undefined,
         marginBottom: block.spaceAfterPx > 0 ? `${block.spaceAfterPx}px` : undefined,
@@ -71,37 +101,73 @@ const RenderParagraph: React.FC<{ block: PreviewParagraphBlock; compact?: boolea
             }
           />
         ))}
-      {hasText && (
+      {hasText && block.dashLeader === 'center-flanked' && (
+        <div
+          className={`flex items-center gap-1.5 w-full ${textBaseClass}`}
+          data-dash-leader="center-flanked"
+        >
+          <span
+            className={`flex-1 min-w-0 overflow-hidden whitespace-nowrap select-none ${
+              block.dashBold ? 'font-bold' : 'font-normal'
+            }`}
+            aria-hidden="true"
+          >
+            {DASH_LEADER_FILL}
+          </span>
+          <span className="shrink-0 whitespace-nowrap">{renderRunList(block.runs)}</span>
+          <span
+            className={`flex-1 min-w-0 overflow-hidden whitespace-nowrap select-none ${
+              block.dashBold ? 'font-bold' : 'font-normal'
+            }`}
+            aria-hidden="true"
+          >
+            {DASH_LEADER_FILL}
+          </span>
+        </div>
+      )}
+      {hasText && block.dashLeader !== 'center-flanked' && block.keyValueLabelRuns && block.keyValueTabPx && (
         <p
-          className={`${compact ? 'text-[11px] leading-[1.35]' : 'text-[12.5px] leading-[1.55]'} text-slate-900 whitespace-pre-line ${
+          className={`relative overflow-x-clip flex items-baseline ${textBaseClass}`}
+          data-dash-leader="trailing-kv"
+        >
+          <span
+            className="shrink-0 whitespace-pre"
+            style={{ width: `${block.keyValueTabPx}px` }}
+          >
+            {renderRunList(block.keyValueLabelRuns)}
+          </span>
+          <span className="min-w-0 flex-1 overflow-x-clip">
+            {renderRunList(block.runs)}
+            {block.dashLeader === 'trailing' && (
+              <span className="inline-block relative w-0 align-baseline" aria-hidden="true">
+                {'\u200B'}
+                <span className="absolute left-0.5 top-0 whitespace-nowrap select-none pointer-events-none font-normal">
+                  {DASH_LEADER_FILL}
+                </span>
+              </span>
+            )}
+          </span>
+        </p>
+      )}
+      {hasText && block.dashLeader !== 'center-flanked' && !(block.keyValueLabelRuns && block.keyValueTabPx) && (
+        <p
+          className={`relative ${block.dashLeader === 'trailing' ? 'overflow-x-clip' : ''} ${textBaseClass} whitespace-pre-line ${
             block.borderBottom ? 'border-b-2 border-slate-900 pb-1.5 mb-2' : ''
           }`}
+          data-dash-leader={block.dashLeader === 'trailing' ? 'trailing' : undefined}
           style={{
             textIndent: textIndent !== 0 ? `${textIndent}px` : undefined,
           }}
         >
-          {block.runs.map((run, rIdx) => {
-            const classes = [
-              run.bold ? 'font-bold' : 'font-normal',
-              run.italic ? 'italic' : '',
-              run.underline ? 'underline underline-offset-2' : '',
-            ]
-              .filter(Boolean)
-              .join(' ');
-            const fontSizePx =
-              !compact && run.sizePt && run.sizePt !== 12
-                ? Math.round((run.sizePt / 12) * 12.5 * 10) / 10
-                : undefined;
-            return (
-              <span
-                key={rIdx}
-                className={classes}
-                style={fontSizePx ? { fontSize: `${fontSizePx}px`, lineHeight: 1.35 } : undefined}
-              >
-                {run.text}
+          {renderRunList(block.runs)}
+          {block.dashLeader === 'trailing' && (
+            <span className="inline-block relative w-0 align-baseline" aria-hidden="true">
+              {'\u200B'}
+              <span className="absolute left-0.5 top-0 whitespace-nowrap select-none pointer-events-none font-normal">
+                {DASH_LEADER_FILL}
               </span>
-            );
-          })}
+            </span>
+          )}
         </p>
       )}
     </div>

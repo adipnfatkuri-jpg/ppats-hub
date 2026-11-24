@@ -26,6 +26,10 @@ export interface PreviewParagraphBlock {
   kind: 'paragraph';
   runs: PreviewTextRun[];
   images?: PreviewImageEntry[];
+  dashLeader?: 'trailing' | 'center-flanked';
+  dashBold?: boolean;
+  keyValueLabelRuns?: PreviewTextRun[];
+  keyValueTabPx?: number;
   align: 'left' | 'center' | 'right' | 'justify';
   indentLeftPx: number;
   firstLinePx: number;
@@ -292,9 +296,25 @@ function parseParagraphXml(
       : 'left';
 
   const indMatches = extractElements(pPr, ['w:ind']);
-  const indentLeftPx = indMatches[0] ? twipsToPx(getAttr(indMatches[0].open, 'w:left')) : 0;
+  const indentLeftRaw = indMatches[0] ? getAttr(indMatches[0].open, 'w:left') : undefined;
+  const indentLeftTwips = indentLeftRaw ? Number(indentLeftRaw) || 0 : 0;
+  const indentLeftPx = twipsToPx(indentLeftRaw);
   const firstLinePx = indMatches[0] ? twipsToPx(getAttr(indMatches[0].open, 'w:firstLine')) : 0;
   const hangingPx = indMatches[0] ? twipsToPx(getAttr(indMatches[0].open, 'w:hanging')) : 0;
+
+  const tabsWrapper = extractElements(pPr, ['w:tabs'])[0];
+  const tabDefs = tabsWrapper ? extractElements(tabsWrapper.inner, ['w:tab']) : [];
+  let hasCenterHyphen = false;
+  let hasRightHyphen = false;
+  let leftTabPosTwips = 0;
+  for (const td of tabDefs) {
+    const val = getAttr(td.open, 'w:val');
+    const leader = getAttr(td.open, 'w:leader');
+    const pos = Number(getAttr(td.open, 'w:pos') ?? 0);
+    if (val === 'center' && leader === 'hyphen') hasCenterHyphen = true;
+    if (val === 'right' && leader === 'hyphen') hasRightHyphen = true;
+    if (val === 'left' && Number.isFinite(pos) && pos > 0) leftTabPosTwips = pos;
+  }
 
   const spacingMatches = extractElements(pPr, ['w:spacing']);
   const spaceBeforePx = spacingMatches[0]
@@ -315,7 +335,10 @@ function parseParagraphXml(
   }
 
   let hasInlinePageBreak = false;
-  const runs: PreviewTextRun[] = [];
+  type ParsedToken =
+    | { kind: 'text'; run: PreviewTextRun }
+    | { kind: 'tab'; bold: boolean; italic: boolean; underline: boolean; sizePt?: number };
+  const tokens: ParsedToken[] = [];
   const images: PreviewImageEntry[] = [];
   const runElements = extractElements(innerXml, ['w:r']);
 
@@ -345,11 +368,21 @@ function parseParagraphXml(
     // Walk text, br, tab nodes inside run
     const parts = extractElements(r.inner, ['w:t', 'w:br', 'w:tab']);
     let textBuf = '';
+    const flushText = () => {
+      if (textBuf.length > 0) {
+        tokens.push({
+          kind: 'text',
+          run: { text: textBuf, bold, italic, underline, sizePt },
+        });
+        textBuf = '';
+      }
+    };
     for (const part of parts) {
       if (part.tag === 'w:t') {
         textBuf += decodeXmlEntities(part.inner);
       } else if (part.tag === 'w:tab') {
-        textBuf += '    ';
+        flushText();
+        tokens.push({ kind: 'tab', bold, italic, underline, sizePt });
       } else if (part.tag === 'w:br') {
         const brType = getAttr(part.open, 'w:type');
         if (brType === 'page') {
@@ -359,10 +392,64 @@ function parseParagraphXml(
         }
       }
     }
+    flushText();
+  }
 
-    if (textBuf.length > 0) {
-      runs.push({ text: textBuf, bold, italic, underline, sizePt });
+  let dashLeader: PreviewParagraphBlock['dashLeader'];
+  let dashBold: boolean | undefined;
+  let keyValueLabelRuns: PreviewTextRun[] | undefined;
+  let keyValueTabPx: number | undefined;
+  let workingTokens = tokens;
+
+  const firstTok = workingTokens[0];
+  const lastTok = workingTokens[workingTokens.length - 1];
+
+  if (
+    hasCenterHyphen &&
+    hasRightHyphen &&
+    workingTokens.length >= 3 &&
+    firstTok?.kind === 'tab' &&
+    lastTok?.kind === 'tab'
+  ) {
+    dashLeader = 'center-flanked';
+    dashBold = firstTok.bold;
+    workingTokens = workingTokens.slice(1, -1);
+  } else if (hasRightHyphen && workingTokens.length >= 2 && lastTok?.kind === 'tab') {
+    dashLeader = 'trailing';
+    workingTokens = workingTokens.slice(0, -1);
+    if (leftTabPosTwips > 0) {
+      const internalTabIdx = workingTokens.findIndex((t) => t.kind === 'tab');
+      if (internalTabIdx > 0) {
+        keyValueLabelRuns = workingTokens
+          .slice(0, internalTabIdx)
+          .filter((t): t is Extract<ParsedToken, { kind: 'text' }> => t.kind === 'text')
+          .map((t) => t.run);
+        keyValueTabPx = Math.max(76, twipsToPx(String(Math.max(0, leftTabPosTwips - indentLeftTwips))));
+        workingTokens = workingTokens.slice(internalTabIdx + 1);
+      }
     }
+  }
+
+  const runs: PreviewTextRun[] = [];
+  for (const tok of workingTokens) {
+    if (tok.kind === 'text') {
+      runs.push(tok.run);
+    } else {
+      runs.push({
+        text: '    ',
+        bold: tok.bold,
+        italic: tok.italic,
+        underline: tok.underline,
+        sizePt: tok.sizePt,
+      });
+    }
+  }
+
+  if (dashLeader === 'center-flanked' && runs.length > 0) {
+    // Trim leading/trailing padding spaces around centered heading so flex gap controls spacing symmetrically
+    runs[0] = { ...runs[0], text: runs[0].text.replace(/^\s+/, '') };
+    const lastIdx = runs.length - 1;
+    runs[lastIdx] = { ...runs[lastIdx], text: runs[lastIdx].text.replace(/\s+$/, '') };
   }
 
   return {
@@ -372,6 +459,11 @@ function parseParagraphXml(
       kind: 'paragraph',
       runs,
       ...(images.length > 0 ? { images } : {}),
+      ...(dashLeader ? { dashLeader } : {}),
+      ...(dashBold !== undefined ? { dashBold } : {}),
+      ...(keyValueLabelRuns && keyValueLabelRuns.length > 0
+        ? { keyValueLabelRuns, keyValueTabPx }
+        : {}),
       align,
       indentLeftPx,
       firstLinePx,

@@ -23,7 +23,11 @@ import {
   formatTanggalLengkapHuruf,
   parseFlexibleDate,
 } from './indonesianFormatter';
-import { LAMPIRAN_MARGINS, PAPER_SIZE_F4_TWIPS } from './docxTemplates';
+import {
+  LAMPIRAN_MARGINS,
+  PAPER_SIZE_F4_TWIPS,
+  aktaCenteredDashHeading,
+} from './docxTemplates';
 import { computeAgeFromBirthDate, resolveWarisCConfig } from './warisCHelper';
 
 const F4_FONT = 'Bookman Old Style';
@@ -549,14 +553,16 @@ function buildSuratKuasaWarisCPage(params: {
       ],
       { indentTwips: 240, labelPct: 26 }
     ),
-    fpRuns(
-      [
-        { text: '-------------------------------------' },
-        { text: 'KHUSUS', bold: true, underline: true },
-        { text: '-------------------------------------' },
-      ],
-      { align: AlignmentType.CENTER, spaceBefore: 120, spaceAfter: 100 }
-    ),
+    aktaCenteredDashHeading('KHUSUS', {
+      bold: true,
+      underline: true,
+      size: F4_SIZE,
+      font: F4_FONT,
+      spaceBefore: 120,
+      spaceAfter: 100,
+      line: F4_LINE,
+      contentWidthDxa: F4_CONTENT_WIDTH_DXA,
+    }),
     fp(`-   ${params.khususText}`, {
       align: AlignmentType.JUSTIFIED,
       indentLeft: 420,

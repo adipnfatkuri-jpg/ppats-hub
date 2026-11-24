@@ -1319,6 +1319,79 @@ test('Pemecahan and Ukur Ulang embed Sketsa Bidang Tanah in Pemasangan Tanda Bat
   assert.ok(ukurXml.includes('POLIGON'));
 });
 
+test('Akta PPATS (APHB 4-party, AJB, Hibah) uses OOXML hyphen-leader tab stops with zero hardcoded dashes and parses cleanly in preview', async () => {
+  const aphb4Parties = {
+    ...INITIAL_SEED_RECORDS[0],
+    layanan: 'APHB' as const,
+    para_pihak: [
+      { ...INITIAL_SEED_RECORDS[0].para_pihak[0], id: 'p1', peran: 'Pihak I' as const, nama: 'SUWARNO', nik: '3309112203640001' },
+      { ...INITIAL_SEED_RECORDS[0].para_pihak[0], id: 'p2', peran: 'Pihak II' as const, nama: 'SUTARMI', nik: '3309111203680002' },
+      { ...INITIAL_SEED_RECORDS[0].para_pihak[0], id: 'p3', peran: 'Pihak III' as const, nama: 'SUPRIYADI', nik: '3309111203720004' },
+      { ...INITIAL_SEED_RECORDS[0].para_pihak[0], id: 'p4', peran: 'Pihak IV' as const, nama: 'SULISTYOWATI', nik: '3309111508760005' },
+    ],
+  };
+
+  for (const rec of [
+    aphb4Parties,
+    { ...INITIAL_SEED_RECORDS[0], layanan: 'AJB' as const },
+    { ...INITIAL_SEED_RECORDS[0], layanan: 'Akta Hibah' as const },
+  ]) {
+    const files = await generateBundleFiles(rec, DEFAULT_OFFICE_SETTINGS, {});
+    const aktaZip = new PizZip(files[0].bytes);
+    const aktaXml = aktaZip.file('word/document.xml')?.asText() ?? '';
+
+    assert.equal(
+      aktaXml.includes('----'),
+      false,
+      `${rec.layanan} Akta XML must not contain hardcoded literal dashes ('----') that wrap onto orphan lines`
+    );
+    assert.ok(
+      aktaXml.includes('w:leader="hyphen"'),
+      `${rec.layanan} Akta XML must use OOXML w:leader="hyphen" tab stops`
+    );
+    assert.ok(
+      aktaXml.includes('<w:tab/>'),
+      `${rec.layanan} Akta XML must emit <w:tab/> runs for hyphen leaders`
+    );
+  }
+
+  // Verify preview parser extracts center-flanked and trailing leaders on 4-party APHB
+  const preview = await renderDocxPreviewPages(aphb4Parties, DEFAULT_OFFICE_SETTINGS, {}, '01_akta');
+  const allParagraphs = preview.pages.flatMap((pg) =>
+    pg.blocks.filter((b): b is Extract<typeof b, { kind: 'paragraph' }> => b.kind === 'paragraph')
+  );
+  const centerFlanked = allParagraphs.filter((b) => b.dashLeader === 'center-flanked');
+  const trailing = allParagraphs.filter((b) => b.dashLeader === 'trailing');
+  const keyValueLines = allParagraphs.filter((b) => Boolean(b.keyValueLabelRuns?.length));
+
+  const centerTexts = centerFlanked.map((b) => b.runs.map((r) => r.text).join('').trim());
+  assert.ok(centerTexts.includes('PIHAK PERTAMA'), 'PIHAK PERTAMA must use center-flanked hyphen leader');
+  assert.ok(centerTexts.includes('PIHAK KETIGA'), 'PIHAK KETIGA must use center-flanked hyphen leader');
+  assert.ok(centerTexts.includes('PIHAK KEEMPAT'), 'PIHAK KEEMPAT must use center-flanked hyphen leader');
+  assert.ok(centerTexts.includes('Pasal 1'), 'Pasal 1 must use center-flanked hyphen leader');
+
+  const trailingTexts = trailing.map((b) => b.runs.map((r) => r.text).join(''));
+  assert.ok(
+    trailingTexts.some((t) => t.includes('Untuk selanjutnya dalam akta ini disebut')),
+    'Untuk selanjutnya dalam akta ini disebut must use trailing hyphen leader'
+  );
+  assert.ok(
+    trailingTexts.some((t) => t.includes('3. Foto copy SPPT PBB NOP:')),
+    'SPPT PBB line must use trailing hyphen leader'
+  );
+  assert.ok(
+    trailingTexts.some((t) => t.includes('4. SSPD BPHTB, SSP PPh.')),
+    'SSPD BPHTB/PPh line must use trailing hyphen leader'
+  );
+  assert.ok(keyValueLines.length >= 8, `Expected at least 8 aligned batas/letak key-value lines, got ${keyValueLines.length}`);
+
+  // No preview paragraph run should contain hardcoded '----'
+  for (const para of allParagraphs) {
+    const joined = para.runs.map((r) => r.text).join('');
+    assert.equal(joined.includes('----'), false, `Unexpected hardcoded dashes in preview paragraph: ${joined}`);
+  }
+});
+
 
 
 

@@ -27,7 +27,11 @@ import {
   parseFlexibleDate,
   terbilangLuas,
 } from './indonesianFormatter';
-import { LAMPIRAN_MARGINS, PAPER_SIZE_F4_TWIPS } from './docxTemplates';
+import {
+  LAMPIRAN_MARGINS,
+  PAPER_SIZE_F4_TWIPS,
+  aktaCenteredDashHeading,
+} from './docxTemplates';
 import { resolveAnalisisBidangConfig } from './analisisBidangHelper';
 import { formatPpatsTtl } from './ppatsProfileHelper';
 import { buildWarisCBundle } from './warisCTemplates';
@@ -1082,14 +1086,16 @@ function buildSuratKuasaNonAkta(params: {
       ],
       { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: F4_LINE }
     ),
-    fpRuns(
-      [
-        { text: '----------------------------------------------' },
-        { text: 'KHUSUS', bold: true, underline: true },
-        { text: '---------------------------------------------' },
-      ],
-      { align: AlignmentType.CENTER, spaceBefore: 120, spaceAfter: 80, line: F4_LINE }
-    ),
+    aktaCenteredDashHeading('KHUSUS', {
+      bold: true,
+      underline: true,
+      size: F4_SIZE,
+      font: F4_FONT,
+      spaceBefore: 120,
+      spaceAfter: 80,
+      line: F4_LINE,
+      contentWidthDxa: F4_CONTENT_WIDTH_DXA,
+    }),
     ...params.khususBullets.map((b) =>
       fp(`-  ${b}`, {
         align: AlignmentType.JUSTIFIED,
@@ -3737,14 +3743,16 @@ function buildPengecekanSertipikatBundle(
       ],
       { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: F4_LINE }
     ),
-    fpRuns(
-      [
-        { text: '----------------------------------------------' },
-        { text: 'KHUSUS', bold: true, underline: true },
-        { text: '---------------------------------------------' },
-      ],
-      { align: AlignmentType.CENTER, spaceBefore: 120, spaceAfter: 80, line: F4_LINE }
-    ),
+    aktaCenteredDashHeading('KHUSUS', {
+      bold: true,
+      underline: true,
+      size: F4_SIZE,
+      font: F4_FONT,
+      spaceBefore: 120,
+      spaceAfter: 80,
+      line: F4_LINE,
+      contentWidthDxa: F4_CONTENT_WIDTH_DXA,
+    }),
     fp(
       `•  Untuk dan atas nama pemberi Kuasa mendaftarkan Pengecekan Sertipikat ke Kantor BPN ${sert.kabupaten}.`,
       { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 220, spaceAfter: 40, line: F4_LINE }
@@ -4099,14 +4107,16 @@ function buildValidasiSertipikatBundle(
       ],
       { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: F4_LINE }
     ),
-    fpRuns(
-      [
-        { text: '----------------------------------------------' },
-        { text: 'KHUSUS', bold: true, underline: true },
-        { text: '---------------------------------------------' },
-      ],
-      { align: AlignmentType.CENTER, spaceBefore: 120, spaceAfter: 80, line: F4_LINE }
-    ),
+    aktaCenteredDashHeading('KHUSUS', {
+      bold: true,
+      underline: true,
+      size: F4_SIZE,
+      font: F4_FONT,
+      spaceBefore: 120,
+      spaceAfter: 80,
+      line: F4_LINE,
+      contentWidthDxa: F4_CONTENT_WIDTH_DXA,
+    }),
     fp(
       `-  Untuk dan atas nama pemberi Kuasa untuk mendaftarkan permohonan Validasi Hak Sertipikat ke Kantor Badan Pertanahan ${sert.kabupaten}.`,
       { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 220, spaceAfter: 40, line: F4_LINE }
@@ -4538,14 +4548,15 @@ function buildAnalisisBidangBundle(
       ],
       { spaceBefore: 100, spaceAfter: 80, line: F4_LINE }
     ),
-    fpRuns(
-      [
-        { text: '-----------------------------------------' },
-        { text: 'KHUSUS', bold: true },
-        { text: '-----------------------------------------' },
-      ],
-      { align: AlignmentType.CENTER, spaceBefore: 40, spaceAfter: 100, line: F4_LINE }
-    ),
+    aktaCenteredDashHeading('KHUSUS', {
+      bold: true,
+      size: F4_SIZE,
+      font: F4_FONT,
+      spaceBefore: 40,
+      spaceAfter: 100,
+      line: F4_LINE,
+      contentWidthDxa: F4_CONTENT_WIDTH_DXA,
+    }),
     fpRuns(
       [
         {
