@@ -37,6 +37,15 @@ import { resolveAnalisisBidangConfig } from './analisisBidangHelper';
 import { formatPpatsTtl } from './ppatsProfileHelper';
 import { buildWarisCBundle } from './warisCTemplates';
 import { isBoundaryNonPerson } from './sketchRefiner';
+import {
+  COMPACT_CHECKLIST_LINE,
+  COMPACT_PARTY_KV_LINE,
+  computeSignerRowSpacing,
+  estimateSignerBlockTwips,
+  hasFilledPekerjaan,
+  isPekerjaanLabel,
+  planStatementPagination,
+} from './lampiranLayoutHelper';
 
 const F4_FONT = 'Bookman Old Style';
 const F4_SIZE = 22; // 11 pt
@@ -175,7 +184,7 @@ function fpRuns(
 }
 
 function kvTable(
-  rows: Array<[string, string]>,
+  rows: Array<[string, string, number?]>,
   opts?: { labelPct?: number; indentTwips?: number; spaceAfterRow?: number; line?: number }
 ): Table {
   const labelPct = opts?.labelPct ?? 26;
@@ -186,27 +195,32 @@ function kvTable(
   const labelW = Math.round((totalWidth * labelPct) / 100);
   const valueW = totalWidth - labelW;
 
+  const filteredRows = rows.filter(
+    ([k, v]) => !(isPekerjaanLabel(k) && !hasFilledPekerjaan(v))
+  );
+
   return new Table({
     width: { size: totalWidth, type: WidthType.DXA },
     columnWidths: [labelW, valueW],
     layout: TableLayoutType.FIXED,
     borders: NO_TABLE_BORDERS,
     indent: indentTwips ? { size: indentTwips, type: WidthType.DXA } : undefined,
-    rows: rows.map(
-      ([k, v]) =>
+    rows: filteredRows.map(
+      ([k, v, rowSpaceBefore]) =>
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: labelW, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 60 },
-              children: [fp(k, { spaceAfter: spaceAfterRow, line })],
+              children: [fp(k, { spaceBefore: rowSpaceBefore ?? 0, spaceAfter: spaceAfterRow, line })],
             }),
             new TableCell({
               width: { size: valueW, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 0 },
-              children: [fp(`: ${v}`, { spaceAfter: spaceAfterRow, line })],
+              children: [fp(`: ${v}`, { spaceBefore: rowSpaceBefore ?? 0, spaceAfter: spaceAfterRow, line })],
             }),
           ],
         })
@@ -233,15 +247,24 @@ function kvAlignedTable(
   const labelW = Math.round(((totalWidth - colonW) * labelPct) / 100);
   const valueW = totalWidth - colonW - labelW;
 
+  const filteredRows = rows.filter((row) => {
+    if (!isPekerjaanLabel(row.label)) return true;
+    const rawVal = row.valueRuns
+      ? row.valueRuns.map((r) => r.text).join('')
+      : row.valueText ?? '';
+    return hasFilledPekerjaan(rawVal);
+  });
+
   return new Table({
     width: { size: totalWidth, type: WidthType.DXA },
     columnWidths: [labelW, colonW, valueW],
     layout: TableLayoutType.FIXED,
     borders: NO_TABLE_BORDERS,
     indent: indentTwips ? { size: indentTwips, type: WidthType.DXA } : undefined,
-    rows: rows.map(
+    rows: filteredRows.map(
       (row) =>
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: labelW, type: WidthType.DXA },
@@ -294,8 +317,8 @@ function buildTwoColListTable(
 ): Table {
   const leftPct = opts?.leftPct ?? 50;
   const indentTwips = opts?.indentTwips ?? 0;
-  const line = opts?.line ?? F4_LINE; // 1.15 spasi
-  const spaceAfter = opts?.spaceAfter ?? 20;
+  const line = opts?.line ?? COMPACT_CHECKLIST_LINE;
+  const spaceAfter = opts?.spaceAfter ?? 0;
   const hangingTwips = opts?.hangingTwips ?? 340;
   const totalWidth = Math.max(4000, F4_CONTENT_WIDTH_DXA - indentTwips);
   const leftW = Math.round((totalWidth * leftPct) / 100);
@@ -310,11 +333,12 @@ function buildTwoColListTable(
     rows: rows.map(
       (item) =>
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: leftW, type: WidthType.DXA },
               borders: NO_BORDER,
-              margins: { top: 10, bottom: 10, left: 0, right: 160 },
+              margins: { top: 0, bottom: 0, left: 0, right: 160 },
               children: [
                 fp(item.leftText, {
                   bold: item.leftBold,
@@ -329,7 +353,7 @@ function buildTwoColListTable(
             new TableCell({
               width: { size: rightW, type: WidthType.DXA },
               borders: NO_BORDER,
-              margins: { top: 10, bottom: 10, left: 100, right: 0 },
+              margins: { top: 0, bottom: 0, left: 100, right: 0 },
               children: [
                 fp(item.rightText, {
                   bold: item.rightBold,
@@ -584,13 +608,16 @@ function buildNonAktaSignerRowsTable(
     dotsText?: string;
     size?: number;
     dotsWidthDxa?: number;
+    line?: number;
   }
 ): Table {
   const safeTotal = Math.max(2600, Math.round(totalWidthDxa));
   const dotsW = Math.min(opts?.dotsWidthDxa ?? 1540, Math.round(safeTotal * 0.42));
   const nameW = safeTotal - dotsW;
   const dotsText = opts?.dotsText ?? '(.............)';
-  const rowGap = opts?.spaceAfterRow ?? 340;
+  const adaptive = computeSignerRowSpacing(items.length);
+  const rowGap = opts?.spaceAfterRow ?? adaptive.rowGapTwips;
+  const line = opts?.line ?? adaptive.lineTwips;
   const fontSize = opts?.size ?? F4_SIZE;
 
   return new Table({
@@ -613,8 +640,8 @@ function buildNonAktaSignerRowsTable(
                   size: fontSize,
                   indentLeft: 260,
                   hanging: 260,
-                  spaceAfter: idx === items.length - 1 ? 40 : rowGap,
-                  line: F4_LINE,
+                  spaceAfter: idx === items.length - 1 ? 20 : rowGap,
+                  line,
                 }),
               ],
             }),
@@ -627,8 +654,8 @@ function buildNonAktaSignerRowsTable(
                 fp(dotsText, {
                   size: fontSize,
                   align: AlignmentType.RIGHT,
-                  spaceAfter: idx === items.length - 1 ? 40 : rowGap,
-                  line: F4_LINE,
+                  spaceAfter: idx === items.length - 1 ? 20 : rowGap,
+                  line,
                 }),
               ],
             }),
@@ -641,12 +668,12 @@ function buildNonAktaSignerRowsTable(
 function buildSaksiBlocks(
   saksi1Name: string,
   saksi2Name: string,
-  spaceBefore = 220
+  spaceBefore = 160
 ): Array<Paragraph | Table> {
   return [
     fp('Saksi – saksi :', {
       spaceBefore,
-      spaceAfter: 140,
+      spaceAfter: 100,
       line: F4_LINE,
       keepNext: true,
       keepLines: true,
@@ -657,7 +684,7 @@ function buildSaksiBlocks(
         { no: 2, nama: saksi2Name },
       ],
       6800,
-      { spaceAfterRow: 340, dotsText: '(.............)', dotsWidthDxa: 1620 }
+      { spaceAfterRow: 190, dotsText: '(.............)', dotsWidthDxa: 1620, line: 240 }
     ),
   ];
 }
@@ -824,10 +851,10 @@ function buildNumberedPartiesKvBlocks(
   parties: NonAktaPartyView[],
   opts?: { shortAddress?: boolean; spaceAfterRow?: number }
 ): Array<Paragraph | Table> {
-  const out: Array<Paragraph | Table> = [];
+  const spaceAfterRow = opts?.spaceAfterRow ?? 0;
   if (parties.length === 1) {
     const pt = parties[0];
-    out.push(
+    return [
       kvTable(
         [
           ['Nama', pt.nama],
@@ -836,28 +863,34 @@ function buildNumberedPartiesKvBlocks(
           ['Nomor KTP', pt.nik],
           ['Alamat', opts?.shortAddress ? pt.alamatSingkat : pt.alamatLengkap],
         ],
-        { indentTwips: 420, labelPct: 26, spaceAfterRow: opts?.spaceAfterRow ?? 0, line: 250 }
-      )
-    );
-    return out;
+        { indentTwips: 420, labelPct: 26, spaceAfterRow, line: COMPACT_PARTY_KV_LINE }
+      ),
+    ];
   }
 
-  for (const pt of parties) {
-    out.push(
-      kvTable(
-        [
-          [`${pt.no}. Nama`, pt.nama],
-          ['   Tempat/Tgl.lahir', pt.ttl],
-          ['   Pekerjaan', pt.pekerjaan],
-          ['   Nomor KTP', pt.nik],
-          ['   Alamat', opts?.shortAddress ? pt.alamatSingkat : pt.alamatLengkap],
-        ],
-        { indentTwips: 240, labelPct: 28, spaceAfterRow: opts?.spaceAfterRow ?? 0, line: 245 }
-      )
+  // Satukan seluruh pihak bernomor ke dalam satu kvTable yang rapat (hemat kertas,
+  // tanpa paragraf kosong pemboros ruang di antara pihak, dan otomatis menghilangkan
+  // baris Pekerjaan apabila kosong).
+  const unifiedRows: Array<[string, string, number?]> = [];
+  parties.forEach((pt, idx) => {
+    const topGap = idx === 0 ? 0 : 45;
+    unifiedRows.push(
+      [`${pt.no}. Nama`, pt.nama, topGap],
+      ['   Tempat/Tgl.lahir', pt.ttl],
+      ['   Pekerjaan', pt.pekerjaan],
+      ['   Nomor KTP', pt.nik],
+      ['   Alamat', opts?.shortAddress ? pt.alamatSingkat : pt.alamatLengkap]
     );
-    out.push(fp('', { spaceAfter: 20, line: 160 }));
-  }
-  return out;
+  });
+
+  return [
+    kvTable(unifiedRows, {
+      indentTwips: 240,
+      labelPct: 28,
+      spaceAfterRow,
+      line: COMPACT_PARTY_KV_LINE,
+    }),
+  ];
 }
 
 function buildNumberedSignerLines(
@@ -876,12 +909,103 @@ function buildNumberedSignerLines(
       }),
     ];
   }
+  const spacing = computeSignerRowSpacing(parties.length);
   return [
     buildNonAktaSignerRowsTable(
       parties.map((pt) => ({ no: pt.no, nama: pt.nama })),
       cellInnerWidthDxa,
-      { spaceAfterRow: 340, dotsText: '(.............)' }
+      {
+        spaceAfterRow: spacing.rowGapTwips,
+        line: spacing.lineTwips,
+        dotsText: '(.............)',
+      }
     ),
+  ];
+}
+
+function getSignerHeaderSpaceAfter(partyCount: number, singleSpace = SIGNATURE_SPACE_METERAI): number {
+  if (partyCount <= 1) return singleSpace;
+  return computeSignerRowSpacing(partyCount).headerGapTwips;
+}
+
+/**
+ * Menyusun Surat Pernyataan / Surat Kuasa / Keabsahan secara hemat kertas.
+ * - Jika seluruh isi + blok tanda tangan muat dalam 1 halaman F4, tetap dicetak 1 halaman.
+ * - Jika melebihi 1 halaman F4 (misalnya karena banyak pihak/ahli waris), halaman 1
+ *   otomatis dilengkapi blok Pengesahan (`Mengetahui,`) di bagian bawah lalu dilanjutkan
+ *   rapi ke halaman berikutnya bersama blok tanda tangan & Pengesahan akhir.
+ */
+function buildMultiPageStatementLayout(params: {
+  titleBlocks: Array<Paragraph | Table>;
+  parties: NonAktaPartyView[];
+  bodyBlocks: Array<Paragraph | Table>;
+  signatureBlocks: Array<Paragraph | Table>;
+  pengesahan: ResolvedPengesahanTunggal;
+  headerTwips: number;
+  bodyTwips: number;
+  signatureTwips: number;
+  shortAddress?: boolean;
+}): Array<Paragraph | Table> {
+  const plan = planStatementPagination({
+    parties: params.parties.map((p) => ({
+      pekerjaan: p.pekerjaan,
+      alamat: params.shortAddress ? p.alamatSingkat : p.alamatLengkap,
+    })),
+    headerTwips: params.headerTwips,
+    bodyTwips: params.bodyTwips,
+    signatureBlockTwips: params.signatureTwips,
+  });
+
+  if (!plan.isMultiPage) {
+    return [
+      ...params.titleBlocks,
+      ...buildNumberedPartiesKvBlocks(params.parties, {
+        shortAddress: params.shortAddress,
+        spaceAfterRow: 0,
+      }),
+      ...params.bodyBlocks,
+      ...params.signatureBlocks,
+    ];
+  }
+
+  const page1Parties = params.parties.slice(0, plan.page1PartyCount);
+  const page2Parties = params.parties.slice(plan.page1PartyCount);
+  const intermediatePengesahan = buildSinglePengesahanCentered(
+    params.pengesahan,
+    120,
+    980
+  );
+
+  if (plan.putBodyOnPage1) {
+    return [
+      ...params.titleBlocks,
+      ...buildNumberedPartiesKvBlocks(page1Parties, {
+        shortAddress: params.shortAddress,
+        spaceAfterRow: 0,
+      }),
+      ...params.bodyBlocks,
+      ...intermediatePengesahan,
+      fp('', { pageBreakBefore: true, spaceBefore: 0, spaceAfter: 0, line: 120 }),
+      ...params.signatureBlocks,
+    ];
+  }
+
+  return [
+    ...params.titleBlocks,
+    ...buildNumberedPartiesKvBlocks(page1Parties, {
+      shortAddress: params.shortAddress,
+      spaceAfterRow: 0,
+    }),
+    ...intermediatePengesahan,
+    fp('', { pageBreakBefore: true, spaceBefore: 0, spaceAfter: 0, line: 120 }),
+    ...(page2Parties.length > 0
+      ? buildNumberedPartiesKvBlocks(page2Parties, {
+          shortAddress: params.shortAddress,
+          spaceAfterRow: 0,
+        })
+      : []),
+    ...params.bodyBlocks,
+    ...params.signatureBlocks,
   ];
 }
 
@@ -1044,12 +1168,12 @@ function buildPermohonanPage(params: {
     fp(
       `Berdasarkan surat kuasa   Nomor : ...................   Tanggal  :${params.tanggalDash ? ` ${params.tanggalDash}` : ''}`,
       {
-        spaceBefore: 80,
-        spaceAfter: 20,
-        line: 245,
+        spaceBefore: 60,
+        spaceAfter: 10,
+        line: 235,
       }
     ),
-    fp('Dengan ini mengajukan permohonan :', { spaceAfter: 40, line: F4_LINE }),
+    fp('Dengan ini mengajukan permohonan :', { spaceAfter: 20, line: 235 }),
 
     buildTwoColListTable(
       leftPermohonan.map(([lNum, lText], idx) => {
@@ -1064,35 +1188,35 @@ function buildPermohonanPage(params: {
       {
         leftPct: 48,
         indentTwips: 240,
-        line: F4_LINE,
-        spaceAfter: 20,
+        line: COMPACT_CHECKLIST_LINE,
+        spaceAfter: 0,
         hangingTwips: 340,
       }
     ),
 
     fp('Atas bidang tanah Hak / Tanah Negara :', {
-      spaceBefore: 120,
-      spaceAfter: 10,
-      line: F4_LINE,
+      spaceBefore: 60,
+      spaceAfter: 0,
+      line: 235,
     }),
-    fp('Terletak di', { indentLeft: 420, spaceAfter: 10, line: F4_LINE }),
+    fp('Terletak di', { indentLeft: 420, spaceAfter: 0, line: 235 }),
     kvTable(
       [
         ['Desa', sert.desa],
         ['Kecamatan', sert.kecamatan],
         ['Kabupaten', params.kotaKabupaten],
         [
-          sert.isDigital ? 'Nibel' : `Nomor ${sert.jenisHak} No.`,
+          sert.isDigital ? 'Nibel' : `Nomor ${sert.jenisHak}`,
           sert.isDigital ? sert.nibClean : sert.noHakClean,
         ],
       ],
-      { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: F4_LINE }
+      { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: 230 }
     ),
 
     fp('Untuk melengkapi permohonan dimaksud, bersama ini kami lampirkan :', {
-      spaceBefore: 120,
-      spaceAfter: 40,
-      line: F4_LINE,
+      spaceBefore: 60,
+      spaceAfter: 20,
+      line: 235,
     }),
     buildTwoColListTable(
       lampLeft.map((leftText, rowIdx) => {
@@ -1106,14 +1230,14 @@ function buildPermohonanPage(params: {
       {
         leftPct: 51,
         indentTwips: 0,
-        line: F4_LINE,
-        spaceAfter: 20,
+        line: COMPACT_CHECKLIST_LINE,
+        spaceAfter: 0,
         hangingTwips: 340,
       }
     ),
 
     // Paragraf pemisah wajib agar Word tidak menggabungkan tabel Lampiran dan tabel Tanda Tangan
-    fp('', { spaceBefore: 0, spaceAfter: 60, line: 120 }),
+    fp('', { spaceBefore: 0, spaceAfter: 40, line: 120 }),
 
     new Table({
       width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
@@ -1173,18 +1297,22 @@ function buildSuratKuasaNonAkta(params: {
   const sert = getSertipikatInfo(params.record);
   const leftW = 4100;
   const rightW = F4_CONTENT_WIDTH_DXA - leftW;
-  return [
+  const inlinePengesahanOnLeft = params.parties.length >= 5;
+
+  const titleBlocks: Array<Paragraph | Table> = [
     fp('SURAT KUASA', {
       pageBreakBefore: true,
       bold: true,
       underline: true,
       align: AlignmentType.CENTER,
-      spaceAfter: 160,
+      spaceAfter: 120,
       line: F4_LINE,
     }),
-    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: F4_LINE }),
-    ...buildNumberedPartiesKvBlocks(params.parties, { spaceAfterRow: 0 }),
-    fp(`${params.objekPrefix} ${sert.jenisHak} :`, { spaceBefore: 100, spaceAfter: 40, line: F4_LINE }),
+    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 30, line: F4_LINE }),
+  ];
+
+  const bodyBlocks: Array<Paragraph | Table> = [
+    fp(`${params.objekPrefix} ${sert.jenisHak} :`, { spaceBefore: 70, spaceAfter: 25, line: F4_LINE }),
     kvTable(
       [
         [sert.labelNo, sert.nilaiNo],
@@ -1193,9 +1321,9 @@ function buildSuratKuasaNonAkta(params: {
         ['Kabupaten', sert.kabupaten],
         ['Pemegang Hak Tercatat', sert.pemegangHak],
       ],
-      { indentTwips: 540, labelPct: 28, spaceAfterRow: 0, line: F4_LINE }
+      { indentTwips: 540, labelPct: 28, spaceAfterRow: 0, line: COMPACT_PARTY_KV_LINE }
     ),
-    fp('Maka dengan ini memberi kuasa kepada :', { spaceBefore: 100, spaceAfter: 40, line: F4_LINE }),
+    fp('Maka dengan ini memberi kuasa kepada :', { spaceBefore: 70, spaceAfter: 25, line: F4_LINE }),
     kvTable(
       [
         ['Nama', params.kuasa.nama],
@@ -1204,15 +1332,15 @@ function buildSuratKuasaNonAkta(params: {
         ['Nomor KTP', params.kuasa.nik],
         ['Alamat', params.kuasa.alamatSingkat],
       ],
-      { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: F4_LINE }
+      { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: COMPACT_PARTY_KV_LINE }
     ),
     aktaCenteredDashHeading('KHUSUS', {
       bold: true,
       underline: true,
       size: F4_SIZE,
       font: F4_FONT,
-      spaceBefore: 120,
-      spaceAfter: 80,
+      spaceBefore: 90,
+      spaceAfter: 60,
       line: F4_LINE,
       contentWidthDxa: F4_CONTENT_WIDTH_DXA,
     }),
@@ -1221,15 +1349,18 @@ function buildSuratKuasaNonAkta(params: {
         align: AlignmentType.JUSTIFIED,
         indentLeft: 320,
         hanging: 220,
-        spaceAfter: 40,
+        spaceAfter: 30,
         line: F4_LINE,
       })
     ),
     fp('Demikian kuasa ini diberikan untuk dapat dipergunakan sebagaimana mestinya.', {
-      spaceBefore: 60,
-      spaceAfter: 160,
+      spaceBefore: 50,
+      spaceAfter: 110,
       line: F4_LINE,
     }),
+  ];
+
+  const signatureBlocks: Array<Paragraph | Table> = [
     new Table({
       width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
       columnWidths: [leftW, rightW],
@@ -1258,6 +1389,9 @@ function buildSuratKuasaNonAkta(params: {
                   spaceAfter: 20,
                   line: F4_LINE,
                 }),
+                ...(inlinePengesahanOnLeft
+                  ? buildSinglePengesahanCentered(params.pengesahan, 240, 1080)
+                  : []),
               ],
             }),
             new TableCell({
@@ -1273,7 +1407,7 @@ function buildSuratKuasaNonAkta(params: {
                 }),
                 fp(params.parties.length > 1 ? 'Para Pemberi Kuasa' : 'Pemberi Kuasa', {
                   align: AlignmentType.CENTER,
-                  spaceAfter: params.parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
+                  spaceAfter: getSignerHeaderSpaceAfter(params.parties.length),
                   line: F4_LINE,
                   keepNext: true,
                 }),
@@ -1284,8 +1418,24 @@ function buildSuratKuasaNonAkta(params: {
         }),
       ],
     }),
-    ...buildSinglePengesahanCentered(params.pengesahan, 180),
+    ...(inlinePengesahanOnLeft ? [] : buildSinglePengesahanCentered(params.pengesahan, 140)),
   ];
+
+  const signerBlockH = estimateSignerBlockTwips(params.parties.length);
+  const sigTotalTwips = inlinePengesahanOnLeft
+    ? Math.max(signerBlockH, 4600)
+    : Math.max(signerBlockH, 2300) + 2350;
+
+  return buildMultiPageStatementLayout({
+    titleBlocks,
+    parties: params.parties,
+    bodyBlocks,
+    signatureBlocks,
+    pengesahan: params.pengesahan,
+    headerTwips: 760,
+    bodyTwips: 5900 + params.khususBullets.length * 620,
+    signatureTwips: sigTotalTwips,
+  });
 }
 
 function buildPenguasaanFisikNonAkta(params: {
@@ -1301,18 +1451,22 @@ function buildPenguasaanFisikNonAkta(params: {
   const sert = getSertipikatInfo(params.record);
   const sayaAtauKami = params.parties.length > 1 ? 'kami' : 'saya';
   const halfW = Math.floor(F4_CONTENT_WIDTH_DXA / 2);
-  return [
+  const inlinePengesahanOnLeft = params.parties.length >= 5;
+
+  const titleBlocks: Array<Paragraph | Table> = [
     fp('SURAT PERNYATAAN PENGUASAAN FISIK TANAH DAN TIDAK SENGKETA', {
       pageBreakBefore: true,
       bold: true,
       underline: true,
       align: AlignmentType.CENTER,
-      spaceAfter: 160,
+      spaceAfter: 120,
       line: F4_LINE,
     }),
-    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: F4_LINE }),
-    ...buildNumberedPartiesKvBlocks(params.parties, { spaceAfterRow: 0 }),
-    fp('Dengan disaksikan oleh :', { spaceBefore: 80, spaceAfter: 40, line: F4_LINE }),
+    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 30, line: F4_LINE }),
+  ];
+
+  const bodyBlocks: Array<Paragraph | Table> = [
+    fp('Dengan disaksikan oleh :', { spaceBefore: 60, spaceAfter: 25, line: F4_LINE }),
     kvTable(
       [
         ['1. Nama', params.saksi1.nama],
@@ -1320,44 +1474,41 @@ function buildPenguasaanFisikNonAkta(params: {
         ['   Pekerjaan', params.saksi1.pekerjaan],
         ['   Nomor KTP', params.saksi1.nik],
         ['   Alamat', params.saksi1.alamat],
-      ],
-      { indentTwips: 240, labelPct: 27, spaceAfterRow: 0, line: F4_LINE }
-    ),
-    fp('', { spaceAfter: 20, line: 150 }),
-    kvTable(
-      [
-        ['2. Nama', params.saksi2.nama],
+        ['2. Nama', params.saksi2.nama, 45],
         ['   Tempat/Tgl.lahir', params.saksi2.ttl],
         ['   Pekerjaan', params.saksi2.pekerjaan],
         ['   Nomor KTP', params.saksi2.nik],
         ['   Alamat', params.saksi2.alamat],
       ],
-      { indentTwips: 240, labelPct: 27, spaceAfterRow: 0, line: F4_LINE }
+      { indentTwips: 240, labelPct: 27, spaceAfterRow: 0, line: COMPACT_PARTY_KV_LINE }
     ),
     fp(`Pada hari ini ${params.hariTanggal} dengan ini menyatakan :`, {
-      spaceBefore: 100,
-      spaceAfter: 50,
+      spaceBefore: 70,
+      spaceAfter: 35,
       line: F4_LINE,
     }),
     fp(`1. ${params.butir1Text}`, {
       align: AlignmentType.JUSTIFIED,
       indentLeft: 320,
       hanging: 320,
-      spaceAfter: 40,
+      spaceAfter: 30,
       line: F4_LINE,
     }),
     fp(
       `2. Bahwa ${sayaAtauKami} benar-benar menguasai tanah secara fisik sejak tahun ${sert.sejakTahun} sampai sekarang dan dipergunakan untuk ${sert.penggunaan}.${params.catatanAlias ? ` (${params.catatanAlias})` : ''}`,
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 40, line: F4_LINE }
+      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 30, line: F4_LINE }
     ),
     fp(
       '3. Bahwa tanah tersebut tidak dalam keadaan sengketa, konflik, perkara, sita jaminan atau pemblokiran dari pihak lain.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 60, line: F4_LINE }
+      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 45, line: F4_LINE }
     ),
     fp(
       `Demikian surat pernyataan ini ${sayaAtauKami} buat dengan sebenarnya dan ${sayaAtauKami} bertanggung jawab sepenuhnya atas pernyataan ini. Apabila dikemudian hari terjadi perkara perdata maupun pidana atas tanah ini, maka perkara tersebut merupakan tanggung jawab pribadi ${sayaAtauKami} dengan tidak melibatkan Pejabat/Kantor Badan Pertanahan Nasional ${sert.kabupaten}.`,
-      { align: AlignmentType.JUSTIFIED, spaceAfter: 140, line: F4_LINE }
+      { align: AlignmentType.JUSTIFIED, spaceAfter: 110, line: F4_LINE }
     ),
+  ];
+
+  const signatureBlocks: Array<Paragraph | Table> = [
     new Table({
       width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
       columnWidths: [halfW, F4_CONTENT_WIDTH_DXA - halfW],
@@ -1372,15 +1523,18 @@ function buildPenguasaanFisikNonAkta(params: {
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 120 },
               children: [
-                fp('Saksi – saksi :', { spaceAfter: 160, line: F4_LINE, keepNext: true }),
+                fp('Saksi – saksi :', { spaceAfter: 100, line: F4_LINE, keepNext: true }),
                 buildNonAktaSignerRowsTable(
                   [
                     { no: 1, nama: params.saksi1.nama },
                     { no: 2, nama: params.saksi2.nama },
                   ],
                   halfW - 120,
-                  { spaceAfterRow: 340 }
+                  { spaceAfterRow: 190, line: 240 }
                 ),
+                ...(inlinePengesahanOnLeft
+                  ? buildSinglePengesahanCentered(params.pengesahan, 200, 1080)
+                  : []),
               ],
             }),
             new TableCell({
@@ -1390,7 +1544,7 @@ function buildPenguasaanFisikNonAkta(params: {
               children: [
                 fp('Yang membuat pernyataan', {
                   align: AlignmentType.CENTER,
-                  spaceAfter: params.parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
+                  spaceAfter: getSignerHeaderSpaceAfter(params.parties.length),
                   line: F4_LINE,
                   keepNext: true,
                 }),
@@ -1401,8 +1555,24 @@ function buildPenguasaanFisikNonAkta(params: {
         }),
       ],
     }),
-    ...buildSinglePengesahanCentered(params.pengesahan, 140),
+    ...(inlinePengesahanOnLeft ? [] : buildSinglePengesahanCentered(params.pengesahan, 120)),
   ];
+
+  const signerBlockH = estimateSignerBlockTwips(params.parties.length);
+  const sigTotalTwips = inlinePengesahanOnLeft
+    ? Math.max(signerBlockH, 3900)
+    : Math.max(signerBlockH, 2250) + 2300;
+
+  return buildMultiPageStatementLayout({
+    titleBlocks,
+    parties: params.parties,
+    bodyBlocks,
+    signatureBlocks,
+    pengesahan: params.pengesahan,
+    headerTwips: 820,
+    bodyTwips: 6850,
+    signatureTwips: sigTotalTwips,
+  });
 }
 
 function buildDataPribadiPage(params: {
@@ -1411,17 +1581,19 @@ function buildDataPribadiPage(params: {
   tanggalText: string;
   pengesahan?: ResolvedPengesahanTunggal;
 }): Array<Paragraph | Table> {
-  return [
+  const clauseLine = 252;
+  const clauseAfter = 55;
+  const clausesBlocks: Array<Paragraph | Table> = [
     fp('SURAT PERNYATAAN PERSETUJUAN PEMROSESAN DATA PRIBADI', {
       pageBreakBefore: true,
       bold: true,
       align: AlignmentType.CENTER,
-      spaceAfter: 160,
-      line: 270,
+      spaceAfter: 120,
+      line: 260,
     }),
     fp(
       'Saya, yang bertandatangan di bawah ini, selaku pengguna layanan Pertanahan Kementerian Agraria dan Tata Ruang/Badan Pertanahan Nasional (“Kementerian ATR/BPN”), dengan ini menyatakan sebagai berikut:',
-      { align: AlignmentType.JUSTIFIED, spaceAfter: 80, line: F4_LINE_AIRY }
+      { align: AlignmentType.JUSTIFIED, spaceAfter: clauseAfter, line: clauseLine }
     ),
     fpRuns(
       [
@@ -1435,75 +1607,90 @@ function buildDataPribadiPage(params: {
           text: ' Dengan ini saya memberikan persetujuan kepada Kementerian ATR/BPN selaku Pengendali Data Pribadi untuk melakukan pemrosesan Data Pribadi saya dan/atau pihak yang saya wakili sesuai ketentuan peraturan perundang-undangan.',
         },
       ],
-      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 80, line: F4_LINE_AIRY }
+      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: clauseAfter, line: clauseLine }
     ),
     fp(
       '2. Saya telah menerima dan memahami informasi yang diberikan oleh Kementerian ATR/BPN sehubungan dengan tujuan pemrosesan Data Pribadi dilakukan untuk proses administrasi layanan pertanahan dan pertukaran data dengan Kementerian/Lembaga lainnya.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 80, line: F4_LINE_AIRY }
+      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: clauseAfter, line: clauseLine }
     ),
     fp(
       '3. Saya memahami hak saya sebagai subjek data pribadi untuk menyampaikan permintaan penundaan, pembatasan, pengakhiran, penarikan persetujuan, penghapusan, maupun pembaruan data pribadi sesuai peraturan yang berlaku.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 80, line: F4_LINE_AIRY }
+      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: clauseAfter, line: clauseLine }
     ),
     fp(
       '4. Saya memahami dan menyetujui bahwa Kementerian ATR/BPN akan mempergunakan dan menyimpan Data Pribadi sesuai ketentuan peraturan perundang-undangan atau selama diperlukan.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 80, line: F4_LINE_AIRY }
+      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: clauseAfter, line: clauseLine }
     ),
     fp(
       '5. Saya memahami dan setuju bahwa Kementerian ATR/BPN dapat mengungkapkan data pribadi kepada aparat penegak hukum maupun instansi pemerintah/mitra resmi terkait layanan pertanahan melalui sistem elektronik yang terintegrasi.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 80, line: F4_LINE_AIRY }
+      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: clauseAfter, line: clauseLine }
     ),
     fp(
       '6. Saya memahami bahwa kesalahan terhadap penyalahgunaan data pribadi oleh pihak ketiga sepenuhnya menjadi tanggung jawab pihak ketiga dan bukan menjadi kesalahan Kementerian ATR/BPN.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 80, line: F4_LINE_AIRY }
+      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: clauseAfter, line: clauseLine }
     ),
     fp(
       '7. Saya memahami dan menyetujui bahwa saya berkewajiban untuk memastikan Data Pribadi yang saya ungkapkan kepada Kementerian ATR/BPN adalah lengkap, akurat, benar dan terkini. Demikian persetujuan ini dibuat dengan sebenar-benarnya tanpa paksaan dari pihak manapun.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 200, line: F4_LINE_AIRY }
+      { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 130, line: clauseLine }
     ),
-    new Table({
-      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
-      layout: TableLayoutType.FIXED,
-      borders: NO_TABLE_BORDERS,
-      rows: [
-        new TableRow({
-          cantSplit: true,
-          children: [
-            new TableCell({
-              width: { size: 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 0, right: 120 },
-              children: params.pengesahan
-                ? buildSinglePengesahanCentered(params.pengesahan, 20)
-                : [fp('', { spaceAfter: 0 })],
-            }),
-            new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 120, right: 0 },
-              children: [
-                fp(`${params.kotaKabupaten}, ${params.tanggalText}`, {
-                  align: AlignmentType.CENTER,
-                  spaceBefore: 20,
-                  spaceAfter: 0,
-                  line: F4_LINE,
-                  keepNext: true,
-                }),
-                fp('Yang Membuat Pernyataan,', {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: params.parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                  line: F4_LINE,
-                  keepNext: true,
-                }),
-                ...buildNumberedSignerLines(params.parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
-              ],
-            }),
-          ],
-        }),
-      ],
-    }),
   ];
+
+  const signTable = new Table({
+    width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+    columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+    layout: TableLayoutType.FIXED,
+    borders: NO_TABLE_BORDERS,
+    rows: [
+      new TableRow({
+        cantSplit: true,
+        children: [
+          new TableCell({
+            width: { size: 4280, type: WidthType.DXA },
+            borders: NO_BORDER,
+            margins: { top: 0, bottom: 0, left: 0, right: 120 },
+            children: params.pengesahan
+              ? buildSinglePengesahanCentered(params.pengesahan, 20)
+              : [fp('', { spaceAfter: 0 })],
+          }),
+          new TableCell({
+            width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+            borders: NO_BORDER,
+            margins: { top: 0, bottom: 0, left: 120, right: 0 },
+            children: [
+              fp(`${params.kotaKabupaten}, ${params.tanggalText}`, {
+                align: AlignmentType.CENTER,
+                spaceBefore: 20,
+                spaceAfter: 0,
+                line: F4_LINE,
+                keepNext: true,
+              }),
+              fp('Yang Membuat Pernyataan,', {
+                align: AlignmentType.CENTER,
+                spaceAfter: getSignerHeaderSpaceAfter(params.parties.length),
+                line: F4_LINE,
+                keepNext: true,
+              }),
+              ...buildNumberedSignerLines(params.parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  // Jika daftar penanda tangan sangat banyak sehingga melampaui 1 halaman F4,
+  // sisipkan Pengesahan di bagian bawah halaman 1 lalu pindahkan tabel tanda tangan ke halaman 2.
+  const estimatedDataPribadiTwips = 9300 + estimateSignerBlockTwips(params.parties.length);
+  if (params.pengesahan && estimatedDataPribadiTwips > 15800) {
+    return [
+      ...clausesBlocks,
+      ...buildSinglePengesahanCentered(params.pengesahan, 120, 980),
+      fp('', { pageBreakBefore: true, spaceBefore: 0, spaceAfter: 0, line: 120 }),
+      signTable,
+    ];
+  }
+
+  return [...clausesBlocks, signTable];
 }
 
 function buildBedaNamaPage(params: {
@@ -1586,14 +1773,14 @@ function buildBedaNamaPage(params: {
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 120 },
               children: [
-                fp('Saksi – saksi :', { spaceAfter: 160, line: F4_LINE, keepNext: true }),
+                fp('Saksi – saksi :', { spaceAfter: 100, line: F4_LINE, keepNext: true }),
                 buildNonAktaSignerRowsTable(
                   [
                     { no: 1, nama: params.saksi1.nama },
                     { no: 2, nama: params.saksi2.nama },
                   ],
                   4840 - 120,
-                  { spaceAfterRow: 340 }
+                  { spaceAfterRow: 190, line: 240 }
                 ),
               ],
             }),
@@ -1743,14 +1930,14 @@ function buildTurunWarisBundle(
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 120 },
               children: [
-                fp('Saksi – saksi :', { spaceAfter: 160, line: F4_LINE, keepNext: true }),
+                fp('Saksi – saksi :', { spaceAfter: 100, line: F4_LINE, keepNext: true }),
                 buildNonAktaSignerRowsTable(
                   [
                     { no: 1, nama: saksi1.nama },
                     { no: 2, nama: saksi2.nama },
                   ],
                   4280 - 120,
-                  { spaceAfterRow: 340 }
+                  { spaceAfterRow: 190, line: 240 }
                 ),
               ],
             }),
@@ -1761,14 +1948,13 @@ function buildTurunWarisBundle(
               children: [
                 fp('Para Ahli Waris :', {
                   align: AlignmentType.CENTER,
-                  spaceAfter: 160,
+                  spaceAfter: getSignerHeaderSpaceAfter(parties.length, 160),
                   line: F4_LINE,
                   keepNext: true,
                 }),
                 buildNonAktaSignerRowsTable(
                   parties.map((pt) => ({ no: pt.no, nama: pt.nama })),
-                  F4_CONTENT_WIDTH_DXA - 4280 - 120,
-                  { spaceAfterRow: 340 }
+                  F4_CONTENT_WIDTH_DXA - 4280 - 120
                 ),
               ],
             }),
@@ -1835,137 +2021,163 @@ function buildTurunWarisBundle(
     }),
 
     // HALAMAN 8: SURAT PERNYATAAN SPPT / PBB WARIS
-    fp('SURAT PERNYATAAN', {
-      pageBreakBefore: true,
-      bold: true,
-      underline: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 180,
-      line: 260,
-    }),
-    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 60, line: F4_LINE_AIRY }),
-    ...buildNumberedPartiesKvBlocks(parties, { spaceAfterRow: 0 }),
-    fp(
-      `Dengan ini menyatakan dengan sebenarnya bahwa Surat Pemberitahuan Pajak Terhutang Pajak Bumi dan Bangunan (SPPT/PBB) Nomor Obyek Pajak (NOP) : ${nopClean}`,
-      { align: AlignmentType.JUSTIFIED, spaceBefore: 120, spaceAfter: 40, line: F4_LINE_AIRY }
-    ),
-    fp(`Atas tanah warisan bersertipikat ${sert.jenisHak} :`, { spaceAfter: 60, line: F4_LINE_AIRY }),
-    kvTable(
-      [
-        [sert.labelNo, sert.nilaiNo],
-        ['Desa', sert.desa],
-        ['Kecamatan', sert.kecamatan],
-        ['Kabupaten', sert.kabupaten],
-        ['Atas nama', sert.pemegangHak],
+    ...buildMultiPageStatementLayout({
+      titleBlocks: [
+        fp('SURAT PERNYATAAN', {
+          pageBreakBefore: true,
+          bold: true,
+          underline: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 140,
+          line: 250,
+        }),
+        fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: 250 }),
       ],
-      { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: 255 }
-    ),
-    fp(
-      'Masih atas nama almarhum/pemilik lama karena belum dibalik nama atas nama para ahli waris.',
-      { align: AlignmentType.JUSTIFIED, spaceBefore: 80, spaceAfter: 40, line: F4_LINE_AIRY }
-    ),
-    fp('Demikian surat pernyataan ini dibuat agar dipergunakan sebagaimana mestinya.', {
-      align: AlignmentType.JUSTIFIED,
-      spaceAfter: 200,
-      line: F4_LINE_AIRY,
-    }),
-    new Table({
-      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
-      layout: TableLayoutType.FIXED,
-      borders: NO_TABLE_BORDERS,
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 0, right: 120 },
-              children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
-            }),
-            new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 120, right: 0 },
+      parties,
+      bodyBlocks: [
+        fp(
+          `Dengan ini menyatakan dengan sebenarnya bahwa Surat Pemberitahuan Pajak Terhutang Pajak Bumi dan Bangunan (SPPT/PBB) Nomor Obyek Pajak (NOP) : ${nopClean}`,
+          { align: AlignmentType.JUSTIFIED, spaceBefore: 100, spaceAfter: 40, line: F4_LINE }
+        ),
+        fp(`Atas tanah warisan bersertipikat ${sert.jenisHak} :`, { spaceAfter: 40, line: F4_LINE }),
+        kvTable(
+          [
+            [sert.labelNo, sert.nilaiNo],
+            ['Desa', sert.desa],
+            ['Kecamatan', sert.kecamatan],
+            ['Kabupaten', sert.kabupaten],
+            ['Atas nama', sert.pemegangHak],
+          ],
+          { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: 245 }
+        ),
+        fp(
+          'Masih atas nama almarhum/pemilik lama karena belum dibalik nama atas nama para ahli waris.',
+          { align: AlignmentType.JUSTIFIED, spaceBefore: 60, spaceAfter: 30, line: F4_LINE }
+        ),
+        fp('Demikian surat pernyataan ini dibuat agar dipergunakan sebagaimana mestinya.', {
+          align: AlignmentType.JUSTIFIED,
+          spaceAfter: 140,
+          line: F4_LINE,
+        }),
+      ],
+      signatureBlocks: [
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+          layout: TableLayoutType.FIXED,
+          borders: NO_TABLE_BORDERS,
+          rows: [
+            new TableRow({
+              cantSplit: true,
               children: [
-                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-                  align: AlignmentType.CENTER,
-                  spaceBefore: 20,
-                  spaceAfter: 0,
-                  line: F4_LINE,
+                new TableCell({
+                  width: { size: 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                  children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
                 }),
-                fp('Yang menyatakan', {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                  line: F4_LINE,
+                new TableCell({
+                  width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 120, right: 0 },
+                  children: [
+                    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                      align: AlignmentType.CENTER,
+                      spaceBefore: 20,
+                      spaceAfter: 0,
+                      line: F4_LINE,
+                    }),
+                    fp('Yang menyatakan', {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: getSignerHeaderSpaceAfter(parties.length),
+                      line: F4_LINE,
+                    }),
+                    ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
+                  ],
                 }),
-                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
         }),
+        ...buildSaksiBlocks(saksi1.nama, saksi2.nama, 140),
       ],
+      pengesahan: pengesahanTunggal,
+      headerTwips: 760,
+      bodyTwips: 3600,
+      signatureTwips: Math.max(2500, estimateSignerBlockTwips(parties.length) + 1250),
     }),
-    ...buildSaksiBlocks(saksi1.nama, saksi2.nama, 220),
 
     // HALAMAN 9: SURAT PERNYATAAN BPHTB WARISAN
-    fp('SURAT PERNYATAAN', {
-      pageBreakBefore: true,
-      bold: true,
-      underline: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 180,
-      line: 260,
-    }),
-    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 60, line: F4_LINE_AIRY }),
-    ...buildNumberedPartiesKvBlocks(parties, { spaceAfterRow: 0 }),
-    fp('Dengan ini menyatakan :', { spaceBefore: 100, spaceAfter: 60, line: F4_LINE_AIRY }),
-    fp(
-      `-  Bahwa kami telah menerima harta Warisan berupa sebidang tanah tersebut ${sert.ringkas} Desa ${sert.desa} dengan Luas ${sert.luasStr} m2 (${sert.luasTerbilang}) yang terletak di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}.`,
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 240, spaceAfter: 80, line: F4_LINE_AIRY }
-    ),
-    fp(
-      '-  Bahwa apabila dalam Proses Peralihan Hak (Turun Waris) atas tanah yang kami terima tersebut diatas ternyata terjadi kekurangan pembayaran BPHTB, maka kami sanggup untuk membayar kekurangan BPHTB tersebut sesuai ketentuan peraturan perundang-undangan yang berlaku.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 240, spaceAfter: 200, line: F4_LINE_AIRY }
-    ),
-    new Table({
-      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
-      layout: TableLayoutType.FIXED,
-      borders: NO_TABLE_BORDERS,
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 0, right: 120 },
-              children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
-            }),
-            new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 120, right: 0 },
+    ...buildMultiPageStatementLayout({
+      titleBlocks: [
+        fp('SURAT PERNYATAAN', {
+          pageBreakBefore: true,
+          bold: true,
+          underline: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 140,
+          line: 250,
+        }),
+        fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: 250 }),
+      ],
+      parties,
+      bodyBlocks: [
+        fp('Dengan ini menyatakan :', { spaceBefore: 90, spaceAfter: 40, line: F4_LINE }),
+        fp(
+          `-  Bahwa kami telah menerima harta Warisan berupa sebidang tanah tersebut ${sert.ringkas} Desa ${sert.desa} dengan Luas ${sert.luasStr} m2 (${sert.luasTerbilang}) yang terletak di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}.`,
+          { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 240, spaceAfter: 60, line: F4_LINE }
+        ),
+        fp(
+          '-  Bahwa apabila dalam Proses Peralihan Hak (Turun Waris) atas tanah yang kami terima tersebut diatas ternyata terjadi kekurangan pembayaran BPHTB, maka kami sanggup untuk membayar kekurangan BPHTB tersebut sesuai ketentuan peraturan perundang-undangan yang berlaku.',
+          { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 240, spaceAfter: 140, line: F4_LINE }
+        ),
+      ],
+      signatureBlocks: [
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+          layout: TableLayoutType.FIXED,
+          borders: NO_TABLE_BORDERS,
+          rows: [
+            new TableRow({
+              cantSplit: true,
               children: [
-                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-                  align: AlignmentType.CENTER,
-                  spaceBefore: 20,
-                  spaceAfter: 0,
-                  line: F4_LINE,
+                new TableCell({
+                  width: { size: 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                  children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
                 }),
-                fp('Yang menyatakan', {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                  line: F4_LINE,
+                new TableCell({
+                  width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 120, right: 0 },
+                  children: [
+                    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                      align: AlignmentType.CENTER,
+                      spaceBefore: 20,
+                      spaceAfter: 0,
+                      line: F4_LINE,
+                    }),
+                    fp('Yang menyatakan', {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: getSignerHeaderSpaceAfter(parties.length),
+                      line: F4_LINE,
+                    }),
+                    ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
+                  ],
                 }),
-                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
         }),
+        ...buildSaksiBlocks(saksi1.nama, saksi2.nama, 140),
       ],
+      pengesahan: pengesahanTunggal,
+      headerTwips: 760,
+      bodyTwips: 2500,
+      signatureTwips: Math.max(2500, estimateSignerBlockTwips(parties.length) + 1250),
     }),
-    ...buildSaksiBlocks(saksi1.nama, saksi2.nama, 220),
 
     // HALAMAN 10-11: PEMROSESAN DATA PRIBADI
     ...buildDataPribadiPage({
@@ -1976,74 +2188,87 @@ function buildTurunWarisBundle(
     }),
 
     // HALAMAN 12-13: PERTANGGUNGJAWABAN KEABSAHAN DAN KEBENARAN DOKUMEN (TANPA SAKSI)
-    fp('SURAT PERTANGGUNGJAWABAN KEABSAHAN DAN', {
-      pageBreakBefore: true,
-      bold: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 0,
-      line: 260,
-    }),
-    fp('KEBENARAN DOKUMEN', {
-      bold: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 180,
-      line: 260,
-    }),
-    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 50, line: 250 }),
-    ...buildNumberedPartiesKvBlocks(parties, { spaceAfterRow: 0 }),
-    fp(
-      `Merupakan para ahli waris / pemilik tanah dengan jenis tanah ${sert.jenisHak} ${sert.ringkas} terletak di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}, Provinsi ${sert.provinsi}.`,
-      { align: AlignmentType.JUSTIFIED, spaceBefore: 100, spaceAfter: 60, line: 255 }
-    ),
-    fp('Dengan ini menyatakan :', { spaceAfter: 40, line: 255 }),
-    fp(
-      '1. Sertipikat tersebut adalah asli dan dokumen Surat Keterangan Warisan beserta seluruh dokumen pendukung adalah benar dan sah menurut hukum.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 40, line: 255 }
-    ),
-    fp(
-      `2. Seluruh dokumen yang diunggah pada sistem aplikasi layanan pertanahan pada Kantor Pertanahan ${sert.kabupaten} adalah benar dan sesuai dengan aslinya.`,
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 40, line: 255 }
-    ),
-    fp(
-      '3. Beritikad baik dan bertanggungjawab sepenuhnya atas penggunaan data yang diakses serta bersedia menerima sanksi administratif maupun hukum apabila data dinyatakan tidak benar.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 160, line: 255 }
-    ),
-    new Table({
-      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
-      layout: TableLayoutType.FIXED,
-      borders: NO_TABLE_BORDERS,
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 0, right: 120 },
-              children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
-            }),
-            new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 120, right: 0 },
+    ...buildMultiPageStatementLayout({
+      titleBlocks: [
+        fp('SURAT PERTANGGUNGJAWABAN KEABSAHAN DAN', {
+          pageBreakBefore: true,
+          bold: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 0,
+          line: 250,
+        }),
+        fp('KEBENARAN DOKUMEN', {
+          bold: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 140,
+          line: 250,
+        }),
+        fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: 245 }),
+      ],
+      parties,
+      bodyBlocks: [
+        fp(
+          `Merupakan para ahli waris / pemilik tanah dengan jenis tanah ${sert.jenisHak} ${sert.ringkas} terletak di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}, Provinsi ${sert.provinsi}.`,
+          { align: AlignmentType.JUSTIFIED, spaceBefore: 90, spaceAfter: 50, line: 250 }
+        ),
+        fp('Dengan ini menyatakan :', { spaceAfter: 30, line: 250 }),
+        fp(
+          '1. Sertipikat tersebut adalah asli dan dokumen Surat Keterangan Warisan beserta seluruh dokumen pendukung adalah benar dan sah menurut hukum.',
+          { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 35, line: 250 }
+        ),
+        fp(
+          `2. Seluruh dokumen yang diunggah pada sistem aplikasi layanan pertanahan pada Kantor Pertanahan ${sert.kabupaten} adalah benar dan sesuai dengan aslinya.`,
+          { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 35, line: 250 }
+        ),
+        fp(
+          '3. Beritikad baik dan bertanggungjawab sepenuhnya atas penggunaan data yang diakses serta bersedia menerima sanksi administratif maupun hukum apabila data dinyatakan tidak benar.',
+          { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 130, line: 250 }
+        ),
+      ],
+      signatureBlocks: [
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+          layout: TableLayoutType.FIXED,
+          borders: NO_TABLE_BORDERS,
+          rows: [
+            new TableRow({
+              cantSplit: true,
               children: [
-                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-                  align: AlignmentType.CENTER,
-                  spaceBefore: 20,
-                  spaceAfter: 0,
-                  line: F4_LINE,
+                new TableCell({
+                  width: { size: 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                  children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
                 }),
-                fp('Yang menyatakan', {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                  line: F4_LINE,
+                new TableCell({
+                  width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 120, right: 0 },
+                  children: [
+                    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                      align: AlignmentType.CENTER,
+                      spaceBefore: 20,
+                      spaceAfter: 0,
+                      line: F4_LINE,
+                    }),
+                    fp('Yang menyatakan', {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: getSignerHeaderSpaceAfter(parties.length),
+                      line: F4_LINE,
+                    }),
+                    ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
+                  ],
                 }),
-                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
         }),
       ],
+      pengesahan: pengesahanTunggal,
+      headerTwips: 950,
+      bodyTwips: 3500,
+      signatureTwips: Math.max(2400, estimateSignerBlockTwips(parties.length) + 200),
     }),
   ];
 }
@@ -2163,69 +2388,82 @@ function buildPemecahanUkurUlangBundle(
     }),
 
     // 4. SURAT PERNYATAAN PERMOHONAN PEMECAHAN / UKUR ULANG
-    fp('SURAT PERNYATAAN', {
-      pageBreakBefore: true,
-      bold: true,
-      underline: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 180,
-      line: 260,
-    }),
-    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 60, line: F4_LINE_AIRY }),
-    ...buildNumberedPartiesKvBlocks(parties, { spaceAfterRow: 0 }),
-    fp(
-      `Dengan ini menyatakan bahwa ${parties.length > 1 ? 'kami' : 'saya'} adalah pemegang hak atas sebidang tanah ${sert.jenisHak} ${sert.ringkas} seluas ${sert.luasStr} M² terletak di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}.`,
-      { align: AlignmentType.JUSTIFIED, spaceBefore: 120, spaceAfter: 60, line: F4_LINE_AIRY }
-    ),
-    fp(
-      isPemecahan
-        ? `Bahwa bidang tanah tersebut diatas benar-benar akan dilakukan PEMECAHAN menjadi ${bidangPecahan.length} bagian bidang tanah untuk keperluan penataan batas/pembagian aset dan tidak berada dalam sengketa dengan pihak manapun.`
-        : 'Bahwa bidang tanah tersebut diatas diajukan PENGUKURAN ULANG / pengembalian batas untuk mencocokkan luas dan batas fisik di lapangan sesuai kondisi terkini.',
-      { align: AlignmentType.JUSTIFIED, spaceAfter: 60, line: F4_LINE_AIRY }
-    ),
-    fp('Demikian surat pernyataan ini dibuat dengan sebenarnya untuk dapat dipergunakan sebagaimana mestinya.', {
-      align: AlignmentType.JUSTIFIED,
-      spaceAfter: 180,
-      line: F4_LINE_AIRY,
-    }),
-    new Table({
-      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
-      layout: TableLayoutType.FIXED,
-      borders: NO_TABLE_BORDERS,
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 0, right: 120 },
-              children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
-            }),
-            new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 120, right: 0 },
+    ...buildMultiPageStatementLayout({
+      titleBlocks: [
+        fp('SURAT PERNYATAAN', {
+          pageBreakBefore: true,
+          bold: true,
+          underline: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 140,
+          line: 250,
+        }),
+        fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: 250 }),
+      ],
+      parties,
+      bodyBlocks: [
+        fp(
+          `Dengan ini menyatakan bahwa ${parties.length > 1 ? 'kami' : 'saya'} adalah pemegang hak atas sebidang tanah ${sert.jenisHak} ${sert.ringkas} seluas ${sert.luasStr} M² terletak di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}.`,
+          { align: AlignmentType.JUSTIFIED, spaceBefore: 100, spaceAfter: 50, line: F4_LINE }
+        ),
+        fp(
+          isPemecahan
+            ? `Bahwa bidang tanah tersebut diatas benar-benar akan dilakukan PEMECAHAN menjadi ${bidangPecahan.length} bagian bidang tanah untuk keperluan penataan batas/pembagian aset dan tidak berada dalam sengketa dengan pihak manapun.`
+            : 'Bahwa bidang tanah tersebut diatas diajukan PENGUKURAN ULANG / pengembalian batas untuk mencocokkan luas dan batas fisik di lapangan sesuai kondisi terkini.',
+          { align: AlignmentType.JUSTIFIED, spaceAfter: 50, line: F4_LINE }
+        ),
+        fp('Demikian surat pernyataan ini dibuat dengan sebenarnya untuk dapat dipergunakan sebagaimana mestinya.', {
+          align: AlignmentType.JUSTIFIED,
+          spaceAfter: 140,
+          line: F4_LINE,
+        }),
+      ],
+      signatureBlocks: [
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+          layout: TableLayoutType.FIXED,
+          borders: NO_TABLE_BORDERS,
+          rows: [
+            new TableRow({
+              cantSplit: true,
               children: [
-                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-                  align: AlignmentType.CENTER,
-                  spaceBefore: 20,
-                  spaceAfter: 0,
-                  line: F4_LINE,
+                new TableCell({
+                  width: { size: 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                  children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
                 }),
-                fp('Yang menyatakan', {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                  line: F4_LINE,
+                new TableCell({
+                  width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 120, right: 0 },
+                  children: [
+                    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                      align: AlignmentType.CENTER,
+                      spaceBefore: 20,
+                      spaceAfter: 0,
+                      line: F4_LINE,
+                    }),
+                    fp('Yang menyatakan', {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: getSignerHeaderSpaceAfter(parties.length),
+                      line: F4_LINE,
+                    }),
+                    ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
+                  ],
                 }),
-                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
         }),
+        ...buildSaksiBlocks(saksi1.nama, saksi2.nama, 140),
       ],
+      pengesahan: pengesahanTunggal,
+      headerTwips: 760,
+      bodyTwips: 2600,
+      signatureTwips: Math.max(2500, estimateSignerBlockTwips(parties.length) + 1250),
     }),
-    ...buildSaksiBlocks(saksi1.nama, saksi2.nama, 200),
 
     // 5. SURAT PERNYATAAN PEMASANGAN TANDA BATAS & PERSETUJUAN PEMILIK BERBATASAN (DENGAN SKETSA BIDANG)
     ...(() => {
@@ -2476,7 +2714,7 @@ function buildPemecahanUkurUlangBundle(
                     }),
                     fp('Yang membuat Pernyataan', {
                       align: AlignmentType.CENTER,
-                      spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
+                      spaceAfter: getSignerHeaderSpaceAfter(parties.length),
                       line: F4_LINE,
                     }),
                     ...buildNumberedSignerLines(parties, rightSignW - 100),
@@ -2575,14 +2813,14 @@ function buildPemecahanUkurUlangBundle(
                   borders: NO_BORDER,
                   margins: { top: 40, bottom: 0, left: 0, right: 120 },
                   children: [
-                    fp('Saksi-saksi:', { spaceAfter: 120, line: F4_LINE, keepNext: true }),
+                    fp('Saksi-saksi:', { spaceAfter: 90, line: F4_LINE, keepNext: true }),
                     buildNonAktaSignerRowsTable(
                       [
                         { no: 1, nama: saksi1.nama },
                         { no: 2, nama: saksi2.nama },
                       ],
                       4840 - 120,
-                      { size: 20, spaceAfterRow: 320, dotsText: '(.............)' }
+                      { size: 20, spaceAfterRow: 190, line: 235, dotsText: '(.............)' }
                     ),
                   ],
                 }),
@@ -2736,7 +2974,7 @@ function buildPemecahanUkurUlangBundle(
                     }),
                     fp('Pemohon', {
                       align: AlignmentType.CENTER,
-                      spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
+                      spaceAfter: getSignerHeaderSpaceAfter(parties.length),
                       line: F4_LINE,
                     }),
                     ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
@@ -2754,63 +2992,76 @@ function buildPemecahanUkurUlangBundle(
   if (na?.sertakan_pelepasan_jalan) {
     const luasJalan = na.pelepasan_jalan_luas_m2 ?? 0;
     blocks.push(
-      fp('SURAT PERNYATAAN PELEPASAN JALAN', {
-        pageBreakBefore: true,
-        bold: true,
-        underline: true,
-        align: AlignmentType.CENTER,
-        spaceAfter: 180,
-        line: 260,
-      }),
-      fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 60, line: F4_LINE_AIRY }),
-      ...buildNumberedPartiesKvBlocks(parties, { spaceAfterRow: 0 }),
-      fp(
-        `Dengan ini menyatakan dengan sebenarnya bahwa terhadap sebagian bidang tanah ${sert.jenisHak} ${sert.ringkas} seluas ${sert.luasStr} M² terletak di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}, saya/kami melepas hak sebagian tanah seluas ± ${formatNumberId(luasJalan)} M² untuk dipergunakan sebagai Akses Jalan (${na.pelepasan_jalan_keterangan?.trim() || 'Jalan Umum/Akses Bidang Pecahan'}) tanpa menuntut ganti rugi apapun di kemudian hari.`,
-        { align: AlignmentType.JUSTIFIED, spaceBefore: 120, spaceAfter: 100, line: F4_LINE_AIRY }
-      ),
-      fp('Demikian surat pernyataan pelepasan jalan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.', {
-        align: AlignmentType.JUSTIFIED,
-        spaceAfter: 200,
-        line: F4_LINE_AIRY,
-      }),
-      new Table({
-        width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-        columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
-        layout: TableLayoutType.FIXED,
-        borders: NO_TABLE_BORDERS,
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                width: { size: 4280, type: WidthType.DXA },
-                borders: NO_BORDER,
-                margins: { top: 0, bottom: 0, left: 0, right: 120 },
-                children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
-              }),
-              new TableCell({
-                width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
-                borders: NO_BORDER,
-                margins: { top: 0, bottom: 0, left: 120, right: 0 },
+      ...buildMultiPageStatementLayout({
+        titleBlocks: [
+          fp('SURAT PERNYATAAN PELEPASAN JALAN', {
+            pageBreakBefore: true,
+            bold: true,
+            underline: true,
+            align: AlignmentType.CENTER,
+            spaceAfter: 140,
+            line: 250,
+          }),
+          fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: 250 }),
+        ],
+        parties,
+        bodyBlocks: [
+          fp(
+            `Dengan ini menyatakan dengan sebenarnya bahwa terhadap sebagian bidang tanah ${sert.jenisHak} ${sert.ringkas} seluas ${sert.luasStr} M² terletak di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}, saya/kami melepas hak sebagian tanah seluas ± ${formatNumberId(luasJalan)} M² untuk dipergunakan sebagai Akses Jalan (${na.pelepasan_jalan_keterangan?.trim() || 'Jalan Umum/Akses Bidang Pecahan'}) tanpa menuntut ganti rugi apapun di kemudian hari.`,
+            { align: AlignmentType.JUSTIFIED, spaceBefore: 100, spaceAfter: 80, line: F4_LINE }
+          ),
+          fp('Demikian surat pernyataan pelepasan jalan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.', {
+            align: AlignmentType.JUSTIFIED,
+            spaceAfter: 140,
+            line: F4_LINE,
+          }),
+        ],
+        signatureBlocks: [
+          new Table({
+            width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+            columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+            layout: TableLayoutType.FIXED,
+            borders: NO_TABLE_BORDERS,
+            rows: [
+              new TableRow({
+                cantSplit: true,
                 children: [
-                  fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-                    align: AlignmentType.CENTER,
-                    spaceBefore: 20,
-                    spaceAfter: 0,
-                    line: F4_LINE,
+                  new TableCell({
+                    width: { size: 4280, type: WidthType.DXA },
+                    borders: NO_BORDER,
+                    margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                    children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
                   }),
-                  fp('Yang menyatakan', {
-                    align: AlignmentType.CENTER,
-                    spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                    line: F4_LINE,
+                  new TableCell({
+                    width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+                    borders: NO_BORDER,
+                    margins: { top: 0, bottom: 0, left: 120, right: 0 },
+                    children: [
+                      fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                        align: AlignmentType.CENTER,
+                        spaceBefore: 20,
+                        spaceAfter: 0,
+                        line: F4_LINE,
+                      }),
+                      fp('Yang menyatakan', {
+                        align: AlignmentType.CENTER,
+                        spaceAfter: getSignerHeaderSpaceAfter(parties.length),
+                        line: F4_LINE,
+                      }),
+                      ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
+                    ],
                   }),
-                  ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
                 ],
               }),
             ],
           }),
+          ...buildSaksiBlocks(saksi1.nama, saksi2.nama, 140),
         ],
-      }),
-      ...buildSaksiBlocks(saksi1.nama, saksi2.nama, 200)
+        pengesahan: pengesahanTunggal,
+        headerTwips: 760,
+        bodyTwips: 2100,
+        signatureTwips: Math.max(2500, estimateSignerBlockTwips(parties.length) + 1250),
+      })
     );
   }
 
@@ -2831,74 +3082,87 @@ function buildPemecahanUkurUlangBundle(
 
   // 9. SURAT PERNYATAAN PENUTUPAN PERMOHONAN DAN TIDAK MENUNTUT PENGEMBALIAN PNBP
   blocks.push(
-    fp('SURAT PERNYATAAN PENUTUPAN PERMOHONAN DAN', {
-      pageBreakBefore: true,
-      bold: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 0,
-      line: 255,
-    }),
-    fp('TIDAK MENUNTUT PENGEMBALIAN PNBP', {
-      bold: true,
-      underline: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 180,
-      line: 255,
-    }),
-    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 60, line: 250 }),
-    ...buildNumberedPartiesKvBlocks(parties, { spaceAfterRow: 0 }),
-    fp(
-      `Selaku pemohon layanan ${subPermohonan} atas sertipikat ${sert.jenisHak} ${sert.ringkas} Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}, dengan ini menyatakan :`,
-      { align: AlignmentType.JUSTIFIED, spaceBefore: 100, spaceAfter: 60, line: 255 }
-    ),
-    fp(
-      '1. Lokasi bidang tanah yang dimohonkan pengukuran/pemecahan adalah benar dan sesuai titik koordinat share location dengan toleransi radius maksimal 100 meter serta dapat ditunjukkan secara langsung kepada petugas ukur.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 40, line: 255 }
-    ),
-    fp(
-      '2. Tanda batas permanen telah terpasang dengan jelas dan pemilik batas telah menyetujui batas bidang tanah.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 40, line: 255 }
-    ),
-    fp(
-      '3. Apabila syarat fisik lapangan/dokumen tidak terpenuhi hingga batas waktu sesuai SOP Kantor Pertanahan sehingga permohonan ditutup/dibatalkan, pemohon bersedia menerima penutupan berkas dan tidak menuntut pengembalian biaya PNBP yang telah disetorkan.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 180, line: 255 }
-    ),
-    new Table({
-      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
-      layout: TableLayoutType.FIXED,
-      borders: NO_TABLE_BORDERS,
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 0, right: 120 },
-              children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
-            }),
-            new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 120, right: 0 },
+    ...buildMultiPageStatementLayout({
+      titleBlocks: [
+        fp('SURAT PERNYATAAN PENUTUPAN PERMOHONAN DAN', {
+          pageBreakBefore: true,
+          bold: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 0,
+          line: 250,
+        }),
+        fp('TIDAK MENUNTUT PENGEMBALIAN PNBP', {
+          bold: true,
+          underline: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 140,
+          line: 250,
+        }),
+        fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: 245 }),
+      ],
+      parties,
+      bodyBlocks: [
+        fp(
+          `Selaku pemohon layanan ${subPermohonan} atas sertipikat ${sert.jenisHak} ${sert.ringkas} Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}, dengan ini menyatakan :`,
+          { align: AlignmentType.JUSTIFIED, spaceBefore: 90, spaceAfter: 50, line: 250 }
+        ),
+        fp(
+          '1. Lokasi bidang tanah yang dimohonkan pengukuran/pemecahan adalah benar dan sesuai titik koordinat share location dengan toleransi radius maksimal 100 meter serta dapat ditunjukkan secara langsung kepada petugas ukur.',
+          { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 35, line: 250 }
+        ),
+        fp(
+          '2. Tanda batas permanen telah terpasang dengan jelas dan pemilik batas telah menyetujui batas bidang tanah.',
+          { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 35, line: 250 }
+        ),
+        fp(
+          '3. Apabila syarat fisik lapangan/dokumen tidak terpenuhi hingga batas waktu sesuai SOP Kantor Pertanahan sehingga permohonan ditutup/dibatalkan, pemohon bersedia menerima penutupan berkas dan tidak menuntut pengembalian biaya PNBP yang telah disetorkan.',
+          { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 320, spaceAfter: 140, line: 250 }
+        ),
+      ],
+      signatureBlocks: [
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+          layout: TableLayoutType.FIXED,
+          borders: NO_TABLE_BORDERS,
+          rows: [
+            new TableRow({
+              cantSplit: true,
               children: [
-                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-                  align: AlignmentType.CENTER,
-                  spaceBefore: 20,
-                  spaceAfter: 0,
-                  line: F4_LINE,
+                new TableCell({
+                  width: { size: 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                  children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
                 }),
-                fp('Yang membuat pernyataan', {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                  line: F4_LINE,
+                new TableCell({
+                  width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 120, right: 0 },
+                  children: [
+                    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                      align: AlignmentType.CENTER,
+                      spaceBefore: 20,
+                      spaceAfter: 0,
+                      line: F4_LINE,
+                    }),
+                    fp('Yang membuat pernyataan', {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: getSignerHeaderSpaceAfter(parties.length),
+                      line: F4_LINE,
+                    }),
+                    ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
+                  ],
                 }),
-                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
         }),
       ],
+      pengesahan: pengesahanTunggal,
+      headerTwips: 950,
+      bodyTwips: 3600,
+      signatureTwips: Math.max(2400, estimateSignerBlockTwips(parties.length) + 200),
     })
   );
 
@@ -3374,14 +3638,14 @@ function buildRalatDataBundle(
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 120 },
               children: [
-                fp('Saksi – saksi :', { spaceAfter: 160, line: F4_LINE, keepNext: true }),
+                fp('Saksi – saksi :', { spaceAfter: 100, line: F4_LINE, keepNext: true }),
                 buildNonAktaSignerRowsTable(
                   [
                     { no: 1, nama: saksi1.nama },
                     { no: 2, nama: saksi2.nama },
                   ],
                   4840 - 120,
-                  { spaceAfterRow: 340 }
+                  { spaceAfterRow: 190, line: 240 }
                 ),
               ],
             }),
@@ -3827,14 +4091,14 @@ function buildPengecekanSertipikatBundle(
       {
         leftPct: 48,
         indentTwips: 240,
-        line: F4_LINE,
-        spaceAfter: 20,
+        line: COMPACT_CHECKLIST_LINE,
+        spaceAfter: 0,
         hangingTwips: 340,
       }
     ),
 
-    fp('Atas bidang tanah Hak :', { spaceBefore: 120, spaceAfter: 10, line: F4_LINE }),
-    fp('Terletak di', { indentLeft: 420, spaceAfter: 10, line: F4_LINE }),
+    fp('Atas bidang tanah Hak :', { spaceBefore: 80, spaceAfter: 10, line: 240 }),
+    fp('Terletak di', { indentLeft: 420, spaceAfter: 10, line: 240 }),
     kvTable(
       [
         ['Desa', sert.desa],
@@ -3845,17 +4109,17 @@ function buildPengecekanSertipikatBundle(
           sert.isDigital ? sert.nibClean : `${sert.noHakClean}`,
         ],
       ],
-      { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: F4_LINE }
+      { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: 230 }
     ),
 
     fp('Untuk melengkapi permohonan dimaksud, bersama ini kami lampirkan :', {
-      spaceBefore: 120,
-      spaceAfter: 40,
-      line: F4_LINE,
+      spaceBefore: 80,
+      spaceAfter: 20,
+      line: 240,
     }),
-    fp('1. Fotokopi KTP', { indentLeft: 420, spaceAfter: 20, line: F4_LINE }),
-    fp('2. Fotokopi/Sertipikat asli', { indentLeft: 420, spaceAfter: 20, line: F4_LINE }),
-    fp('3. Surat Kuasa', { indentLeft: 420, spaceAfter: 80, line: F4_LINE }),
+    fp('1. Fotokopi KTP', { indentLeft: 420, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE }),
+    fp('2. Fotokopi/Sertipikat asli', { indentLeft: 420, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE }),
+    fp('3. Surat Kuasa', { indentLeft: 420, spaceAfter: 60, line: COMPACT_CHECKLIST_LINE }),
 
     new Table({
       width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
@@ -3918,201 +4182,228 @@ function buildPengecekanSertipikatBundle(
     }),
 
     // HAL. 2 — SURAT KUASA PENGECEKAN SERTIPIKAT
-    fp('SURAT KUASA', {
-      pageBreakBefore: true,
-      bold: true,
-      underline: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 160,
-      line: F4_LINE,
-    }),
-    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: F4_LINE }),
-    ...buildNumberedPartiesKvBlocks(parties, { spaceAfterRow: 0 }),
-    fp('Dengan ini memberi kuasa Substitusi kepada :', { spaceBefore: 100, spaceAfter: 40, line: F4_LINE }),
-    kvTable(
-      [
-        ['Nama', penerima.nama],
-        ['Tempat/Tgl.lahir', penerima.ttl],
-        ['Pekerjaan', penerima.pekerjaan],
-        ['Nomor KTP', penerima.nik],
-        ['Alamat', penerima.alamatSingkat],
+    ...buildMultiPageStatementLayout({
+      titleBlocks: [
+        fp('SURAT KUASA', {
+          pageBreakBefore: true,
+          bold: true,
+          underline: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 140,
+          line: 250,
+        }),
+        fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: 245 }),
       ],
-      { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: F4_LINE }
-    ),
-    aktaCenteredDashHeading('KHUSUS', {
-      bold: true,
-      underline: true,
-      size: F4_SIZE,
-      font: F4_FONT,
-      spaceBefore: 120,
-      spaceAfter: 80,
-      line: F4_LINE,
-      contentWidthDxa: F4_CONTENT_WIDTH_DXA,
-    }),
-    fp(
-      `•  Untuk dan atas nama pemberi Kuasa mendaftarkan Pengecekan Sertipikat ke Kantor BPN ${sert.kabupaten}.`,
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 220, spaceAfter: 40, line: F4_LINE }
-    ),
-    fp(
-      `1. Sehubungan dengan Sertipikat atas tanah ${sert.jenisHak} ${sert.ringkas}${sert.suInfo} Atas nama : ${sert.pemegangHak} Luas ± ${sert.luasStr} M2 yang terletak di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}.`,
-      { align: AlignmentType.JUSTIFIED, indentLeft: 640, hanging: 260, spaceAfter: 40, line: F4_LINE }
-    ),
-    fp(
-      `•  Guna keperluan tersebut penerima kuasa berhak menghadap kepada pegawai Kantor BPN ${sert.kabupaten} yang berwenang, membayar biaya pendaftaran, menandatangani surat-surat yang diperlukan dalam permohonan tersebut serta mengambil sertipikat di Kantor BPN ${sert.kabupaten}.`,
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 220, spaceAfter: 80, line: F4_LINE }
-    ),
-    fp('Demikian Kuasa ini diberikan untuk dapat dipergunakan sebagaimana mestinya.', {
-      spaceAfter: 180,
-      line: F4_LINE,
-    }),
-    new Table({
-      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [halfW, F4_CONTENT_WIDTH_DXA - halfW],
-      layout: TableLayoutType.FIXED,
-      borders: NO_TABLE_BORDERS,
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: halfW, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 0, right: 120 },
-              children: isPpatsMode
-                ? [
-                    fp('Penerima Kuasa', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
-                    fp('Pejabat Pembuat Akta Tanah Sementara', {
-                      align: AlignmentType.CENTER,
-                      spaceAfter: 0,
-                      line: F4_LINE,
-                    }),
-                    fp(`Camat ${kecClean || '-'}`, {
-                      align: AlignmentType.CENTER,
-                      spaceAfter: SIGNATURE_SPACE_METERAI,
-                      line: F4_LINE,
-                    }),
-                    fp(penerima.nama, {
-                      bold: true,
-                      underline: true,
-                      align: AlignmentType.CENTER,
-                      spaceAfter: 0,
-                      line: F4_LINE,
-                    }),
-                    ...(penerima.nip && penerima.nip !== '-'
-                      ? [fp(`NIP. ${penerima.nip}`, { align: AlignmentType.CENTER, spaceAfter: 20, line: F4_LINE })]
-                      : []),
-                  ]
-                : [
-                    fp(' ', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
-                    fp('Penerima Kuasa', {
-                      align: AlignmentType.CENTER,
-                      spaceAfter: SIGNATURE_SPACE_METERAI,
-                      line: F4_LINE,
-                    }),
-                    fp(penerima.nama, {
-                      bold: true,
-                      underline: true,
-                      align: AlignmentType.CENTER,
-                      spaceAfter: 20,
-                      line: F4_LINE,
-                    }),
-                  ],
-            }),
-            new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - halfW, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 120, right: 0 },
+      parties,
+      bodyBlocks: [
+        fp('Dengan ini memberi kuasa Substitusi kepada :', { spaceBefore: 90, spaceAfter: 30, line: 245 }),
+        kvTable(
+          [
+            ['Nama', penerima.nama],
+            ['Tempat/Tgl.lahir', penerima.ttl],
+            ['Pekerjaan', penerima.pekerjaan],
+            ['Nomor KTP', penerima.nik],
+            ['Alamat', penerima.alamatSingkat],
+          ],
+          { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: COMPACT_PARTY_KV_LINE }
+        ),
+        aktaCenteredDashHeading('KHUSUS', {
+          bold: true,
+          underline: true,
+          size: F4_SIZE,
+          font: F4_FONT,
+          spaceBefore: 100,
+          spaceAfter: 60,
+          line: 250,
+          contentWidthDxa: F4_CONTENT_WIDTH_DXA,
+        }),
+        fp(
+          `•  Untuk dan atas nama pemberi Kuasa mendaftarkan Pengecekan Sertipikat ke Kantor BPN ${sert.kabupaten}.`,
+          { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 220, spaceAfter: 35, line: 255 }
+        ),
+        fp(
+          `1. Sehubungan dengan Sertipikat atas tanah ${sert.jenisHak} ${sert.ringkas}${sert.suInfo} Atas nama : ${sert.pemegangHak} Luas ± ${sert.luasStr} M2 yang terletak di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}.`,
+          { align: AlignmentType.JUSTIFIED, indentLeft: 640, hanging: 260, spaceAfter: 35, line: 255 }
+        ),
+        fp(
+          `•  Guna keperluan tersebut penerima kuasa berhak menghadap kepada pegawai Kantor BPN ${sert.kabupaten} yang berwenang, membayar biaya pendaftaran, menandatangani surat-surat yang diperlukan dalam permohonan tersebut serta mengambil sertipikat di Kantor BPN ${sert.kabupaten}.`,
+          { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 220, spaceAfter: 60, line: 255 }
+        ),
+        fp('Demikian Kuasa ini diberikan untuk dapat dipergunakan sebagaimana mestinya.', {
+          spaceAfter: 130,
+          line: 255,
+        }),
+      ],
+      signatureBlocks: [
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [halfW, F4_CONTENT_WIDTH_DXA - halfW],
+          layout: TableLayoutType.FIXED,
+          borders: NO_TABLE_BORDERS,
+          rows: [
+            new TableRow({
+              cantSplit: true,
               children: [
-                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: 0,
-                  line: F4_LINE,
-                  keepNext: true,
+                new TableCell({
+                  width: { size: halfW, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                  children: isPpatsMode
+                    ? [
+                        fp('Penerima Kuasa', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
+                        fp('Pejabat Pembuat Akta Tanah Sementara', {
+                          align: AlignmentType.CENTER,
+                          spaceAfter: 0,
+                          line: F4_LINE,
+                        }),
+                        fp(`Camat ${kecClean || '-'}`, {
+                          align: AlignmentType.CENTER,
+                          spaceAfter: SIGNATURE_SPACE_METERAI,
+                          line: F4_LINE,
+                        }),
+                        fp(penerima.nama, {
+                          bold: true,
+                          underline: true,
+                          align: AlignmentType.CENTER,
+                          spaceAfter: 0,
+                          line: F4_LINE,
+                        }),
+                        ...(penerima.nip && penerima.nip !== '-'
+                          ? [fp(`NIP. ${penerima.nip}`, { align: AlignmentType.CENTER, spaceAfter: 20, line: F4_LINE })]
+                          : []),
+                      ]
+                    : [
+                        fp(' ', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
+                        fp('Penerima Kuasa', {
+                          align: AlignmentType.CENTER,
+                          spaceAfter: SIGNATURE_SPACE_METERAI,
+                          line: F4_LINE,
+                        }),
+                        fp(penerima.nama, {
+                          bold: true,
+                          underline: true,
+                          align: AlignmentType.CENTER,
+                          spaceAfter: 20,
+                          line: F4_LINE,
+                        }),
+                      ],
                 }),
-                fp(parties.length > 1 ? 'Para Pemberi Kuasa' : 'Pemberi Kuasa', {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                  line: F4_LINE,
-                  keepNext: true,
+                new TableCell({
+                  width: { size: F4_CONTENT_WIDTH_DXA - halfW, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 120, right: 0 },
+                  children: [
+                    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: 0,
+                      line: F4_LINE,
+                      keepNext: true,
+                    }),
+                    fp(parties.length > 1 ? 'Para Pemberi Kuasa' : 'Pemberi Kuasa', {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: getSignerHeaderSpaceAfter(parties.length),
+                      line: F4_LINE,
+                      keepNext: true,
+                    }),
+                    ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - halfW - 120),
+                  ],
                 }),
-                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - halfW - 120),
               ],
             }),
           ],
         }),
+        ...(!isPpatsMode || parties.length >= 2
+          ? buildSinglePengesahanCentered(pengesahanTunggal, 130)
+          : []),
       ],
+      pengesahan: pengesahanTunggal,
+      headerTwips: 760,
+      bodyTwips: 5000,
+      signatureTwips:
+        Math.max(2400, estimateSignerBlockTwips(parties.length)) +
+        (!isPpatsMode || parties.length >= 2 ? 2250 : 0),
     }),
-    ...(!isPpatsMode || parties.length >= 2
-      ? buildSinglePengesahanCentered(pengesahanTunggal, 160)
-      : []),
 
     // HAL. 3 — SURAT PERNYATAAN PERTANGGUNGJAWABAN KEABSAHAN DAN KEBENARAN DOKUMEN
-    fp('SURAT PERNYATAAN PERTANGGUNGJAWABAN KEABSAHAN DAN KEBENARAN DOKUMEN', {
-      pageBreakBefore: true,
-      bold: true,
-      underline: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 180,
-      line: F4_LINE,
-    }),
-    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: F4_LINE }),
-    ...buildNumberedPartiesKvBlocks(parties, { spaceAfterRow: 0 }),
-    fp(`Sehubungan dengan Sertipikat atas tanah ${sert.jenisHak} :`, {
-      spaceBefore: 120,
-      spaceAfter: 40,
-      line: F4_LINE,
-    }),
-    kvTable(
-      [
-        [sert.labelNo, sert.nilaiNo],
-        ['Desa', sert.desa],
-        ['Kecamatan', sert.kecamatan],
-        ['Kabupaten', sert.kabupaten],
+    ...buildMultiPageStatementLayout({
+      titleBlocks: [
+        fp('SURAT PERNYATAAN PERTANGGUNGJAWABAN KEABSAHAN DAN KEBENARAN DOKUMEN', {
+          pageBreakBefore: true,
+          bold: true,
+          underline: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 140,
+          line: 250,
+        }),
+        fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: 245 }),
       ],
-      { indentTwips: 540, labelPct: 28, spaceAfterRow: 0, line: F4_LINE }
-    ),
-    fp(
-      'Selaku pemohon pelayanan Online, dengan ini menyatakan bahwa dokumen yang saya unggah ke sistem elektronik adalah benar dan telah sesuai dokumen asli. Saya bertanggung jawab penuh atas keabsahan dan kebenaran isi dokumen secara formil maupun materiil, dan apabila dikemudian hari terdapat permasalahan, saya bersedia menerima dampak hukum baik perdata maupun pidana sesuai ketentuan peraturan perundang-undangan.',
-      { align: AlignmentType.JUSTIFIED, spaceBefore: 140, spaceAfter: 200, line: F4_LINE_AIRY }
-    ),
-    new Table({
-      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
-      layout: TableLayoutType.FIXED,
-      borders: NO_TABLE_BORDERS,
-      rows: [
-        new TableRow({
-          cantSplit: true,
-          children: [
-            new TableCell({
-              width: { size: 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 0, right: 120 },
-              children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
-            }),
-            new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 120, right: 0 },
+      parties,
+      bodyBlocks: [
+        fp(`Sehubungan dengan Sertipikat atas tanah ${sert.jenisHak} :`, {
+          spaceBefore: 100,
+          spaceAfter: 30,
+          line: 245,
+        }),
+        kvTable(
+          [
+            [sert.labelNo, sert.nilaiNo],
+            ['Desa', sert.desa],
+            ['Kecamatan', sert.kecamatan],
+            ['Kabupaten', sert.kabupaten],
+          ],
+          { indentTwips: 540, labelPct: 28, spaceAfterRow: 0, line: 240 }
+        ),
+        fp(
+          'Selaku pemohon pelayanan Online, dengan ini menyatakan bahwa dokumen yang saya unggah ke sistem elektronik adalah benar dan telah sesuai dokumen asli. Saya bertanggung jawab penuh atas keabsahan dan kebenaran isi dokumen secara formil maupun materiil, dan apabila dikemudian hari terdapat permasalahan, saya bersedia menerima dampak hukum baik perdata maupun pidana sesuai ketentuan peraturan perundang-undangan.',
+          { align: AlignmentType.JUSTIFIED, spaceBefore: 110, spaceAfter: 140, line: F4_LINE }
+        ),
+      ],
+      signatureBlocks: [
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+          layout: TableLayoutType.FIXED,
+          borders: NO_TABLE_BORDERS,
+          rows: [
+            new TableRow({
+              cantSplit: true,
               children: [
-                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-                  align: AlignmentType.CENTER,
-                  spaceBefore: 20,
-                  spaceAfter: 0,
-                  line: F4_LINE,
-                  keepNext: true,
+                new TableCell({
+                  width: { size: 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                  children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
                 }),
-                fp('Yang Menyatakan', {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                  line: F4_LINE,
-                  keepNext: true,
+                new TableCell({
+                  width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 120, right: 0 },
+                  children: [
+                    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                      align: AlignmentType.CENTER,
+                      spaceBefore: 20,
+                      spaceAfter: 0,
+                      line: F4_LINE,
+                      keepNext: true,
+                    }),
+                    fp('Yang Menyatakan', {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: getSignerHeaderSpaceAfter(parties.length),
+                      line: F4_LINE,
+                      keepNext: true,
+                    }),
+                    ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
+                  ],
                 }),
-                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
         }),
       ],
+      pengesahan: pengesahanTunggal,
+      headerTwips: 900,
+      bodyTwips: 3700,
+      signatureTwips: Math.max(2400, estimateSignerBlockTwips(parties.length) + 200),
     }),
   ];
 }
@@ -4207,14 +4498,14 @@ function buildValidasiSertipikatBundle(
       {
         leftPct: 48,
         indentTwips: 240,
-        line: F4_LINE,
-        spaceAfter: 20,
+        line: COMPACT_CHECKLIST_LINE,
+        spaceAfter: 0,
         hangingTwips: 340,
       }
     ),
 
-    fp(`Atas bidang tanah ${sert.jenisHak} :`, { spaceBefore: 120, spaceAfter: 10, line: F4_LINE }),
-    fp('Terletak di', { indentLeft: 420, spaceAfter: 10, line: F4_LINE }),
+    fp(`Atas bidang tanah ${sert.jenisHak} :`, { spaceBefore: 80, spaceAfter: 10, line: 240 }),
+    fp('Terletak di', { indentLeft: 420, spaceAfter: 10, line: 240 }),
     kvTable(
       [
         ['Desa', sert.desa],
@@ -4225,19 +4516,19 @@ function buildValidasiSertipikatBundle(
           sert.isDigital ? sert.nibClean : sert.noHakClean,
         ],
       ],
-      { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: F4_LINE }
+      { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: 230 }
     ),
 
     fp('Untuk melengkapi permohonan dimaksud, bersama ini kami lampirkan :', {
-      spaceBefore: 120,
-      spaceAfter: 40,
-      line: F4_LINE,
+      spaceBefore: 80,
+      spaceAfter: 20,
+      line: 240,
     }),
-    fp('1. FC KTP Sesuai Sertipikat', { indentLeft: 420, spaceAfter: 20, line: F4_LINE }),
-    fp('2. Surat Kuasa', { indentLeft: 420, spaceAfter: 20, line: F4_LINE }),
-    fp('3. FC KTP Penerima Kuasa', { indentLeft: 420, spaceAfter: 20, line: F4_LINE }),
-    fp('4. Fotokopi Sertipikat', { indentLeft: 420, spaceAfter: 20, line: F4_LINE }),
-    fp('5. Foto GPS Map Camera', { indentLeft: 420, spaceAfter: 80, line: F4_LINE }),
+    fp('1. FC KTP Sesuai Sertipikat', { indentLeft: 420, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE }),
+    fp('2. Surat Kuasa', { indentLeft: 420, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE }),
+    fp('3. FC KTP Penerima Kuasa', { indentLeft: 420, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE }),
+    fp('4. Fotokopi Sertipikat', { indentLeft: 420, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE }),
+    fp('5. Foto GPS Map Camera', { indentLeft: 420, spaceAfter: 60, line: COMPACT_CHECKLIST_LINE }),
 
     new Table({
       width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
@@ -4282,118 +4573,131 @@ function buildValidasiSertipikatBundle(
     }),
 
     // HAL. 2 — SURAT KUASA VALIDASI HAK SERTIPIKAT
-    fp('SURAT KUASA', {
-      pageBreakBefore: true,
-      bold: true,
-      underline: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 160,
-      line: F4_LINE,
-    }),
-    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: F4_LINE }),
-    ...buildNumberedPartiesKvBlocks(parties, { spaceAfterRow: 0 }),
-    fp(`Sehubungan dengan Sertipikat atas tanah ${sert.jenisHak} :`, {
-      spaceBefore: 100,
-      spaceAfter: 40,
-      line: F4_LINE,
-    }),
-    kvTable(
-      [
-        [sert.isDigital ? 'Nibel' : 'SHM Nomor', sert.isDigital ? sert.nibClean : sert.noHakClean],
-        ['Desa', sert.desa],
-        ['Kecamatan', sert.kecamatan],
-        ['Kabupaten', sert.kabupaten],
+    ...buildMultiPageStatementLayout({
+      titleBlocks: [
+        fp('SURAT KUASA', {
+          pageBreakBefore: true,
+          bold: true,
+          underline: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 140,
+          line: 250,
+        }),
+        fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: 245 }),
       ],
-      { indentTwips: 540, labelPct: 28, spaceAfterRow: 0, line: F4_LINE }
-    ),
-    fp('Maka dengan ini memberi kuasa Substitusi kepada :', {
-      spaceBefore: 100,
-      spaceAfter: 40,
-      line: F4_LINE,
-    }),
-    kvTable(
-      [
-        ['Nama', kuasa.nama],
-        ['Tempat/Tgl.lahir', kuasa.ttl],
-        ['Pekerjaan', kuasa.pekerjaan],
-        ['Nomor KTP', kuasa.nik],
-        ['Alamat', kuasa.alamatSingkat],
+      parties,
+      bodyBlocks: [
+        fp(`Sehubungan dengan Sertipikat atas tanah ${sert.jenisHak} :`, {
+          spaceBefore: 80,
+          spaceAfter: 30,
+          line: 245,
+        }),
+        kvTable(
+          [
+            [sert.isDigital ? 'Nibel' : 'SHM Nomor', sert.isDigital ? sert.nibClean : sert.noHakClean],
+            ['Desa', sert.desa],
+            ['Kecamatan', sert.kecamatan],
+            ['Kabupaten', sert.kabupaten],
+          ],
+          { indentTwips: 540, labelPct: 28, spaceAfterRow: 0, line: COMPACT_PARTY_KV_LINE }
+        ),
+        fp('Maka dengan ini memberi kuasa Substitusi kepada :', {
+          spaceBefore: 80,
+          spaceAfter: 30,
+          line: 245,
+        }),
+        kvTable(
+          [
+            ['Nama', kuasa.nama],
+            ['Tempat/Tgl.lahir', kuasa.ttl],
+            ['Pekerjaan', kuasa.pekerjaan],
+            ['Nomor KTP', kuasa.nik],
+            ['Alamat', kuasa.alamatSingkat],
+          ],
+          { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: COMPACT_PARTY_KV_LINE }
+        ),
+        aktaCenteredDashHeading('KHUSUS', {
+          bold: true,
+          underline: true,
+          size: F4_SIZE,
+          font: F4_FONT,
+          spaceBefore: 100,
+          spaceAfter: 60,
+          line: 250,
+          contentWidthDxa: F4_CONTENT_WIDTH_DXA,
+        }),
+        fp(
+          `-  Untuk dan atas nama pemberi Kuasa untuk mendaftarkan permohonan Validasi Hak Sertipikat ke Kantor Badan Pertanahan ${sert.kabupaten}.`,
+          { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 220, spaceAfter: 35, line: 255 }
+        ),
+        fp(
+          '-  Guna keperluan tersebut penerima kuasa berhak menghadap kepada pegawai Kantor Pertanahan yang berwenang, membayar biaya pendaftaran, menandatangani surat-surat yang diperlukan dalam permohonan pendaftaran tersebut serta mengambil sertipikat tanah kelak di kemudian hari setelah selesai.',
+          { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 220, spaceAfter: 60, line: 255 }
+        ),
+        fp('Demikian kuasa ini diberikan untuk dapat dipergunakan sebagaimana mestinya.', {
+          spaceAfter: 130,
+          line: 255,
+        }),
       ],
-      { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: F4_LINE }
-    ),
-    aktaCenteredDashHeading('KHUSUS', {
-      bold: true,
-      underline: true,
-      size: F4_SIZE,
-      font: F4_FONT,
-      spaceBefore: 120,
-      spaceAfter: 80,
-      line: F4_LINE,
-      contentWidthDxa: F4_CONTENT_WIDTH_DXA,
-    }),
-    fp(
-      `-  Untuk dan atas nama pemberi Kuasa untuk mendaftarkan permohonan Validasi Hak Sertipikat ke Kantor Badan Pertanahan ${sert.kabupaten}.`,
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 220, spaceAfter: 40, line: F4_LINE }
-    ),
-    fp(
-      '-  Guna keperluan tersebut penerima kuasa berhak menghadap kepada pegawai Kantor Pertanahan yang berwenang, membayar biaya pendaftaran, menandatangani surat-surat yang diperlukan dalam permohonan pendaftaran tersebut serta mengambil sertipikat tanah kelak di kemudian hari setelah selesai.',
-      { align: AlignmentType.JUSTIFIED, indentLeft: 320, hanging: 220, spaceAfter: 80, line: F4_LINE }
-    ),
-    fp('Demikian kuasa ini diberikan untuk dapat dipergunakan sebagaimana mestinya.', {
-      spaceAfter: 180,
-      line: F4_LINE,
-    }),
-    new Table({
-      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [halfW, F4_CONTENT_WIDTH_DXA - halfW],
-      layout: TableLayoutType.FIXED,
-      borders: NO_TABLE_BORDERS,
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: halfW, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 0, right: 120 },
+      signatureBlocks: [
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [halfW, F4_CONTENT_WIDTH_DXA - halfW],
+          layout: TableLayoutType.FIXED,
+          borders: NO_TABLE_BORDERS,
+          rows: [
+            new TableRow({
+              cantSplit: true,
               children: [
-                fp(' ', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
-                fp('Penerima Kuasa', {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: SIGNATURE_SPACE_METERAI,
-                  line: F4_LINE,
+                new TableCell({
+                  width: { size: halfW, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                  children: [
+                    fp(' ', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
+                    fp('Penerima Kuasa', {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: SIGNATURE_SPACE_METERAI,
+                      line: F4_LINE,
+                    }),
+                    fp(kuasa.nama, {
+                      bold: true,
+                      underline: true,
+                      align: AlignmentType.CENTER,
+                      spaceAfter: 20,
+                      line: F4_LINE,
+                    }),
+                  ],
                 }),
-                fp(kuasa.nama, {
-                  bold: true,
-                  underline: true,
-                  align: AlignmentType.CENTER,
-                  spaceAfter: 20,
-                  line: F4_LINE,
+                new TableCell({
+                  width: { size: F4_CONTENT_WIDTH_DXA - halfW, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 120, right: 0 },
+                  children: [
+                    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: 0,
+                      line: F4_LINE,
+                    }),
+                    fp(parties.length > 1 ? 'Para Pemberi Kuasa' : 'Pemberi Kuasa', {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: getSignerHeaderSpaceAfter(parties.length),
+                      line: F4_LINE,
+                    }),
+                    ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - halfW - 120),
+                  ],
                 }),
-              ],
-            }),
-            new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - halfW, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 120, right: 0 },
-              children: [
-                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: 0,
-                  line: F4_LINE,
-                }),
-                fp(parties.length > 1 ? 'Para Pemberi Kuasa' : 'Pemberi Kuasa', {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                  line: F4_LINE,
-                }),
-                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - halfW - 120),
               ],
             }),
           ],
         }),
+        ...buildSinglePengesahanCentered(pengesahanTunggal, 130),
       ],
+      pengesahan: pengesahanTunggal,
+      headerTwips: 760,
+      bodyTwips: 5900,
+      signatureTwips: Math.max(2400, estimateSignerBlockTwips(parties.length)) + 2250,
     }),
-    ...buildSinglePengesahanCentered(pengesahanTunggal, 160),
 
     // HAL. 3 & 4 — GEOTAGGING (TAMPAK DEPAN, PATOK 1-4 & POLIGON)
     ...buildGeotaggingPages({
@@ -4613,7 +4917,7 @@ function buildAnalisisBidangBundle(
       [
         { label: 'Atas Sertifikat', valueText: '', noColon: true },
         {
-          label: sert.isDigital ? 'NIB / Nomor Hak' : 'Nomor Hak No',
+          label: sert.isDigital ? 'NIB / Nomor Hak' : `Nomor ${sert.jenisHak}`,
           valueText: `${nomorSertipikatRingkas}, Luas : ${sert.luasStr} M², atas nama ${sert.pemegangHak}`,
         },
         { label: 'terletak di', valueText: '', noColon: true },
@@ -4687,18 +4991,18 @@ function buildAnalisisBidangBundle(
     }),
 
     fp('Untuk melengkapi permohonan dimaksud, bersama ini kami lampirkan :', {
-      spaceBefore: 120,
-      spaceAfter: 40,
-      line: F4_LINE,
+      spaceBefore: 80,
+      spaceAfter: 20,
+      line: 240,
     }),
-    fp('1.  Fotocopy KTP & KK Pemegang Hak', { indentLeft: 420, hanging: 300, spaceAfter: 15, line: F4_LINE }),
-    fp('2.  Surat Kuasa & Fotocopy KTP Kuasa', { indentLeft: 420, hanging: 300, spaceAfter: 15, line: F4_LINE }),
-    fp('3.  Fotocopy SPPT PBB Tahun terakhir', { indentLeft: 420, hanging: 300, spaceAfter: 15, line: F4_LINE }),
-    fp('4.  FC Sertifikat (Terploting)', { indentLeft: 420, hanging: 300, spaceAfter: 15, line: F4_LINE }),
-    fp('5.  Surat Pernyataan Alasan pemecahan', { indentLeft: 420, hanging: 300, spaceAfter: 15, line: F4_LINE }),
-    fp('6.  SKET rencana Pemecahan', { indentLeft: 420, hanging: 300, spaceAfter: 15, line: F4_LINE }),
-    fp('7.  Surat pernyataan pelepasan Hak untuk jalan', { indentLeft: 420, hanging: 300, spaceAfter: 15, line: F4_LINE }),
-    fp('8.  Foto Lokasi Geotagging', { indentLeft: 420, hanging: 300, spaceAfter: 60, line: F4_LINE }),
+    fp('1.  Fotocopy KTP & KK Pemegang Hak', { indentLeft: 420, hanging: 300, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE }),
+    fp('2.  Surat Kuasa & Fotocopy KTP Kuasa', { indentLeft: 420, hanging: 300, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE }),
+    fp('3.  Fotocopy SPPT PBB Tahun terakhir', { indentLeft: 420, hanging: 300, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE }),
+    fp('4.  FC Sertifikat (Terploting)', { indentLeft: 420, hanging: 300, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE }),
+    fp('5.  Surat Pernyataan Alasan pemecahan', { indentLeft: 420, hanging: 300, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE }),
+    fp('6.  SKET rencana Pemecahan', { indentLeft: 420, hanging: 300, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE }),
+    fp('7.  Surat pernyataan pelepasan Hak untuk jalan', { indentLeft: 420, hanging: 300, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE }),
+    fp('8.  Foto Lokasi Geotagging', { indentLeft: 420, hanging: 300, spaceAfter: 50, line: COMPACT_CHECKLIST_LINE }),
 
     fp('Demikian disampaikan untuk menjadi bahan pertimbangan', {
       spaceBefore: 40,
@@ -4822,7 +5126,7 @@ function buildAnalisisBidangBundle(
                 fp('\u00A0', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE, keepNext: true }),
                 fp(parties.length > 1 ? 'Para Pemberi Kuasa' : 'Pemberi Kuasa', {
                   align: AlignmentType.CENTER,
-                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
+                  spaceAfter: getSignerHeaderSpaceAfter(parties.length),
                   line: F4_LINE,
                   keepNext: true,
                 }),
@@ -5039,7 +5343,7 @@ function buildAnalisisBidangBundle(
                 }),
                 fp('Pemohon', {
                   align: AlignmentType.CENTER,
-                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_STANDARD,
+                  spaceAfter: getSignerHeaderSpaceAfter(parties.length, SIGNATURE_SPACE_STANDARD),
                   line: F4_LINE,
                   keepNext: true,
                 }),
@@ -5167,7 +5471,7 @@ function buildAnalisisBidangBundle(
                 }),
                 fp('Yang membuat Pernyataan', {
                   align: AlignmentType.CENTER,
-                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
+                  spaceAfter: getSignerHeaderSpaceAfter(parties.length),
                   line: F4_LINE,
                   keepNext: true,
                 }),
@@ -5186,62 +5490,75 @@ function buildAnalisisBidangBundle(
   if (cfg.sertakanPelepasanJalan) {
     const luasJalan = na?.pelepasan_jalan_luas_m2 ?? 0;
     blocks.push(
-      fp('SURAT PERNYATAAN PELEPASAN JALAN', {
-        pageBreakBefore: true,
-        bold: true,
-        underline: true,
-        align: AlignmentType.CENTER,
-        spaceAfter: 180,
-        line: 260,
-      }),
-      fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 60, line: F4_LINE_AIRY }),
-      ...buildNumberedPartiesKvBlocks(parties, { spaceAfterRow: 0 }),
-      fp(
-        `Dengan ini menyatakan dengan sebenarnya bahwa terhadap sebagian bidang tanah ${sert.jenisHak} ${sert.ringkas} seluas ${sert.luasStr} M² terletak di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}, saya/kami melepas hak sebagian tanah seluas ± ${formatNumberId(luasJalan)} M² untuk dipergunakan sebagai Akses Jalan (${na?.pelepasan_jalan_keterangan?.trim() || 'Jalan Umum/Akses Bidang Pecahan'}) tanpa menuntut ganti rugi apapun di kemudian hari.`,
-        { align: AlignmentType.JUSTIFIED, spaceBefore: 120, spaceAfter: 100, line: F4_LINE_AIRY }
-      ),
-      fp(
-        'Demikian surat pernyataan pelepasan jalan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.',
-        { align: AlignmentType.JUSTIFIED, spaceAfter: 200, line: F4_LINE_AIRY }
-      ),
-      new Table({
-        width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-        columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
-        layout: TableLayoutType.FIXED,
-        borders: NO_TABLE_BORDERS,
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                width: { size: 4280, type: WidthType.DXA },
-                borders: NO_BORDER,
-                margins: { top: 0, bottom: 0, left: 0, right: 120 },
-                children: buildSinglePengesahanCentered(pengesahan, 20),
-              }),
-              new TableCell({
-                width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
-                borders: NO_BORDER,
-                margins: { top: 0, bottom: 0, left: 120, right: 0 },
+      ...buildMultiPageStatementLayout({
+        titleBlocks: [
+          fp('SURAT PERNYATAAN PELEPASAN JALAN', {
+            pageBreakBefore: true,
+            bold: true,
+            underline: true,
+            align: AlignmentType.CENTER,
+            spaceAfter: 140,
+            line: 250,
+          }),
+          fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: 245 }),
+        ],
+        parties,
+        bodyBlocks: [
+          fp(
+            `Dengan ini menyatakan dengan sebenarnya bahwa terhadap sebagian bidang tanah ${sert.jenisHak} ${sert.ringkas} seluas ${sert.luasStr} M² terletak di Desa ${sert.desa}, Kecamatan ${sert.kecamatan}, ${sert.kabupaten}, saya/kami melepas hak sebagian tanah seluas ± ${formatNumberId(luasJalan)} M² untuk dipergunakan sebagai Akses Jalan (${na?.pelepasan_jalan_keterangan?.trim() || 'Jalan Umum/Akses Bidang Pecahan'}) tanpa menuntut ganti rugi apapun di kemudian hari.`,
+            { align: AlignmentType.JUSTIFIED, spaceBefore: 100, spaceAfter: 80, line: F4_LINE }
+          ),
+          fp(
+            'Demikian surat pernyataan pelepasan jalan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.',
+            { align: AlignmentType.JUSTIFIED, spaceAfter: 140, line: F4_LINE }
+          ),
+        ],
+        signatureBlocks: [
+          new Table({
+            width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+            columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+            layout: TableLayoutType.FIXED,
+            borders: NO_TABLE_BORDERS,
+            rows: [
+              new TableRow({
+                cantSplit: true,
                 children: [
-                  fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-                    align: AlignmentType.CENTER,
-                    spaceBefore: 20,
-                    spaceAfter: 0,
-                    line: F4_LINE,
+                  new TableCell({
+                    width: { size: 4280, type: WidthType.DXA },
+                    borders: NO_BORDER,
+                    margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                    children: buildSinglePengesahanCentered(pengesahan, 20),
                   }),
-                  fp('Yang menyatakan', {
-                    align: AlignmentType.CENTER,
-                    spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                    line: F4_LINE,
+                  new TableCell({
+                    width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+                    borders: NO_BORDER,
+                    margins: { top: 0, bottom: 0, left: 120, right: 0 },
+                    children: [
+                      fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                        align: AlignmentType.CENTER,
+                        spaceBefore: 20,
+                        spaceAfter: 0,
+                        line: F4_LINE,
+                      }),
+                      fp('Yang menyatakan', {
+                        align: AlignmentType.CENTER,
+                        spaceAfter: getSignerHeaderSpaceAfter(parties.length),
+                        line: F4_LINE,
+                      }),
+                      ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
+                    ],
                   }),
-                  ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
                 ],
               }),
             ],
           }),
+          ...buildSaksiBlocks(saksi1.nama, saksi2.nama, 140),
         ],
-      }),
-      ...buildSaksiBlocks(saksi1.nama, saksi2.nama, 200)
+        pengesahan,
+        headerTwips: 760,
+        bodyTwips: 2100,
+        signatureTwips: Math.max(2500, estimateSignerBlockTwips(parties.length) + 1250),
+      })
     );
   }
 
@@ -5249,74 +5566,86 @@ function buildAnalisisBidangBundle(
   // HAL. 5/6 (DIPERTAHANKAN) — SURAT PERNYATAAN KEABSAHAN DATA & LOKASI BIDANG
   // =========================================================================
   blocks.push(
-    fp('SURAT PERNYATAAN KEABSAHAN DATA & LOKASI BIDANG TANAH', {
-      pageBreakBefore: true,
-      bold: true,
-      underline: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 160,
-      line: F4_LINE,
-    }),
-    fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: F4_LINE }),
-    ...buildNumberedPartiesKvBlocks(parties, { spaceAfterRow: 0 }),
-    fp(`Sehubungan dengan permohonan Analisis Bidang atas tanah ${sert.jenisHak} :`, {
-      spaceBefore: 100,
-      spaceAfter: 40,
-      line: F4_LINE,
-    }),
-    kvTable(
-      [
-        [sert.labelNo, sert.nilaiNo],
-        ['Desa', sert.desa],
-        ['Kecamatan', sert.kecamatan],
-        ['Kabupaten', sert.kabupaten],
-        ['Luas / Pemegang Hak', `${sert.luasStr} m² / ${sert.pemegangHak}`],
+    ...buildMultiPageStatementLayout({
+      titleBlocks: [
+        fp('SURAT PERNYATAAN KEABSAHAN DATA & LOKASI BIDANG TANAH', {
+          pageBreakBefore: true,
+          bold: true,
+          underline: true,
+          align: AlignmentType.CENTER,
+          spaceAfter: 140,
+          line: 250,
+        }),
+        fp('Yang bertanda tangan dibawah ini :', { spaceAfter: 40, line: 245 }),
       ],
-      { indentTwips: 540, labelPct: 28, spaceAfterRow: 0, line: F4_LINE }
-    ),
-    fp(
-      'Dengan ini menyatakan dengan sebenarnya bahwa lokasi fisik bidang tanah, foto geotagging, batas-batas patok, serta titik koordinat poligon yang dilampirkan dalam berkas permohonan Analisis Bidang ini adalah benar sesuai keadaan di lapangan dan tidak tumpang tindih dengan hak pihak lain. Apabila di kemudian hari ternyata terdapat kekeliruan atau gugatan dari pihak manapun, saya bertanggung jawab penuh secara perdata maupun pidana dan membebaskan Kantor Pertanahan dari segala tuntutan hukum.',
-      { align: AlignmentType.JUSTIFIED, spaceBefore: 120, spaceAfter: 180, line: F4_LINE_AIRY }
-    ),
-    new Table({
-      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
-      layout: TableLayoutType.FIXED,
-      borders: NO_TABLE_BORDERS,
-      rows: [
-        new TableRow({
-          cantSplit: true,
-          children: [
-            new TableCell({
-              width: { size: 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 0, right: 120 },
-              children: buildSinglePengesahanCentered(pengesahan, 20),
-            }),
-            new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
-              borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 120, right: 0 },
+      parties,
+      bodyBlocks: [
+        fp(`Sehubungan dengan permohonan Analisis Bidang atas tanah ${sert.jenisHak} :`, {
+          spaceBefore: 80,
+          spaceAfter: 30,
+          line: 245,
+        }),
+        kvTable(
+          [
+            [sert.labelNo, sert.nilaiNo],
+            ['Desa', sert.desa],
+            ['Kecamatan', sert.kecamatan],
+            ['Kabupaten', sert.kabupaten],
+            ['Luas / Pemegang Hak', `${sert.luasStr} m² / ${sert.pemegangHak}`],
+          ],
+          { indentTwips: 540, labelPct: 28, spaceAfterRow: 0, line: 240 }
+        ),
+        fp(
+          'Dengan ini menyatakan dengan sebenarnya bahwa lokasi fisik bidang tanah, foto geotagging, batas-batas patok, serta titik koordinat poligon yang dilampirkan dalam berkas permohonan Analisis Bidang ini adalah benar sesuai keadaan di lapangan dan tidak tumpang tindih dengan hak pihak lain. Apabila di kemudian hari ternyata terdapat kekeliruan atau gugatan dari pihak manapun, saya bertanggung jawab penuh secara perdata maupun pidana dan membebaskan Kantor Pertanahan dari segala tuntutan hukum.',
+          { align: AlignmentType.JUSTIFIED, spaceBefore: 100, spaceAfter: 140, line: F4_LINE }
+        ),
+      ],
+      signatureBlocks: [
+        new Table({
+          width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+          layout: TableLayoutType.FIXED,
+          borders: NO_TABLE_BORDERS,
+          rows: [
+            new TableRow({
+              cantSplit: true,
               children: [
-                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-                  align: AlignmentType.CENTER,
-                  spaceBefore: 20,
-                  spaceAfter: 0,
-                  line: F4_LINE,
-                  keepNext: true,
+                new TableCell({
+                  width: { size: 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                  children: buildSinglePengesahanCentered(pengesahan, 20),
                 }),
-                fp('Yang Menyatakan', {
-                  align: AlignmentType.CENTER,
-                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
-                  line: F4_LINE,
-                  keepNext: true,
+                new TableCell({
+                  width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+                  borders: NO_BORDER,
+                  margins: { top: 0, bottom: 0, left: 120, right: 0 },
+                  children: [
+                    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                      align: AlignmentType.CENTER,
+                      spaceBefore: 20,
+                      spaceAfter: 0,
+                      line: F4_LINE,
+                      keepNext: true,
+                    }),
+                    fp('Yang Menyatakan', {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: getSignerHeaderSpaceAfter(parties.length),
+                      line: F4_LINE,
+                      keepNext: true,
+                    }),
+                    ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
+                  ],
                 }),
-                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
         }),
       ],
+      pengesahan,
+      headerTwips: 900,
+      bodyTwips: 4200,
+      signatureTwips: Math.max(2400, estimateSignerBlockTwips(parties.length) + 200),
     }),
 
     // =========================================================================
@@ -5479,7 +5808,7 @@ function buildPkkprSuratKuasaPage(params: {
                 fp('PIHAK PERTAMA', { bold: true, align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE, keepNext: true }),
                 fp(params.parties.length > 1 ? 'Para Pemberi Kuasa' : 'Pemberi Kuasa', {
                   align: AlignmentType.CENTER,
-                  spaceAfter: params.parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
+                  spaceAfter: getSignerHeaderSpaceAfter(params.parties.length),
                   line: F4_LINE,
                   keepNext: true,
                 }),

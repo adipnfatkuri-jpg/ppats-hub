@@ -30,6 +30,12 @@ import {
   aktaCenteredDashHeading,
 } from './docxTemplates';
 import { computeAgeFromBirthDate, resolveWarisCConfig } from './warisCHelper';
+import {
+  COMPACT_CHECKLIST_LINE,
+  computeSignerRowSpacing,
+  hasFilledPekerjaan,
+  isPekerjaanLabel,
+} from './lampiranLayoutHelper';
 
 const F4_FONT = 'Bookman Old Style';
 const F4_SIZE = 22; // 11 pt
@@ -182,16 +188,19 @@ function fpRuns(
 
 function kvAligned(
   rows: Array<[string, string]>,
-  opts?: { labelPct?: number; indentTwips?: number; spaceAfterRow?: number; size?: number }
+  opts?: { labelPct?: number; indentTwips?: number; spaceAfterRow?: number; size?: number; line?: number }
 ): Table {
   const labelPct = opts?.labelPct ?? 27;
   const indentTwips = opts?.indentTwips ?? 0;
   const spaceAfterRow = opts?.spaceAfterRow ?? 0;
   const size = opts?.size ?? F4_SIZE;
+  const line = opts?.line ?? 240;
   const totalWidth = Math.max(4000, F4_CONTENT_WIDTH_DXA - indentTwips);
   const colonW = 200;
   const labelW = Math.round(((totalWidth - colonW) * labelPct) / 100);
   const valueW = totalWidth - colonW - labelW;
+
+  const filteredRows = rows.filter(([k, v]) => !(isPekerjaanLabel(k) && !hasFilledPekerjaan(v)));
 
   return new Table({
     width: { size: totalWidth, type: WidthType.DXA },
@@ -199,27 +208,28 @@ function kvAligned(
     layout: TableLayoutType.FIXED,
     borders: NO_TABLE_BORDERS,
     indent: indentTwips ? { size: indentTwips, type: WidthType.DXA } : undefined,
-    rows: rows.map(
+    rows: filteredRows.map(
       ([k, v]) =>
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: labelW, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 40 },
-              children: [fp(k, { spaceAfter: spaceAfterRow, size })],
+              children: [fp(k, { spaceAfter: spaceAfterRow, size, line })],
             }),
             new TableCell({
               width: { size: colonW, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 0 },
-              children: [fp(':', { spaceAfter: spaceAfterRow, size })],
+              children: [fp(':', { spaceAfter: spaceAfterRow, size, line })],
             }),
             new TableCell({
               width: { size: valueW, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 0 },
-              children: [fp(v, { spaceAfter: spaceAfterRow, size })],
+              children: [fp(v, { spaceAfter: spaceAfterRow, size, line })],
             }),
           ],
         })
@@ -420,19 +430,21 @@ function mapPemohonParty(p?: ParaPihak) {
 
 function buildWarisCSignerRowsTable(
   items: Array<{ no: number; nama: string }>,
-  opts: { totalWidthDxa: number; dotsWidthDxa?: number; size?: number; rowSpaceAfter?: number }
+  opts: { totalWidthDxa: number; dotsWidthDxa?: number; size?: number; rowSpaceAfter?: number; line?: number }
 ): Table {
   const dotsW = opts.dotsWidthDxa ?? 1620;
   const nameW = Math.max(1800, opts.totalWidthDxa - dotsW);
   const size = opts.size ?? F4_SIZE;
-  const rowGap = opts.rowSpaceAfter ?? 340;
+  const adaptive = computeSignerRowSpacing(items.length);
+  const rowGap = opts.rowSpaceAfter ?? adaptive.rowGapTwips;
+  const line = opts.line ?? adaptive.lineTwips;
   return new Table({
     width: { size: opts.totalWidthDxa, type: WidthType.DXA },
     columnWidths: [nameW, dotsW],
     layout: TableLayoutType.FIXED,
     borders: NO_TABLE_BORDERS,
     rows: items.map((item, idx) => {
-      const after = idx === items.length - 1 ? 40 : rowGap;
+      const after = idx === items.length - 1 ? 30 : rowGap;
       return new TableRow({
         cantSplit: true,
         children: [
@@ -447,6 +459,7 @@ function buildWarisCSignerRowsTable(
                 hanging: 260,
                 spaceAfter: after,
                 size,
+                line,
               }),
             ],
           }),
@@ -460,6 +473,7 @@ function buildWarisCSignerRowsTable(
                 align: AlignmentType.RIGHT,
                 spaceAfter: after,
                 size,
+                line,
               }),
             ],
           }),
@@ -694,12 +708,12 @@ function buildSaksiAndPemohonSignTable(
           new TableCell({
             width: { size: sNamaW, type: WidthType.DXA },
             borders: NO_BORDER,
-            children: [fp(`1.  ${saksi1Nama}`, { spaceAfter: 420 })],
+            children: [fp(`1.  ${saksi1Nama}`, { spaceAfter: 200, line: 240 })],
           }),
           new TableCell({
             width: { size: sTtdW, type: WidthType.DXA },
             borders: NO_BORDER,
-            children: [fp('(                  )', { spaceAfter: 420 })],
+            children: [fp('(.............)', { spaceAfter: 200, line: 240 })],
           }),
         ],
       }),
@@ -708,12 +722,12 @@ function buildSaksiAndPemohonSignTable(
           new TableCell({
             width: { size: sNamaW, type: WidthType.DXA },
             borders: NO_BORDER,
-            children: [fp(`2.  ${saksi2Nama}`, { spaceAfter: 40 })],
+            children: [fp(`2.  ${saksi2Nama}`, { spaceAfter: 40, line: 240 })],
           }),
           new TableCell({
             width: { size: sTtdW, type: WidthType.DXA },
             borders: NO_BORDER,
-            children: [fp('(                  )', { spaceAfter: 40 })],
+            children: [fp('(.............)', { spaceAfter: 40, line: 240 })],
           }),
         ],
       }),
@@ -744,7 +758,7 @@ function buildSaksiAndPemohonSignTable(
             width: { size: leftW, type: WidthType.DXA },
             borders: NO_BORDER,
             children: [
-              fp('Saksi – saksi :', { spaceAfter: 220 }),
+              fp('Saksi – saksi :', { spaceAfter: 110 }),
               innerSaksiTable,
             ],
           }),
@@ -846,12 +860,16 @@ export function buildWarisCBundle(
               margins: { top: 0, bottom: 0, left: 80, right: 0 },
               children: [
                 fp(kotaLine, { align: AlignmentType.CENTER, spaceAfter: 0, size: 20, keepNext: true }),
-                fp(headerLabel, { align: AlignmentType.CENTER, spaceAfter: 200, size: 20, keepNext: true }),
+                fp(headerLabel, {
+                  align: AlignmentType.CENTER,
+                  spaceAfter: computeSignerRowSpacing(heirItems.length).headerGapTwips,
+                  size: 20,
+                  keepNext: true,
+                }),
                 buildWarisCSignerRowsTable(heirItems, {
                   totalWidthDxa: signW - 80,
                   dotsWidthDxa: 1580,
                   size: 20,
-                  rowSpaceAfter: 320,
                 }),
               ],
             }),
@@ -978,16 +996,19 @@ export function buildWarisCBundle(
     rows: permohonanPairs.map(
       ([leftText, rightText, boldL, boldR]) =>
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: 4350, type: WidthType.DXA },
               borders: NO_BORDER,
-              children: [fp(leftText, { bold: boldL, spaceAfter: 20, line: F4_LINE, size: 20 })],
+              margins: { top: 0, bottom: 0, left: 0, right: 120 },
+              children: [fp(leftText, { bold: boldL, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE, size: 20 })],
             }),
             new TableCell({
               width: { size: F4_CONTENT_WIDTH_DXA - 240 - 4350, type: WidthType.DXA },
               borders: NO_BORDER,
-              children: [fp(rightText, { bold: boldR, spaceAfter: 20, line: F4_LINE, size: 20 })],
+              margins: { top: 0, bottom: 0, left: 80, right: 0 },
+              children: [fp(rightText, { bold: boldR, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE, size: 20 })],
             }),
           ],
         })
@@ -1021,7 +1042,7 @@ export function buildWarisCBundle(
             borders: NO_BORDER,
             margins: { top: 0, bottom: 0, left: 0, right: 120 },
             children: lampiranLeft.map((item) =>
-              fp(item, { indentLeft: 320, hanging: 320, spaceAfter: 20, size: 20 })
+              fp(item, { indentLeft: 320, hanging: 320, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE, size: 20 })
             ),
           }),
           new TableCell({
@@ -1029,7 +1050,7 @@ export function buildWarisCBundle(
             borders: NO_BORDER,
             margins: { top: 0, bottom: 0, left: 100, right: 0 },
             children: lampiranRight.map((item) =>
-              fp(item, { indentLeft: 320, hanging: 320, spaceAfter: 20, size: 20 })
+              fp(item, { indentLeft: 320, hanging: 320, spaceAfter: 0, line: COMPACT_CHECKLIST_LINE, size: 20 })
             ),
           }),
         ],

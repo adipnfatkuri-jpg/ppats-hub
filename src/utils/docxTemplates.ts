@@ -1393,7 +1393,7 @@ function lpRuns(
 }
 
 function makeLampiranKvTable(
-  rows: Array<[string, string]>,
+  rows: Array<[string, string, string?]>,
   opts?: { labelPct?: number; indentTwips?: number; spaceAfterRow?: number; line?: number }
 ): Table {
   const indentTwips = opts?.indentTwips ?? 0;
@@ -1410,20 +1410,26 @@ function makeLampiranKvTable(
     indent: indentTwips > 0 ? { size: indentTwips, type: WidthType.DXA } : undefined,
     borders: NO_TABLE_BORDERS,
     rows: rows.map(
-      ([k, v]) =>
+      ([k, v, condFlag]) =>
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: leftW, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 60 },
-              children: [lp(k, { spaceAfter: spaceAfterRow, line })],
+              children: [lp(condFlag ? `{{#${condFlag}}}${k}` : k, { spaceAfter: spaceAfterRow, line })],
             }),
             new TableCell({
               width: { size: rightW, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 0 },
-              children: [lp(`: ${v}`, { spaceAfter: spaceAfterRow, line })],
+              children: [
+                lp(condFlag ? `: ${v}{{/${condFlag}}}` : `: ${v}`, {
+                  spaceAfter: spaceAfterRow,
+                  line,
+                }),
+              ],
             }),
           ],
         })
@@ -1451,8 +1457,8 @@ function makeLampiranTwoColList(
   const leftPct = opts?.leftPct ?? 50;
   const leftW = Math.round((totalWidth * leftPct) / 100);
   const rightW = totalWidth - leftW;
-  const line = opts?.line ?? LAMPIRAN_LINE;
-  const spaceAfterRow = opts?.spaceAfterRow ?? 20;
+  const line = opts?.line ?? 220;
+  const spaceAfterRow = opts?.spaceAfterRow ?? 0;
   const hanging = opts?.hangingTwips ?? 340;
 
   return new Table({
@@ -1464,11 +1470,12 @@ function makeLampiranTwoColList(
     rows: rows.map(
       (row) =>
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: leftW, type: WidthType.DXA },
               borders: NO_BORDER,
-              margins: { top: 0, bottom: 0, left: 0, right: 160 },
+              margins: { top: 0, bottom: 0, left: 0, right: 140 },
               children: [
                 lp(row.left, {
                   bold: row.leftBold ?? false,
@@ -1503,12 +1510,12 @@ function makeLampiranTwoColList(
   });
 }
 
-function makeSaksiSignLines(spaceBefore = 200): Array<Paragraph | Table> {
+function makeSaksiSignLines(spaceBefore = 140): Array<Paragraph | Table> {
   const tableW = 6600;
   const signW = 2100;
   const nameW = tableW - signW;
   return [
-    lp('Saksi – saksi :', { spaceBefore, spaceAfter: 160, line: LAMPIRAN_LINE, keepNext: true }),
+    lp('Saksi – saksi :', { spaceBefore, spaceAfter: 90, line: LAMPIRAN_LINE, keepNext: true }),
     new Table({
       width: { size: tableW, type: WidthType.DXA },
       layout: TableLayoutType.FIXED,
@@ -1527,8 +1534,8 @@ function makeSaksiSignLines(spaceBefore = 200): Array<Paragraph | Table> {
                 lp('1. {{saksi_1_nama}}', {
                   indentLeft: 260,
                   hanging: 260,
-                  spaceAfter: 340,
-                  line: LAMPIRAN_LINE,
+                  spaceAfter: 190,
+                  line: 240,
                 }),
               ],
             }),
@@ -1540,8 +1547,8 @@ function makeSaksiSignLines(spaceBefore = 200): Array<Paragraph | Table> {
               children: [
                 lp('( ................. )', {
                   align: AlignmentType.RIGHT,
-                  spaceAfter: 340,
-                  line: LAMPIRAN_LINE,
+                  spaceAfter: 190,
+                  line: 240,
                 }),
               ],
             }),
@@ -1559,8 +1566,8 @@ function makeSaksiSignLines(spaceBefore = 200): Array<Paragraph | Table> {
                 lp('2. {{saksi_2_nama}}', {
                   indentLeft: 260,
                   hanging: 260,
-                  spaceAfter: 60,
-                  line: LAMPIRAN_LINE,
+                  spaceAfter: 40,
+                  line: 240,
                 }),
               ],
             }),
@@ -1572,8 +1579,8 @@ function makeSaksiSignLines(spaceBefore = 200): Array<Paragraph | Table> {
               children: [
                 lp('( ................. )', {
                   align: AlignmentType.RIGHT,
-                  spaceAfter: 60,
-                  line: LAMPIRAN_LINE,
+                  spaceAfter: 40,
+                  line: 240,
                 }),
               ],
             }),
@@ -1882,19 +1889,19 @@ function buildLampiranBundelDocument(): Document {
             ],
             { indentTwips: 420, labelPct: 25, spaceAfterRow: 0, line: LAMPIRAN_LINE }
           ),
-          lp('Dalam hal ini bertindak untuk selaku kuasa dari :', { spaceBefore: 100, spaceAfter: 40, line: LAMPIRAN_LINE }),
+          lp('Dalam hal ini bertindak untuk selaku kuasa dari :', { spaceBefore: 70, spaceAfter: 30, line: 245 }),
           makeLampiranKvTable(
             [
               ['Nama', '{{penerima_nama}}'],
               ['Tempat/Tgl.lahir', '{{penerima_ttl}}'],
-              ['Pekerjaan', '{{penerima_pekerjaan}}'],
+              ['Pekerjaan', '{{penerima_pekerjaan}}', 'has_penerima_pekerjaan'],
               ['Nomor KTP', '{{penerima_nik}}'],
               ['Alamat', '{{penerima_alamat}}'],
             ],
-            { indentTwips: 420, labelPct: 25, spaceAfterRow: 0, line: LAMPIRAN_LINE }
+            { indentTwips: 420, labelPct: 25, spaceAfterRow: 0, line: 225 }
           ),
-          lp('Berdasarkan surat kuasa Tanggal : {{tanggal_akta_dash}}', { spaceBefore: 100, spaceAfter: 20, line: LAMPIRAN_LINE }),
-          lp('Dengan ini mengajukan permohonan :', { spaceAfter: 40, line: LAMPIRAN_LINE }),
+          lp('Berdasarkan surat kuasa Tanggal : {{tanggal_akta_dash}}', { spaceBefore: 70, spaceAfter: 15, line: 240 }),
+          lp('Dengan ini mengajukan permohonan :', { spaceAfter: 25, line: 240 }),
           makeLampiranTwoColList(
             [
               { left: '1. Pengukuran', right: '8. Pemecahan/Penggabungan Hak' },
@@ -1905,10 +1912,10 @@ function buildLampiranBundelDocument(): Document {
               { left: '6. Pendaftaran Pemindahan Hak', right: '13. Pengecekan Sertipikat' },
               { left: '7. Pendaftaran Perubahan Hak', right: '14. Pencatatan ……………………………' },
             ],
-            { indentTwips: 360, leftPct: 48, line: LAMPIRAN_LINE, spaceAfterRow: 20, hangingTwips: 320 }
+            { indentTwips: 360, leftPct: 48, line: 220, spaceAfterRow: 0, hangingTwips: 320 }
           ),
-          lp('Atas bidang tanah Hak / Tanah Negara :', { spaceBefore: 100, spaceAfter: 10, line: LAMPIRAN_LINE }),
-          lp('Terletak di', { indentLeft: 420, spaceAfter: 10, line: LAMPIRAN_LINE }),
+          lp('Atas bidang tanah Hak / Tanah Negara :', { spaceBefore: 70, spaceAfter: 10, line: 240 }),
+          lp('Terletak di', { indentLeft: 420, spaceAfter: 10, line: 240 }),
           makeLampiranKvTable(
             [
               ['Desa', '{{desa_tanah}}'],
@@ -1916,12 +1923,12 @@ function buildLampiranBundelDocument(): Document {
               ['Kabupaten', '{{kabupaten_tanah}}'],
               ['{{label_nomor_sertipikat}}', '{{nib_atau_nomor_hak}}'],
             ],
-            { indentTwips: 720, labelPct: 24, spaceAfterRow: 0, line: LAMPIRAN_LINE }
+            { indentTwips: 720, labelPct: 24, spaceAfterRow: 0, line: 230 }
           ),
           lp('Untuk melengkapi permohonan dimaksud, bersama ini kami lampirkan :', {
-            spaceBefore: 100,
-            spaceAfter: 40,
-            line: LAMPIRAN_LINE,
+            spaceBefore: 70,
+            spaceAfter: 25,
+            line: 240,
           }),
           makeLampiranTwoColList(
             [
@@ -1934,7 +1941,7 @@ function buildLampiranBundelDocument(): Document {
               { left: '7. Fotokopi KTP, KK Para Pihak', right: '' },
               { left: '8. Fotokopi KTP Para Saksi', right: '' },
             ],
-            { indentTwips: 180, leftPct: 51, line: LAMPIRAN_LINE, spaceAfterRow: 20, hangingTwips: 340 }
+            { indentTwips: 180, leftPct: 51, line: 220, spaceAfterRow: 0, hangingTwips: 340 }
           ),
           // Paragraf pemisah wajib agar Microsoft Word tidak menggabungkan tabel Lampiran dengan tabel Tanda Tangan
           lp('', { spaceBefore: 0, spaceAfter: 60, line: 120 }),
@@ -1981,13 +1988,13 @@ function buildLampiranBundelDocument(): Document {
             [
               ['Nama', '{{penerima_nama}}'],
               ['Tempat/Tgl.lahir', '{{penerima_ttl}}'],
-              ['Pekerjaan', '{{penerima_pekerjaan}}'],
+              ['Pekerjaan', '{{penerima_pekerjaan}}', 'has_penerima_pekerjaan'],
               ['Nomor KTP', '{{penerima_nik}}'],
               ['Alamat', '{{penerima_alamat}}'],
             ],
-            { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: LAMPIRAN_LINE }
+            { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: 235 }
           ),
-          lp('Sehubungan dengan Sertipikat atas tanah {{jenis_hak}} :', { spaceBefore: 140, spaceAfter: 40, line: LAMPIRAN_LINE }),
+          lp('Sehubungan dengan Sertipikat atas tanah {{jenis_hak}} :', { spaceBefore: 110, spaceAfter: 35, line: LAMPIRAN_LINE }),
           makeLampiranKvTable(
             [
               ['{{label_nomor_sertipikat}}', '{{nib_atau_nomor_hak}}'],
@@ -1995,18 +2002,18 @@ function buildLampiranBundelDocument(): Document {
               ['Kecamatan', '{{kecamatan_tanah}}'],
               ['Kabupaten', '{{kabupaten_tanah}}'],
             ],
-            { indentTwips: 720, labelPct: 22, spaceAfterRow: 0, line: LAMPIRAN_LINE }
+            { indentTwips: 720, labelPct: 22, spaceAfterRow: 0, line: 235 }
           ),
-          lp('Maka dengan ini memberi kuasa Substitusi kepada :', { spaceBefore: 140, spaceAfter: 40, line: LAMPIRAN_LINE }),
+          lp('Maka dengan ini memberi kuasa Substitusi kepada :', { spaceBefore: 110, spaceAfter: 35, line: LAMPIRAN_LINE }),
           makeLampiranKvTable(
             [
               ['Nama', '{{kuasa_bpn_nama}}'],
               ['Tempat/Tgl.lahir', '{{kuasa_bpn_ttl}}'],
-              ['Pekerjaan', '{{kuasa_bpn_pekerjaan}}'],
+              ['Pekerjaan', '{{kuasa_bpn_pekerjaan}}', 'has_kuasa_bpn_pekerjaan'],
               ['Nomor KTP', '{{kuasa_bpn_nik}}'],
               ['Alamat', '{{kuasa_bpn_alamat}}'],
             ],
-            { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: LAMPIRAN_LINE }
+            { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: 235 }
           ),
           aktaCenteredDashHeading('KHUSUS', {
             bold: true,
@@ -2069,11 +2076,11 @@ function buildLampiranBundelDocument(): Document {
             [
               ['Nama', '{{penerima_nama}}'],
               ['Tempat/Tgl.lahir', '{{penerima_ttl}}'],
-              ['Pekerjaan', '{{penerima_pekerjaan}}'],
+              ['Pekerjaan', '{{penerima_pekerjaan}}', 'has_penerima_pekerjaan'],
               ['Nomor KTP', '{{penerima_nik}}'],
               ['Alamat', '{{penerima_alamat}}'],
             ],
-            { indentTwips: 420, labelPct: 26, spaceAfterRow: 10, line: LAMPIRAN_LINE }
+            { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: 235 }
           ),
           lp('Dengan ini menyatakan :', { spaceBefore: 160, spaceAfter: 80, line: LAMPIRAN_LINE_AIRY }),
           lp(
@@ -2131,33 +2138,33 @@ function buildLampiranBundelDocument(): Document {
             [
               ['Nama', '{{penerima_nama}}'],
               ['Tempat/Tgl.lahir', '{{penerima_ttl}}'],
-              ['Pekerjaan', '{{penerima_pekerjaan}}'],
+              ['Pekerjaan', '{{penerima_pekerjaan}}', 'has_penerima_pekerjaan'],
               ['Nomor KTP', '{{penerima_nik}}'],
               ['Alamat', '{{penerima_alamat}}'],
             ],
-            { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: 252 }
+            { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: 230 }
           ),
-          lp('Dengan disaksikan oleh :', { spaceBefore: 80, spaceAfter: 40, line: LAMPIRAN_LINE }),
+          lp('Dengan disaksikan oleh :', { spaceBefore: 70, spaceAfter: 30, line: LAMPIRAN_LINE }),
           makeLampiranKvTable(
             [
               ['1. Nama', '{{saksi_1_nama}}'],
               ['   Tempat/Tgl.lahir', '{{saksi_1_ttl}}'],
-              ['   Pekerjaan', '{{saksi_1_pekerjaan}}'],
+              ['   Pekerjaan', '{{saksi_1_pekerjaan}}', 'has_saksi_1_pekerjaan'],
               ['   Nomor KTP', '{{saksi_1_nik}}'],
               ['   Alamat', '{{saksi_1_alamat}}'],
             ],
-            { indentTwips: 240, labelPct: 27, spaceAfterRow: 0, line: 252 }
+            { indentTwips: 240, labelPct: 27, spaceAfterRow: 0, line: 230 }
           ),
-          lp('', { spaceAfter: 20, line: 120 }),
+          lp('', { spaceAfter: 20, line: 100 }),
           makeLampiranKvTable(
             [
               ['2. Nama', '{{saksi_2_nama}}'],
               ['   Tempat/Tgl.lahir', '{{saksi_2_ttl}}'],
-              ['   Pekerjaan', '{{saksi_2_pekerjaan}}'],
+              ['   Pekerjaan', '{{saksi_2_pekerjaan}}', 'has_saksi_2_pekerjaan'],
               ['   Nomor KTP', '{{saksi_2_nik}}'],
               ['   Alamat', '{{saksi_2_alamat}}'],
             ],
-            { indentTwips: 240, labelPct: 27, spaceAfterRow: 0, line: 252 }
+            { indentTwips: 240, labelPct: 27, spaceAfterRow: 0, line: 230 }
           ),
           lp('Pada hari ini {{hari_akta}} tanggal {{tanggal_akta}} dengan ini menyatakan :', {
             spaceBefore: 100,
@@ -2198,7 +2205,7 @@ function buildLampiranBundelDocument(): Document {
                     borders: NO_BORDER,
                     margins: { top: 0, bottom: 0, left: 0, right: 120 },
                     children: [
-                      lp('Saksi – saksi :', { spaceAfter: 180, line: LAMPIRAN_LINE, keepNext: true }),
+                      lp('Saksi – saksi :', { spaceAfter: 100, line: LAMPIRAN_LINE, keepNext: true }),
                       new Table({
                         width: { size: 4980, type: WidthType.DXA },
                         layout: TableLayoutType.FIXED,
@@ -2217,8 +2224,8 @@ function buildLampiranBundelDocument(): Document {
                                   lp('1. {{saksi_1_nama}}', {
                                     indentLeft: 260,
                                     hanging: 260,
-                                    spaceAfter: 380,
-                                    line: LAMPIRAN_LINE,
+                                    spaceAfter: 190,
+                                    line: 240,
                                   }),
                                 ],
                               }),
@@ -2230,8 +2237,8 @@ function buildLampiranBundelDocument(): Document {
                                 children: [
                                   lp('(.............)', {
                                     align: AlignmentType.RIGHT,
-                                    spaceAfter: 380,
-                                    line: LAMPIRAN_LINE,
+                                    spaceAfter: 190,
+                                    line: 240,
                                   }),
                                 ],
                               }),
@@ -2250,7 +2257,7 @@ function buildLampiranBundelDocument(): Document {
                                     indentLeft: 260,
                                     hanging: 260,
                                     spaceAfter: 40,
-                                    line: LAMPIRAN_LINE,
+                                    line: 240,
                                   }),
                                 ],
                               }),
@@ -2263,7 +2270,7 @@ function buildLampiranBundelDocument(): Document {
                                   lp('(.............)', {
                                     align: AlignmentType.RIGHT,
                                     spaceAfter: 40,
-                                    line: LAMPIRAN_LINE,
+                                    line: 240,
                                   }),
                                 ],
                               }),
@@ -2307,11 +2314,11 @@ function buildLampiranBundelDocument(): Document {
             [
               ['Nama', '{{pemilik_awal_nama}}'],
               ['Tempat/Tgl.lahir', '{{pemilik_awal_ttl}}'],
-              ['Pekerjaan', '{{pemilik_awal_pekerjaan}}'],
+              ['Pekerjaan', '{{pemilik_awal_pekerjaan}}', 'has_pemilik_awal_pekerjaan'],
               ['Nomor KTP', '{{pemilik_awal_nik}}'],
               ['Alamat', '{{pemilik_awal_alamat}}'],
             ],
-            { indentTwips: 420, labelPct: 26, spaceAfterRow: 10, line: LAMPIRAN_LINE }
+            { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: 235 }
           ),
           lp(
             'Dengan ini menyatakan dengan sebenarnya bahwa Surat Pemberitahuan Pajak Terhutang Pajak Bumi dan Bangunan (SPPT/PBB) Nomor Objek Pajak (NOP) : {{nop}}',
@@ -2391,11 +2398,11 @@ function buildLampiranBundelDocument(): Document {
             [
               ['Nama', '{{penerima_nama}}'],
               ['Tempat/Tgl.lahir', '{{penerima_ttl}}'],
-              ['Pekerjaan', '{{penerima_pekerjaan}}'],
+              ['Pekerjaan', '{{penerima_pekerjaan}}', 'has_penerima_pekerjaan'],
               ['Nomor KTP', '{{penerima_nik}}'],
               ['Alamat', '{{penerima_alamat}}'],
             ],
-            { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: LAMPIRAN_LINE }
+            { indentTwips: 420, labelPct: 26, spaceAfterRow: 0, line: 235 }
           ),
           lp('Merupakan pemilik tanah dengan jenis tanah :', { spaceBefore: 140, spaceAfter: 40, line: LAMPIRAN_LINE }),
           lp('{{jenis_hak}} {{sertipikat_ringkas_baris}}', { indentLeft: 420, bold: true, spaceAfter: 80, line: LAMPIRAN_LINE }),
@@ -2464,12 +2471,12 @@ function buildLampiranBundelDocument(): Document {
             pageBreakBefore: true,
             bold: true,
             align: AlignmentType.CENTER,
-            spaceAfter: 200,
-            line: LAMPIRAN_LINE,
+            spaceAfter: 120,
+            line: 252,
           }),
           lp(
             'Saya, yang bertandatangan di bawah ini, selaku pengguna layanan Pertanahan Kementerian Agraria dan Tata Ruang/Badan Pertanahan Nasional (“Kementerian ATR/BPN”), dengan ini menyatakan sebagai berikut:',
-            { align: AlignmentType.JUSTIFIED, spaceAfter: 100, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, spaceAfter: 60, line: 252 }
           ),
           lpRuns(
             [
@@ -2485,63 +2492,63 @@ function buildLampiranBundelDocument(): Document {
                 text: ' Dengan ini saya memberikan persetujuan kepada Kementerian ATR/BPN selaku Pengendali Data Pribadi untuk melakukan pemrosesan Data Pribadi saya dan/atau pihak yang saya wakili, termasuk namun tidak terbatas pada pengumpulan, pencatatan, penyimpanan, pengolahan, penggunaan, pengungkapan, pengiriman, pembaruan, perbaikan, pembatasan, penghapusan, dan/atau pemusnahan sesuai ketentuan peraturan perundang-undangan.',
               },
             ],
-            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 100, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 55, line: 252 }
           ),
           lp(
             '2. Saya telah menerima dan memahami informasi yang diberikan oleh Kementerian ATR/BPN sehubungan dengan tujuan pemrosesan Data Pribadi dilakukan sebagai berikut:',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 60, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 35, line: 252 }
           ),
-          lp('a. Proses administrasi layanan pertanahan;', { indentLeft: 720, hanging: 360, spaceAfter: 30, line: LAMPIRAN_LINE_AIRY }),
-          lp('b. Pertukaran data dengan Kementerian/Lembaga lainnya.', { indentLeft: 720, hanging: 360, spaceAfter: 100, line: LAMPIRAN_LINE_AIRY }),
+          lp('a. Proses administrasi layanan pertanahan;', { indentLeft: 720, hanging: 360, spaceAfter: 15, line: 252 }),
+          lp('b. Pertukaran data dengan Kementerian/Lembaga lainnya.', { indentLeft: 720, hanging: 360, spaceAfter: 55, line: 252 }),
           lp(
             '3. Saya telah menerima dan memahami informasi yang diberikan oleh Kementerian ATR/BPN sehubungan dengan pemrosesan data pribadi yang saya ungkapkan terkait hal-hal sebagai berikut:',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 60, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 35, line: 252 }
           ),
           lp(
             'a. Hak untuk menyampaikan permintaan penundaan, pembatasan, pengakhiran, dan/atau penarikan persetujuan pemrosesan data pribadi;',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 720, hanging: 360, spaceAfter: 30, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, indentLeft: 720, hanging: 360, spaceAfter: 15, line: 252 }
           ),
           lp(
             'b. Hak untuk menyampaikan permintaan penghapusan dan/atau pemusnahan data pribadi;',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 720, hanging: 360, spaceAfter: 30, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, indentLeft: 720, hanging: 360, spaceAfter: 15, line: 252 }
           ),
           lp(
             'c. Hak untuk melengkapi, memperbarui, dan/atau memperbaiki data pribadi.',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 720, hanging: 360, spaceAfter: 100, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, indentLeft: 720, hanging: 360, spaceAfter: 55, line: 252 }
           ),
           lp(
             '4. Saya memahami dan menyetujui bahwa Kementerian ATR/BPN akan mempergunakan dan menyimpan Data Pribadi sesuai dengan ketentuan peraturan perundang-undangan yang berlaku atau selama diperlukan.',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 100, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 55, line: 252 }
           ),
           lp(
             '5. Saya memahami dan setuju bahwa Kementerian ATR/BPN dapat mengungkapkan data pribadi saya kepada pihak ketiga lainnya, antara lain:',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 60, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 35, line: 252 }
           ),
           lp(
             'a. Aparat penegak hukum termasuk Kepolisian, Kejaksaan, Pusat Pelaporan dan Analisis Transaksi Keuangan (PPATK) dan Komisi Pemberantasan Korupsi (KPK);',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 720, hanging: 360, spaceAfter: 30, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, indentLeft: 720, hanging: 360, spaceAfter: 15, line: 252 }
           ),
           lp(
             'b. Instansi pemerintah/Kementerian/Lembaga, Penyedia jasa Keuangan dan/atau Mitra resmi Kementerian ATR/BPN terkait layanan pertanahan melalui sistem elektronik atau pun sistem elektronik pemerintah yang terintegrasi.',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 720, hanging: 360, spaceAfter: 60, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, indentLeft: 720, hanging: 360, spaceAfter: 35, line: 252 }
           ),
           lp(
             'selama pengungkapan tersebut dilaksanakan sesuai dengan tujuan pemrosesan di atas dan/atau sesuai dengan ketentuan peraturan perundang-undangan yang berlaku.',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 360, spaceAfter: 100, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, indentLeft: 360, spaceAfter: 55, line: 252 }
           ),
           lp(
             '6. Saya memahami bahwa kesalahan terhadap penyalahgunaan data pribadi oleh pihak ketiga sebagaimana dimaksud pada angka 5, sepenuhnya menjadi tanggung jawab pihak ketiga dan bukan menjadi kesalahan Kementerian ATR/BPN.',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 100, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 55, line: 252 }
           ),
           lp(
             '7. Saya memahami dan menyetujui bahwa saya berkewajiban untuk memastikan Data Pribadi yang saya ungkapkan kepada Kementerian ATR/BPN adalah lengkap, akurat, benar dan terkini. Demikian persetujuan ini saya buat dan tandatangani dengan sebenar-benarnya, secara sadar, dan tanpa tekanan maupun paksaan dari Pihak manapun.',
-            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 140, line: LAMPIRAN_LINE_AIRY }
+            { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 75, line: 252 }
           ),
           lp('Demikian Surat Pernyataan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.', {
             align: AlignmentType.JUSTIFIED,
             firstLine: 720,
-            spaceAfter: 260,
-            line: LAMPIRAN_LINE_AIRY,
+            spaceAfter: 140,
+            line: 252,
           }),
           new Table({
             width: { size: LAMPIRAN_CONTENT_WIDTH_DXA, type: WidthType.DXA },
@@ -2601,7 +2608,7 @@ function buildLampiranBundelDocument(): Document {
                       }),
                       lp('Yang Membuat Pernyataan,', {
                         align: AlignmentType.CENTER,
-                        spaceAfter: 240,
+                        spaceAfter: 110,
                         line: LAMPIRAN_LINE,
                         keepNext: true,
                       }),
@@ -2623,11 +2630,11 @@ function buildLampiranBundelDocument(): Document {
                                 verticalAlign: VerticalAlign.BOTTOM,
                                 margins: { top: 0, bottom: 0, left: 0, right: 60 },
                                 children: [
-                                  lp('{{#pihak_data_pribadi_ttd}}{{no}}. {{nama}}', {
+                                  lp('{{#pihak_dp_normal}}{{no}}. {{nama}}', {
                                     indentLeft: 260,
                                     hanging: 260,
-                                    spaceAfter: 360,
-                                    line: LAMPIRAN_LINE,
+                                    spaceAfter: 160,
+                                    line: 245,
                                   }),
                                 ],
                               }),
@@ -2637,10 +2644,45 @@ function buildLampiranBundelDocument(): Document {
                                 verticalAlign: VerticalAlign.BOTTOM,
                                 margins: { top: 0, bottom: 0, left: 20, right: 0 },
                                 children: [
-                                  lp('(.............){{/pihak_data_pribadi_ttd}}', {
+                                  lp('(.............){{/pihak_dp_normal}}', {
                                     align: AlignmentType.RIGHT,
-                                    spaceAfter: 360,
-                                    line: LAMPIRAN_LINE,
+                                    spaceAfter: 160,
+                                    line: 245,
+                                  }),
+                                ],
+                              }),
+                            ],
+                          }),
+                          new TableRow({
+                            cantSplit: true,
+                            children: [
+                              new TableCell({
+                                width: {
+                                  size: LAMPIRAN_CONTENT_WIDTH_DXA - 4350 - 1650,
+                                  type: WidthType.DXA,
+                                },
+                                borders: NO_BORDER,
+                                verticalAlign: VerticalAlign.BOTTOM,
+                                margins: { top: 0, bottom: 0, left: 0, right: 60 },
+                                children: [
+                                  lp('{{#pihak_dp_compact}}{{no}}. {{nama}}', {
+                                    indentLeft: 260,
+                                    hanging: 260,
+                                    spaceAfter: 35,
+                                    line: 222,
+                                  }),
+                                ],
+                              }),
+                              new TableCell({
+                                width: { size: 1650, type: WidthType.DXA },
+                                borders: NO_BORDER,
+                                verticalAlign: VerticalAlign.BOTTOM,
+                                margins: { top: 0, bottom: 0, left: 20, right: 0 },
+                                children: [
+                                  lp('(.............){{/pihak_dp_compact}}', {
+                                    align: AlignmentType.RIGHT,
+                                    spaceAfter: 35,
+                                    line: 222,
                                   }),
                                 ],
                               }),
@@ -2654,7 +2696,7 @@ function buildLampiranBundelDocument(): Document {
               }),
             ],
           }),
-          ...makeSaksiSignLines(220),
+          ...makeSaksiSignLines(140),
         ],
       },
     ],

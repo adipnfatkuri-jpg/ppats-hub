@@ -28,6 +28,7 @@ import { formatPpatsTtl } from './ppatsProfileHelper';
 import { TEMPLATE_DOCS_META } from './seedData';
 import { isAktaService } from './taxAndAudit';
 import { resolveAphbRecipients } from './aphbHelpers';
+import { hasFilledPekerjaan } from './lampiranLayoutHelper';
 
 function saveBlob(blob: Blob, fileName: string) {
   const mod = FileSaver as unknown as {
@@ -784,12 +785,14 @@ export function buildTemplateContext(
     penerima_nama: penerimaObj.nama,
     penerima_ttl: penerimaObj.ttl,
     penerima_pekerjaan: penerimaObj.pekerjaan,
+    has_penerima_pekerjaan: hasFilledPekerjaan(penerimaObj.pekerjaan),
     penerima_nik: penerimaObj.nik,
     penerima_alamat: penerimaObj.alamat_lengkap,
     penerima_ringkas: penerimaRingkas,
     pemilik_awal_nama: pemilikAwalObj.nama,
     pemilik_awal_ttl: pemilikAwalObj.ttl,
     pemilik_awal_pekerjaan: pemilikAwalObj.pekerjaan,
+    has_pemilik_awal_pekerjaan: hasFilledPekerjaan(pemilikAwalObj.pekerjaan),
     pemilik_awal_nik: pemilikAwalObj.nik,
     pemilik_awal_alamat: pemilikAwalObj.alamat_lengkap,
     pemilik_awal_ringkas: pemilikAwalRingkas,
@@ -799,6 +802,8 @@ export function buildTemplateContext(
     ket_pihak2_label: ketPihak2Label,
     ket_pihak2_names: ketPihak2Names,
     pihak_data_pribadi_ttd: dataPribadiSigners,
+    pihak_dp_normal: dataPribadiSigners.length <= 4 ? dataPribadiSigners : [],
+    pihak_dp_compact: dataPribadiSigners.length > 4 ? dataPribadiSigners : [],
     sig_mode_grouped_2: sigModeGrouped2,
     pihak_pertama_ttd: pihakPertamaTtd,
     pihak_kedua_ttd: pihakKeduaTtd,
@@ -902,6 +907,7 @@ export function buildTemplateContext(
     kuasa_bpn_tanggal_lahir: kuasaBpn.tanggal_lahir,
     kuasa_bpn_ttl: kuasaBpn.ttl,
     kuasa_bpn_pekerjaan: kuasaBpn.pekerjaan,
+    has_kuasa_bpn_pekerjaan: hasFilledPekerjaan(kuasaBpn.pekerjaan),
     kuasa_bpn_nik: kuasaBpn.nik,
     kuasa_bpn_alamat: kuasaBpn.alamat_singkat || kuasaBpn.alamat,
     kuasa_bpn_alamat_lengkap: kuasaBpn.alamat,
@@ -911,6 +917,7 @@ export function buildTemplateContext(
     saksi_1_tanggal_lahir: saksi1.tanggal_lahir,
     saksi_1_ttl: saksi1.ttl,
     saksi_1_pekerjaan: saksi1.pekerjaan,
+    has_saksi_1_pekerjaan: hasFilledPekerjaan(saksi1.pekerjaan),
     saksi_1_nik: saksi1.nik,
     saksi_1_alamat: saksi1.alamat,
     saksi_2: saksi2.nama,
@@ -918,6 +925,7 @@ export function buildTemplateContext(
     saksi_2_tempat_lahir: saksi2.tempat_lahir,
     saksi_2_tanggal_lahir: saksi2.tanggal_lahir,
     saksi_2_ttl: saksi2.ttl,
+    has_saksi_2_pekerjaan: hasFilledPekerjaan(saksi2.pekerjaan),
     saksi_2_pekerjaan: saksi2.pekerjaan,
     saksi_2_nik: saksi2.nik,
     saksi_2_alamat: saksi2.alamat,

@@ -234,7 +234,7 @@ const RenderTable: React.FC<{ block: PreviewTableBlock; nested?: boolean }> = ({
                     key={cIdx}
                     rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
                     style={borderStyle}
-                    className={`${hasAnyBorder ? 'px-2 py-1' : 'px-1 py-0.5'}${
+                    className={`${hasAnyBorder ? 'px-2 py-1' : 'px-1 py-0'}${
                       noWrapDots ? ' whitespace-nowrap' : ''
                     }`}
                     data-sig-dots={noWrapDots ? 'true' : undefined}
