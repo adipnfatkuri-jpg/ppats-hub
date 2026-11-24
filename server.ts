@@ -24,6 +24,12 @@ async function startServer() {
   const httpServer = http.createServer(app);
   app.use(express.json({ limit: '50mb' }));
 
+  app.use('/api', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    next();
+  });
+
   app.get('/api/health', (_req, res) => {
     res.json({
       ok: true,
@@ -44,6 +50,11 @@ async function startServer() {
       const body = (req.body ?? {}) as ExtractDocumentsRequestBody;
       const parsed = await extractDocumentsWithGemini(apiKey, body);
       if (res.headersSent) return;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return res.status(502).json({
+          error: 'Hasil ekstraksi AI tidak lengkap. Silakan ulangi pemindaian dokumen.',
+        });
+      }
       return res.json(parsed);
     } catch (err: unknown) {
       if (res.headersSent) return;
@@ -65,6 +76,11 @@ async function startServer() {
       const body = (req.body ?? {}) as ExtractPersonRequestBody;
       const result = await extractPersonWithGemini(apiKey, body);
       if (res.headersSent) return;
+      if (!result || typeof result !== 'object') {
+        return res.status(502).json({
+          error: 'Hasil pemindaian KTP dari AI tidak lengkap. Silakan coba pindai ulang.',
+        });
+      }
       return res.json(result);
     } catch (err: unknown) {
       if (res.headersSent) return;
@@ -86,6 +102,11 @@ async function startServer() {
       const body = (req.body ?? {}) as RefineSketchRequestBody;
       const result = await refineSketchWithGemini(apiKey, body);
       if (res.headersSent) return;
+      if (!result || typeof result !== 'object') {
+        return res.status(502).json({
+          error: 'Hasil penyempurnaan sket dari AI tidak lengkap. Silakan ulangi atau gunakan Sket Otomatis (CAD).',
+        });
+      }
       return res.json(result);
     } catch (err: unknown) {
       if (res.headersSent) return;
@@ -139,6 +160,13 @@ async function startServer() {
   let viteServer: { close: () => Promise<void> } | null = null;
 
   if (process.env.NODE_ENV !== 'production') {
+    app.get('/dev-sw.js', (_req, res) => {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.send(
+        "self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',(e)=>{e.waitUntil(self.registration.unregister().then(()=>self.clients.matchAll()).then((cs)=>cs.forEach((c)=>c.navigate&&c.url&&c.postMessage({type:'SW_UNREGISTERED'}))))});"
+      );
+    });
     const { createServer: createViteServer } = await import('vite');
     const isHmrDisabled = process.env.DISABLE_HMR === 'true';
     const vite = await createViteServer({

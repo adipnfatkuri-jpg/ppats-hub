@@ -73,21 +73,28 @@ const SIGNED_OUT_SESSION: CloudSessionInfo = {
 
 function formatCloudErrorMessage(err: unknown, fallback: string): string {
   const raw = err instanceof Error ? err.message : String(err || '');
+  let message = raw;
   try {
     const parsed = JSON.parse(raw) as { error?: string };
     if (parsed && typeof parsed.error === 'string') {
-      if (/Missing or insufficient permissions/i.test(parsed.error)) {
-        return 'Izin akses ditolak oleh aturan keamanan cloud. Pastikan peran akun Anda (Admin/Petugas) berwenang untuk aksi ini.';
-      }
-      if (/Quota exceeded/i.test(parsed.error)) {
-        return 'Kuota harian database cloud Firestore sementara habis dan akan reset keesokan hari.';
-      }
-      return parsed.error;
+      message = parsed.error;
     }
   } catch {
     // plain error string
   }
-  return raw || fallback;
+  if (/Missing or insufficient permissions/i.test(message)) {
+    return 'Izin akses ditolak oleh aturan keamanan cloud. Pastikan peran akun Anda (Admin/Petugas) berwenang untuk aksi ini.';
+  }
+  if (/Quota exceeded/i.test(message)) {
+    return 'Kuota harian database cloud Firestore sementara habis dan akan reset keesokan hari.';
+  }
+  if (/exceeds maximum size|longer than 1048487|maximum allowed size/i.test(message)) {
+    return 'Ukuran foto lampiran berkas terlalu besar untuk batas dokumen cloud (1 MB). Data tetap tersimpan di perangkat lokal; perkecil ukuran foto lalu simpan ulang.';
+  }
+  if (/client is offline|unavailable|network error/i.test(message)) {
+    return 'Koneksi ke server cloud sedang terputus. Data tetap tersimpan di penyimpanan lokal perangkat dan akan tersinkron saat koneksi kembali normal.';
+  }
+  return message || fallback;
 }
 
 export default function App() {

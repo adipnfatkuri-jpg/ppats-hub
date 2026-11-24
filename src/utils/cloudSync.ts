@@ -33,6 +33,7 @@ import {
   MAX_TEMPLATE_BASE64_LEN,
   clampString,
   emailToInviteId,
+  fitNonAktaForCloudBudget,
   isBootstrappedAdminEmail,
   sanitizeAllowedEmails,
   sanitizeFirestoreId,
@@ -87,9 +88,22 @@ export function buildCloudBerkasPayload(
   record: BerkasRecord,
   uid: string,
   allowedEmails: string[],
-  existingMeta?: { createdByUid?: string; createdAt?: unknown }
+  existingMeta?: {
+    createdByUid?: string;
+    createdAt?: unknown;
+    preserveAllowedEmails?: boolean;
+  }
 ): Record<string, unknown> {
   const safeId = sanitizeFirestoreId(record.id, 'reg');
+  const resolvedAllowedEmails =
+    existingMeta?.preserveAllowedEmails &&
+    Array.isArray(allowedEmails) &&
+    allowedEmails.length > 0 &&
+    allowedEmails.length <= MAX_ALLOWED_EMAILS &&
+    allowedEmails.every((e) => typeof e === 'string')
+      ? allowedEmails
+      : sanitizeAllowedEmails(allowedEmails);
+
   const base: Record<string, unknown> = {
     id: safeId,
     officeId,
@@ -105,7 +119,7 @@ export function buildCloudBerkasPayload(
     akta: stripUndefinedDeep(record.akta || {}),
     pajak: stripUndefinedDeep(record.pajak || {}),
     updated_at: clampString(record.updated_at || new Date().toISOString(), 60),
-    allowedEmails: sanitizeAllowedEmails(allowedEmails),
+    allowedEmails: resolvedAllowedEmails,
     createdByUid: existingMeta?.createdByUid || uid,
     updatedByUid: uid,
     createdAt: existingMeta?.createdAt ?? serverTimestamp(),
@@ -113,7 +127,9 @@ export function buildCloudBerkasPayload(
   };
 
   if (record.non_akta !== undefined) {
-    base.non_akta = stripUndefinedDeep(record.non_akta);
+    const cleanedNonAkta = stripUndefinedDeep(record.non_akta) as Record<string, unknown>;
+    const fitted = fitNonAktaForCloudBudget(base, cleanedNonAkta);
+    base.non_akta = fitted.nonAkta;
   }
   return base;
 }
@@ -681,16 +697,18 @@ export async function saveCloudRecord(
     const existingSnap = await getDoc(ref);
     if (existingSnap.exists()) {
       const existingData = existingSnap.data();
+      const hasExistingAllowed = Array.isArray(existingData.allowedEmails);
       const payload = buildCloudBerkasPayload(
         officeId,
         { ...record, id: safeId },
         user.uid,
-        Array.isArray(existingData.allowedEmails)
+        hasExistingAllowed
           ? (existingData.allowedEmails as string[])
           : allowedEmails,
         {
           createdByUid: String(existingData.createdByUid || user.uid),
           createdAt: existingData.createdAt,
+          preserveAllowedEmails: hasExistingAllowed,
         }
       );
       await setDoc(ref, payload);

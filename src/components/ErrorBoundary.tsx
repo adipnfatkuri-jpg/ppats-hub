@@ -17,6 +17,9 @@ function formatFriendlyError(error: Error): string {
       if (/Missing or insufficient permissions/i.test(parsed.error)) {
         return 'Akun Anda tidak memiliki izin akses untuk operasi database ini. Pastikan akun Google Anda sudah didaftarkan di daftar Akses Tim Kantor oleh Admin.';
       }
+      if (/exceeds maximum size|longer than 1048487|maximum allowed size/i.test(parsed.error)) {
+        return 'Ukuran foto lampiran berkas melebihi batas dokumen cloud (1 MB). Perkecil ukuran foto lampiran lalu coba simpan kembali.';
+      }
       return `Gangguan sinkronisasi cloud: ${parsed.error}`;
     }
   } catch {

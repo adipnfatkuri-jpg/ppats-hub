@@ -3,29 +3,72 @@ export interface ScanApiErrorResult {
   status: number;
 }
 
+export interface ScanResponseMeta {
+  contentType?: string;
+  redirected?: boolean;
+  responseUrl?: string;
+}
+
+function looksLikeHtmlDocument(raw: string, contentType?: string): boolean {
+  if (contentType && /text\/html|application\/xhtml/i.test(contentType)) {
+    return true;
+  }
+  return /^\s*(?:<!doctype\s+html\b|<html\b|<head\b|<body\b|<script\b)/i.test(raw);
+}
+
+function looksLikeAuthRedirect(raw: string, meta?: ScanResponseMeta): boolean {
+  if (meta?.redirected) {
+    return true;
+  }
+  if (
+    meta?.responseUrl &&
+    /__cookie_check\.html|accounts\.google\.com|ServiceLogin|signin|\/login\b|oauth/i.test(
+      meta.responseUrl
+    )
+  ) {
+    return true;
+  }
+  return /__cookie_check\.html|aistudio_auth_flow_may_set_cookies|<title>\s*Cookie check\s*<\/title>|Action required to load your app|accounts\.google\.com|ServiceLogin|Sign in\s*-\s*Google|Google Accounts|Identity-Aware Proxy|__Host-GAPS/i.test(
+    raw
+  );
+}
+
+function looksLikeSpaIndexHtml(raw: string): boolean {
+  return (
+    /<div\s+id=["']root["']/i.test(raw) ||
+    /SIM-PPATS/i.test(raw) ||
+    /<script[^>]+src=["'][^"']*\/assets\/index-[^"']+\.js["']/i.test(raw) ||
+    /<script[^>]+src=["']\/src\/main\.tsx["']/i.test(raw)
+  );
+}
+
+function tryParseJsonObject(trimmed: string): Record<string, unknown> | null {
+  if (!trimmed) return null;
+  try {
+    const candidate = JSON.parse(trimmed);
+    if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+      return candidate as Record<string, unknown>;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 /**
  * Mengurai respons teks dari endpoint /api/extract-* secara aman agar tidak pernah
  * gagal dengan error mentah seperti `Unexpected token 'T', "The page c"... is not valid JSON`
- * saat server mengembalikan HTML/teks (404, 413, 502, 504).
+ * saat server mengembalikan HTML/teks (404, 413, 502, 504, cookie-check/redirect login, atau fallback SPA).
  */
 export function parseScanResponseText<T>(
   rawText: string,
   status: number,
   ok: boolean,
-  endpointLabel: string
+  endpointLabel: string,
+  meta?: ScanResponseMeta
 ): T {
   const trimmed = (rawText || '').trim();
-  let parsed: Record<string, unknown> | null = null;
-  if (trimmed) {
-    try {
-      const candidate = JSON.parse(trimmed);
-      if (candidate && typeof candidate === 'object') {
-        parsed = candidate as Record<string, unknown>;
-      }
-    } catch {
-      parsed = null;
-    }
-  }
+  const parsed = tryParseJsonObject(trimmed);
 
   if (ok && parsed) {
     return parsed as T;
@@ -55,9 +98,30 @@ export function parseScanResponseText<T>(
     );
   }
 
-  if (status === 504 || status === 502 || /FUNCTION_INVOCATION_TIMEOUT|Gateway Timeout/i.test(trimmed)) {
+  if (
+    status === 504 ||
+    status === 502 ||
+    /FUNCTION_INVOCATION_TIMEOUT|Gateway Timeout/i.test(trimmed)
+  ) {
     throw new Error(
       'Server pemindaian membutuhkan waktu terlalu lama (timeout). Gunakan Mode Cepat atau unggah 1–2 dokumen terlebih dahulu.'
+    );
+  }
+
+  const isHtml = looksLikeHtmlDocument(trimmed, meta?.contentType);
+  if (isHtml || meta?.redirected) {
+    if (looksLikeAuthRedirect(trimmed, meta)) {
+      throw new Error(
+        'Sesi cookie keamanan browser untuk server pemindaian telah kedaluwarsa atau perlu diperbarui. Klik "Muat Ulang Halaman" (atau buka aplikasi di tab baru dengan cookie aktif), lalu ulangi pemindaian.'
+      );
+    }
+    if (looksLikeSpaIndexHtml(trimmed)) {
+      throw new Error(
+        `Server pemindaian (${endpointLabel}) mengembalikan halaman HTML aplikasi alih-alih JSON. Muat ulang halaman atau pastikan layanan backend /api berjalan aktif (bukan mode hosting statis).`
+      );
+    }
+    throw new Error(
+      `Server pemindaian (${endpointLabel}) mengembalikan halaman HTML bukan JSON (HTTP ${status || 'error'}). Muat ulang halaman lalu ulangi pemindaian.`
     );
   }
 
@@ -67,43 +131,129 @@ export function parseScanResponseText<T>(
     );
   }
 
+  if (!trimmed || trimmed === 'null') {
+    throw new Error(
+      'Server pemindaian mengembalikan respons kosong dari AI. Silakan coba pindai ulang dokumen atau gunakan Mode Cepat.'
+    );
+  }
+
   throw new Error(
     `Respons server pemindaian (${endpointLabel}) tidak dalam format JSON yang valid. Coba muat ulang halaman lalu ulangi pemindaian.`
   );
 }
 
+function isTransientEmptyOkResponse(
+  rawText: string,
+  status: number,
+  ok: boolean,
+  meta: ScanResponseMeta
+): boolean {
+  if (!ok) return false;
+  if (meta.redirected) return false;
+  const trimmed = (rawText || '').trim();
+  if (looksLikeHtmlDocument(trimmed, meta.contentType)) return false;
+  return tryParseJsonObject(trimmed) === null;
+}
+
+async function tryClearStaleServiceWorkers(): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+    return false;
+  }
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    if (regs.length === 0) return false;
+    await Promise.all(regs.map((r) => r.unregister()));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function delayWithSignal(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('The operation was aborted.', 'AbortError'));
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new DOMException('The operation was aborted.', 'AbortError'));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 /**
  * Mengirim permintaan POST JSON ke endpoint scan dengan penanganan error lintas perangkat
- * (termasuk jaringan seluler terputus, 404 deployment statis, 413 payload besar, dan timeout).
+ * (termasuk cookie terpartisi pada pratinjau iframe/PWA, jaringan seluler terputus, 404 deployment statis,
+ * 413 payload besar, timeout, dan retry otomatis 1x bila respons HTTP 200 kosong/terpotong atau SW lama dilepas).
  */
 export async function postScanJson<T>(
   endpoint: string,
   payload: unknown,
-  options?: { signal?: AbortSignal }
+  options?: { signal?: AbortSignal; maxTransientRetries?: number }
 ): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      signal: options?.signal,
-      body: JSON.stringify(payload),
-    });
-  } catch (err) {
-    const isAbort =
-      (err instanceof DOMException && err.name === 'AbortError') ||
-      (err instanceof Error && err.name === 'AbortError');
-    if (isAbort) {
-      throw err;
+  const maxRetries = options?.maxTransientRetries ?? 1;
+  const serializedBody = JSON.stringify(payload);
+
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    let res: Response;
+    try {
+      res = await fetch(endpoint, {
+        method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        signal: options?.signal,
+        body: serializedBody,
+      });
+    } catch (err) {
+      const isAbort =
+        (err instanceof DOMException && err.name === 'AbortError') ||
+        (err instanceof Error && err.name === 'AbortError');
+      if (isAbort) {
+        throw err;
+      }
+      throw new Error(
+        'Tidak dapat terhubung ke server pemindaian. Periksa koneksi internet perangkat Anda (Wi-Fi/seluler) lalu coba lagi.'
+      );
     }
-    throw new Error(
-      'Tidak dapat terhubung ke server pemindaian. Periksa koneksi internet perangkat Anda (Wi-Fi/seluler) lalu coba lagi.'
-    );
+
+    const rawText = await res.text().catch(() => '');
+    const meta: ScanResponseMeta = {
+      contentType: res.headers.get('content-type') || undefined,
+      redirected: Boolean(res.redirected),
+      responseUrl: res.url || undefined,
+    };
+
+    const isHtml = looksLikeHtmlDocument((rawText || '').trim(), meta.contentType);
+    if (attempt < maxRetries && isHtml) {
+      const clearedSw = await tryClearStaleServiceWorkers();
+      if (clearedSw) {
+        await delayWithSignal(400, options?.signal);
+        continue;
+      }
+    }
+
+    if (
+      attempt < maxRetries &&
+      isTransientEmptyOkResponse(rawText, res.status, res.ok, meta)
+    ) {
+      await delayWithSignal(700, options?.signal);
+      continue;
+    }
+
+    return parseScanResponseText<T>(rawText, res.status, res.ok, endpoint, meta);
   }
 
-  const rawText = await res.text().catch(() => '');
-  return parseScanResponseText<T>(rawText, res.status, res.ok, endpoint);
+  throw new Error(
+    `Respons server pemindaian (${endpoint}) tidak dalam format JSON yang valid. Coba muat ulang halaman lalu ulangi pemindaian.`
+  );
 }

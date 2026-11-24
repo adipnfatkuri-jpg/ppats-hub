@@ -6,6 +6,9 @@ import {
   mergeWarisCScanIntoState,
 } from './warisScanHelper';
 import {
+  computeGeminiRetryBackoffMs,
+  isDailyQuotaExhaustedError,
+  mapGeminiError,
   resolveGeminiExtractionAttempts,
   warisCExtractionResponseSchema,
   warisPewarisExtractionResponseSchema,
@@ -172,10 +175,57 @@ test('resolveGeminiExtractionAttempts uses gemini-4-hydrogen as primary with val
   const accurateAttempts = resolveGeminiExtractionAttempts('full', 'accurate');
   assert.equal(accurateAttempts[0].model, 'gemini-4-hydrogen');
   assert.equal(accurateAttempts[0].level, ThinkingLevel.MEDIUM);
-  assert.equal(accurateAttempts[1].model, 'gemini-4-hydrogen');
-  assert.equal(accurateAttempts[1].level, ThinkingLevel.LOW);
-  assert.equal(accurateAttempts[2].model, 'gemini-3.1-flash-lite');
-  assert.equal(accurateAttempts[2].level, ThinkingLevel.MINIMAL);
+  assert.equal(accurateAttempts[1].model, 'gemini-3.1-flash-lite');
+  assert.equal(accurateAttempts[1].level, ThinkingLevel.MINIMAL);
+  assert.equal(accurateAttempts[2].model, 'gemini-4-hydrogen');
+  assert.equal(accurateAttempts[2].level, ThinkingLevel.LOW);
+  assert.equal(accurateAttempts[3].model, 'gemini-3.1-flash-lite');
+  assert.equal(accurateAttempts[3].level, ThinkingLevel.MINIMAL);
+});
+
+test('mapGeminiError maps malformed JSON SyntaxError to clean Indonesian 502 message', () => {
+  const mapped = mapGeminiError(new SyntaxError('Unexpected end of JSON input'), 'fallback');
+  assert.equal(mapped.status, 502);
+  assert.match(mapped.error, /terpotong|tidak lengkap/i);
+});
+
+test('computeGeminiRetryBackoffMs scales progressively for 503 spikes and fast-fails 404', () => {
+  assert.equal(computeGeminiRetryBackoffMs(0, true, 200), 150);
+  assert.equal(computeGeminiRetryBackoffMs(0, false, 0), 1400);
+  assert.equal(computeGeminiRetryBackoffMs(1, false, 100), 2900);
+  assert.equal(computeGeminiRetryBackoffMs(2, false, 0), 4500);
+  assert.equal(computeGeminiRetryBackoffMs(5, false, 0), 4500);
+
+  const err503 = Object.assign(
+    new Error('This model is currently experiencing high demand. Spikes in demand are usually temporary.'),
+    { status: 503 }
+  );
+  const mapped503 = mapGeminiError(err503, 'fallback');
+  assert.equal(mapped503.status, 503);
+  assert.match(mapped503.error, /lonjakan permintaan sementara \(503\)/i);
+  assert.match(mapped503.error, /Coba Pindai Ulang/i);
+
+  const errDaily429 = Object.assign(
+    new Error(
+      'Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, Generate content requests per day limit exceeded on Free Tier. Please retry in 16h58m.'
+    ),
+    { status: 429 }
+  );
+  assert.equal(isDailyQuotaExhaustedError(errDaily429), true);
+  assert.equal(isDailyQuotaExhaustedError(err503), false);
+
+  const mappedDaily429 = mapGeminiError(errDaily429, 'fallback');
+  assert.equal(mappedDaily429.status, 429);
+  assert.match(mappedDaily429.error, /Settings > Secrets/i);
+
+  const combinedErr = Object.assign(
+    new Error('DAILY_QUOTA_AND_FALLBACK_503: Kuota harian habis dan model cadangan 503.'),
+    { status: 429 }
+  );
+  const mappedCombined = mapGeminiError(combinedErr, 'fallback');
+  assert.equal(mappedCombined.status, 429);
+  assert.match(mappedCombined.error, /Free Tier 20 permintaan\/hari/i);
+  assert.match(mappedCombined.error, /Settings > Secrets/i);
 });
 
 test('Waris Gemini extraction schemas declare required root containers', () => {

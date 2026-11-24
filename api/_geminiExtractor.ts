@@ -671,6 +671,7 @@ export function resolveGeminiExtractionAttempts(
   if (kind === 'full' && scanMode === 'accurate') {
     return [
       { model: 'gemini-4-hydrogen', level: ThinkingLevel.MEDIUM, timeoutMs: 42000 },
+      { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 24000 },
       { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 28000 },
       { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 22000 },
     ];
@@ -680,12 +681,14 @@ export function resolveGeminiExtractionAttempts(
       { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 26000 },
       { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 20000 },
       { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 24000 },
+      { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 20000 },
     ];
   }
   return [
     { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 32000 },
     { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 24000 },
     { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 26000 },
+    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 22000 },
   ];
 }
 
@@ -706,10 +709,78 @@ function waitMs(ms: number): Promise<void> {
 }
 
 /**
+ * Mengurai teks JSON dari Gemini dan memastikan hasilnya selalu objek JSON biasa (bukan null/array/primitif).
+ * Mencegah server mengirim HTTP 200 dengan body `null` atau string kosong.
+ */
+export function parseGeminiJsonObject(rawText: string): Record<string, unknown> {
+  const cleaned = (rawText || '')
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
+  if (!cleaned) {
+    const emptyErr = new SyntaxError('Respons model AI kosong.') as SyntaxError & {
+      isJsonParseError?: boolean;
+    };
+    emptyErr.isJsonParseError = true;
+    throw emptyErr;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch (parseErr) {
+    const syntaxErr = new SyntaxError(
+      parseErr instanceof Error ? parseErr.message : 'Respons JSON dari AI tidak valid.'
+    ) as SyntaxError & { isJsonParseError?: boolean };
+    syntaxErr.isJsonParseError = true;
+    throw syntaxErr;
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    const shapeErr = new SyntaxError(
+      'Struktur JSON dari model AI bukan objek yang valid.'
+    ) as SyntaxError & { isJsonParseError?: boolean };
+    shapeErr.isJsonParseError = true;
+    throw shapeErr;
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
+export function isDailyQuotaExhaustedError(err: unknown): boolean {
+  const status =
+    typeof err === 'object' &&
+    err !== null &&
+    'status' in err &&
+    typeof (err as { status?: unknown }).status === 'number'
+      ? (err as { status: number }).status
+      : 0;
+  const msg = err instanceof Error ? err.message : '';
+  if (status !== 429 && !/RESOURCE_EXHAUSTED|exceeded your current quota/i.test(msg)) {
+    return false;
+  }
+  return /per day|free_tier_requests|retry in \d+h|limit:\s*0\b/i.test(msg);
+}
+
+export function computeGeminiRetryBackoffMs(
+  attemptIndex: number,
+  isFastSkip: boolean,
+  jitterMs = 0
+): number {
+  if (isFastSkip) return 150;
+  const backoffSchedule = [1400, 2800, 4500];
+  const base = backoffSchedule[Math.min(Math.max(0, attemptIndex), backoffSchedule.length - 1)];
+  return base + Math.max(0, jitterMs);
+}
+
+/**
  * Menjalankan permintaan Gemini secara berurutan dengan backoff + fallback otomatis:
  * - Tidak mengirim dua request paralel sekaligus (menghindari lonjakan 429/503 dan warning palsu).
- * - Jika model utama gagal karena error transient (503/502/504/429/timeout/network) atau 404,
- *   otomatis menunggu backoff singkat lalu berpindah ke attempt berikutnya.
+ * - Melewati model yang sudah mengembalikan 404 NOT_FOUND atau 429 kuota harian habis pada percobaan sebelumnya.
+ * - Membatasi total durasi eksekusi agar selalu kembali sebagai JSON bersih sebelum timeout gateway (60 dtk).
+ * - Jika model utama gagal karena error transient (503/502/504/429/timeout/network), 404, atau JSON rusak/kosong,
+ *   otomatis menunggu backoff progresif lalu berpindah ke attempt berikutnya.
  */
 async function generateJsonWithFallback(
   ai: GoogleGenAI,
@@ -717,22 +788,38 @@ async function generateJsonWithFallback(
   responseSchema: object,
   attempts: GeminiModelAttempt[],
   label: string
-): Promise<{ parsed: unknown; model: string; elapsedMs: number }> {
+): Promise<{ parsed: Record<string, unknown>; model: string; elapsedMs: number }> {
   if (attempts.length === 0) {
     throw new Error('Tidak ada konfigurasi model Gemini yang tersedia.');
   }
 
+  const TOTAL_BUDGET_MS = 52_000;
   const startedAt = Date.now();
   let lastErr: unknown = null;
+  let lastTransientErr: unknown = null;
+  let dailyQuotaErr: unknown = null;
+  const skippedModels = new Set<string>();
 
   for (let i = 0; i < attempts.length; i += 1) {
     const attempt = attempts[i];
+    if (skippedModels.has(attempt.model)) {
+      continue;
+    }
+
+    const elapsedSoFar = Date.now() - startedAt;
+    const remainingMs = TOTAL_BUDGET_MS - elapsedSoFar;
+    if (i > 0 && remainingMs < 6_000) {
+      break;
+    }
+    const effectiveTimeoutMs =
+      i === 0 ? attempt.timeoutMs : Math.max(6_000, Math.min(attempt.timeoutMs, remainingMs));
+
     const controller = new AbortController();
     let didTimeout = false;
     const timer = setTimeout(() => {
       didTimeout = true;
       controller.abort();
-    }, attempt.timeoutMs);
+    }, effectiveTimeoutMs);
 
     try {
       const response = await ai.models.generateContent({
@@ -745,11 +832,7 @@ async function generateJsonWithFallback(
           responseSchema,
         },
       });
-      const rawText = (response.text ?? '{}')
-        .trim()
-        .replace(/^```(?:json)?\s*/i, '')
-        .replace(/\s*```$/, '');
-      const parsed = JSON.parse(rawText);
+      const parsed = parseGeminiJsonObject(response.text ?? '');
       const elapsedMs = Date.now() - startedAt;
       console.log(`Gemini ${label} succeeded with ${attempt.model} in ${elapsedMs}ms`);
       return { parsed, model: attempt.model, elapsedMs };
@@ -757,7 +840,7 @@ async function generateJsonWithFallback(
       const normalizedErr = didTimeout
         ? (() => {
             const timeoutErr = new Error(
-              `Permintaan model ${attempt.model} melebihi batas waktu (${Math.round(attempt.timeoutMs / 1000)} detik).`
+              `Permintaan model ${attempt.model} melebihi batas waktu (${Math.round(effectiveTimeoutMs / 1000)} detik).`
             ) as Error & { status?: number; isTimeout?: boolean };
             timeoutErr.status = 504;
             timeoutErr.isTimeout = true;
@@ -766,21 +849,80 @@ async function generateJsonWithFallback(
         : err;
 
       lastErr = normalizedErr;
-      const hasNext = i < attempts.length - 1;
-      const canFallback = isTransientGeminiError(normalizedErr) || isModelNotFoundError(normalizedErr);
+      const isNotFound = isModelNotFoundError(normalizedErr);
+      const isDailyQuota = isDailyQuotaExhaustedError(normalizedErr);
+      if (isNotFound || isDailyQuota) {
+        skippedModels.add(attempt.model);
+      }
+      if (isDailyQuota && !dailyQuotaErr) {
+        dailyQuotaErr = normalizedErr;
+      }
+      const isTransient = isTransientGeminiError(normalizedErr);
+      if (isTransient && !isDailyQuota) {
+        lastTransientErr = normalizedErr;
+      }
+      const isParseFailure =
+        normalizedErr instanceof SyntaxError ||
+        (typeof normalizedErr === 'object' &&
+          normalizedErr !== null &&
+          (normalizedErr as { isJsonParseError?: boolean }).isJsonParseError === true);
 
-      if (!hasNext || !canFallback) {
-        throw normalizedErr;
+      const hasViableNext = attempts
+        .slice(i + 1)
+        .some((nextAttempt) => !skippedModels.has(nextAttempt.model));
+      const canFallback = isTransient || isNotFound || isDailyQuota || isParseFailure;
+
+      const errStatus =
+        typeof normalizedErr === 'object' &&
+        normalizedErr !== null &&
+        'status' in normalizedErr
+          ? (normalizedErr as { status?: unknown }).status
+          : isParseFailure
+            ? 'JSON_PARSE'
+            : 'ERR';
+
+      console.log(
+        `Gemini ${label} attempt ${i + 1}/${attempts.length} (${attempt.model}) status=${String(errStatus)}${isDailyQuota ? '(daily-quota)' : ''}${hasViableNext && canFallback ? ' — retrying fallback' : ''}`
+      );
+
+      if (!hasViableNext || !canFallback) {
+        if (dailyQuotaErr && lastTransientErr) {
+          const combined = new Error(
+            'DAILY_QUOTA_AND_FALLBACK_503: Kuota harian Free Tier model utama (gemini-4-hydrogen) habis dan model cadangan sedang padat (503).'
+          ) as Error & { status?: number };
+          combined.status = 429;
+          throw combined;
+        }
+        throw dailyQuotaErr ?? lastTransientErr ?? normalizedErr;
       }
 
-      const backoffMs = isModelNotFoundError(normalizedErr) ? 150 : 700 * (i + 1);
-      await waitMs(backoffMs);
+      const jitter = Math.floor(Math.random() * 350);
+      const delayMs = computeGeminiRetryBackoffMs(i, isNotFound || isDailyQuota, jitter);
+      const remainingAfterErr = TOTAL_BUDGET_MS - (Date.now() - startedAt);
+      if (remainingAfterErr < delayMs + 5_000) {
+        if (dailyQuotaErr && lastTransientErr) {
+          const combined = new Error(
+            'DAILY_QUOTA_AND_FALLBACK_503: Kuota harian Free Tier model utama (gemini-4-hydrogen) habis dan model cadangan sedang padat (503).'
+          ) as Error & { status?: number };
+          combined.status = 429;
+          throw combined;
+        }
+        throw dailyQuotaErr ?? lastTransientErr ?? normalizedErr;
+      }
+      await waitMs(delayMs);
     } finally {
       clearTimeout(timer);
     }
   }
 
-  throw lastErr ?? new Error('Gagal memproses permintaan ke Gemini API.');
+  if (dailyQuotaErr && lastTransientErr) {
+    const combined = new Error(
+      'DAILY_QUOTA_AND_FALLBACK_503: Kuota harian Free Tier model utama (gemini-4-hydrogen) habis dan model cadangan sedang padat (503).'
+    ) as Error & { status?: number };
+    combined.status = 429;
+    throw combined;
+  }
+  throw dailyQuotaErr ?? lastTransientErr ?? lastErr ?? new Error('Gagal memproses permintaan ke Gemini API.');
 }
 
 export function mapGeminiError(err: unknown, fallbackLabel: string): ApiHttpError {
@@ -800,41 +942,61 @@ export function mapGeminiError(err: unknown, fallbackLabel: string): ApiHttpErro
       rawMessage
     );
   const isTimeout = statusFromErr === 504 || isAbortOrTimeoutError(err);
-  const isUnavailable = statusFromErr === 503 || /UNAVAILABLE|high demand/i.test(rawMessage);
+  const isDailyAnd503 = /DAILY_QUOTA_AND_FALLBACK_503/i.test(rawMessage);
+  const isQuotaError =
+    statusFromErr === 429 ||
+    isDailyAnd503 ||
+    /RESOURCE_EXHAUSTED|exceeded your current quota/i.test(rawMessage);
+  const isUnavailable =
+    !isQuotaError && (statusFromErr === 503 || /UNAVAILABLE|high demand/i.test(rawMessage));
   const httpStatus = isTimeout
     ? 504
     : isAuthError
       ? statusFromErr === 403
         ? 403
         : 401
-      : isUnavailable
-        ? 503
-        : statusFromErr >= 400 && statusFromErr < 600
-          ? statusFromErr
-          : 500;
+      : isQuotaError
+        ? 429
+        : isUnavailable
+          ? 503
+          : statusFromErr >= 400 && statusFromErr < 600
+            ? statusFromErr
+            : 500;
 
   if (httpStatus >= 500 && httpStatus !== 503 && httpStatus !== 504) {
     console.error('Gemini extraction error:', err);
   } else {
-    console.warn(`Gemini extraction notice (${httpStatus}):`, rawMessage);
+    console.log(`Gemini extraction notice (${httpStatus}):`, rawMessage.slice(0, 200));
   }
+
+  const isJsonParseErr =
+    err instanceof SyntaxError ||
+    (typeof err === 'object' &&
+      err !== null &&
+      (err as { isJsonParseError?: boolean }).isJsonParseError === true);
 
   let clientMessage = rawMessage;
   if (isAuthError) {
     clientMessage =
       'Kunci API Gemini tidak valid atau belum aktif (401/403). Silakan periksa atau pilih API key yang valid di panel Settings > Secrets (AI Studio) atau Environment Variables (Vercel).';
-  } else if (httpStatus === 429 || /RESOURCE_EXHAUSTED/i.test(rawMessage)) {
+  } else if (isDailyAnd503) {
     clientMessage =
-      'Kuota API Gemini sementara habis (429). Coba lagi beberapa saat atau periksa konfigurasi API key di Settings > Secrets.';
+      'Kuota harian gratis (Free Tier 20 permintaan/hari) pada model utama Gemini telah habis (429), dan model cadangan sedang mengalami lonjakan beban (503). Pilih API key berbayar (billing aktif) di panel Settings > Secrets untuk meningkatkan kuota, coba klik "Coba Pindai Ulang" beberapa saat lagi, atau lanjutkan lewat "Lanjut Isi / Verifikasi Manual".';
+  } else if (isQuotaError) {
+    clientMessage =
+      'Kuota API Gemini pada paket gratis (Free Tier) telah mencapai batas (429). Untuk meningkatkan kuota, pilih API key dengan billing aktif di panel Settings > Secrets (AI Studio), tunggu hingga kuota direset, atau lanjutkan lewat "Lanjut Isi / Verifikasi Manual".';
   } else if (httpStatus === 504 || isTimeout) {
     clientMessage =
       'Waktu pemindaian dokumen melebihi batas (timeout). Coba unggah 1–2 gambar lebih kecil atau gunakan Mode Cepat.';
   } else if (httpStatus === 503 || isUnavailable) {
     clientMessage =
-      'Layanan Gemini AI sedang mengalami lonjakan permintaan sementara (503). Silakan coba pindai ulang beberapa saat lagi.';
+      'Server Gemini AI sedang mengalami lonjakan permintaan sementara (503). File Anda tetap tersimpan — tunggu beberapa detik lalu klik "Coba Pindai Ulang", atau lanjutkan melalui "Lanjut Isi / Verifikasi Manual".';
+  } else if (isJsonParseErr) {
+    clientMessage =
+      'Hasil pembacaan AI terpotong atau tidak lengkap. Silakan coba pindai ulang dengan foto/dokumen yang lebih jelas.';
   } else if (
     httpStatus === 400 &&
-    /Unsupported MIME|Unable to process input image|INVALID_ARGUMENT/i.test(rawMessage)
+    /Unsupported MIME|Unable to process input image|could not be decoded|image.*invalid|media/i.test(rawMessage)
   ) {
     clientMessage =
       'Format gambar/dokumen tidak dapat dibaca oleh AI. Gunakan foto JPG/PNG/WebP, PDF, atau Word (.docx/.doc) yang jelas, lalu coba lagi.';
@@ -842,7 +1004,7 @@ export function mapGeminiError(err: unknown, fallbackLabel: string): ApiHttpErro
     clientMessage = `Model AI tidak tersedia (404): ${rawMessage}`;
   }
 
-  return { status: httpStatus, error: clientMessage };
+  return { status: isJsonParseErr ? 502 : httpStatus, error: clientMessage };
 }
 
 export async function extractDocumentsWithGemini(
@@ -1434,7 +1596,8 @@ Keluarkan HANYA JSON valid sesuai skema.`,
 
   const attempts: GeminiModelAttempt[] = [
     { model: 'gemini-4-hydrogen', level: ThinkingLevel.MEDIUM, timeoutMs: 36000 },
-    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 24000 },
+    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 22000 },
+    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 26000 },
     { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 20000 },
   ];
 

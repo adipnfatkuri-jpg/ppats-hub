@@ -1526,8 +1526,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     if (!file) return;
     try {
       const optimized = await optimizeDocumentFile(file, {
-        maxEdge: 1200,
-        quality: 0.78,
+        maxEdge: 960,
+        quality: 0.72,
       });
       const dataUrl = `data:${optimized.mimeType};base64,${optimized.dataBase64}`;
       setNonAkta((prev) => ({ ...prev, [field]: dataUrl }));
@@ -2069,13 +2069,36 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             {extractError && (
               <div
                 role="alert"
-                className="p-3.5 rounded-2xl border border-rose-200 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/60 text-xs text-rose-800 dark:text-rose-200 flex items-start gap-2.5"
+                className="p-3.5 rounded-2xl border border-rose-200 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/60 text-xs text-rose-800 dark:text-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
               >
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
-                <div>
-                  <p className="font-semibold">Ekstraksi AI Tidak Dapat Dilanjutkan</p>
-                  <p className="mt-0.5">{extractError}</p>
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                  <div>
+                    <p className="font-semibold">Ekstraksi AI Tidak Dapat Dilanjutkan</p>
+                    <p className="mt-0.5 leading-relaxed">{extractError}</p>
+                  </div>
                 </div>
+                {uploadedFiles.length > 0 && !extracting && (
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    {/cookie|muat ulang|kedaluwarsa|HTML/i.test(extractError) && (
+                      <button
+                        type="button"
+                        onClick={() => window.location.reload()}
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold whitespace-nowrap transition-colors"
+                      >
+                        <span>Muat Ulang Halaman</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleExtractAi}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-rose-900/60 border border-rose-300 dark:border-rose-600/70 text-rose-800 dark:text-rose-100 hover:bg-rose-100 dark:hover:bg-rose-900 font-semibold whitespace-nowrap transition-colors"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Coba Pindai Ulang</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

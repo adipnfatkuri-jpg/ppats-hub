@@ -1734,6 +1734,56 @@ test('Revisi khusus lampiran: empty Pekerjaan rows omitted across Non-Akta/Akta/
   assert.equal(warisCBlankXml.includes('>Pekerjaan<'), false, 'Waris C must omit Pekerjaan rows when pekerjaan is blank or "-"');
 });
 
+test('OOXML integrity: no service emits empty 0-row <w:tbl> even when para_pihak is empty', async () => {
+  const allServices = [
+    'AJB',
+    'APHB',
+    'Akta Hibah',
+    'Turun Waris',
+    'Waris C',
+    'Pemecahan',
+    'Ukur Ulang',
+    'Ralat Data',
+    'Pengecekan Sertipikat',
+    'Validasi Sertipikat',
+    'Analisis Bidang',
+    'Permohonan PKKPR',
+    'Pemecahan/Ukur Ulang',
+  ] as const;
+
+  for (const layanan of allServices) {
+    const emptyPartiesRec = {
+      ...INITIAL_SEED_RECORDS[0],
+      layanan,
+      para_pihak: [],
+      akta: {
+        ...INITIAL_SEED_RECORDS[0].akta,
+        saksi_1: '',
+        saksi_2: '',
+        saksi_1_detail: undefined,
+        saksi_2_detail: undefined,
+        kuasa_bpn_detail: undefined,
+      },
+    };
+    const files = await generateBundleFiles(emptyPartiesRec, DEFAULT_OFFICE_SETTINGS, {});
+    for (const f of files) {
+      const xml = new PizZip(f.bytes).file('word/document.xml')?.asText() ?? '';
+      assert.ok(xml.length > 0, `${layanan} ${f.fileName} must contain word/document.xml`);
+      assert.ok(!xml.includes('{{') && !xml.includes('}}'), `${layanan} ${f.fileName} must have no leftover template tags`);
+      const tblOpenMatches = xml.match(/<w:tbl(?:\s|>)/g) ?? [];
+      const tblChunks = xml.split(/<w:tbl(?:\s|>)/).slice(1);
+      assert.equal(tblChunks.length, tblOpenMatches.length);
+      for (let i = 0; i < tblChunks.length; i += 1) {
+        const upToClose = tblChunks[i].split('</w:tbl>')[0];
+        assert.ok(
+          /<w:tr(?:\s|>)/.test(upToClose),
+          `${layanan} ${f.fileName} table #${i} must contain at least one <w:tr> row`
+        );
+      }
+    }
+  }
+});
+
 
 
 

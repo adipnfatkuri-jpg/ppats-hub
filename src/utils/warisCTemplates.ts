@@ -200,7 +200,8 @@ function kvAligned(
   const labelW = Math.round(((totalWidth - colonW) * labelPct) / 100);
   const valueW = totalWidth - colonW - labelW;
 
-  const filteredRows = rows.filter(([k, v]) => !(isPekerjaanLabel(k) && !hasFilledPekerjaan(v)));
+  const rawFiltered = rows.filter(([k, v]) => !(isPekerjaanLabel(k) && !hasFilledPekerjaan(v)));
+  const filteredRows: Array<[string, string]> = rawFiltered.length > 0 ? rawFiltered : [['', '']];
 
   return new Table({
     width: { size: totalWidth, type: WidthType.DXA },
@@ -432,10 +433,11 @@ function buildWarisCSignerRowsTable(
   items: Array<{ no: number; nama: string }>,
   opts: { totalWidthDxa: number; dotsWidthDxa?: number; size?: number; rowSpaceAfter?: number; line?: number }
 ): Table {
+  const safeItems = items.length > 0 ? items : [{ no: 1, nama: '................................' }];
   const dotsW = opts.dotsWidthDxa ?? 1620;
   const nameW = Math.max(1800, opts.totalWidthDxa - dotsW);
   const size = opts.size ?? F4_SIZE;
-  const adaptive = computeSignerRowSpacing(items.length);
+  const adaptive = computeSignerRowSpacing(safeItems.length);
   const rowGap = opts.rowSpaceAfter ?? adaptive.rowGapTwips;
   const line = opts.line ?? adaptive.lineTwips;
   return new Table({
@@ -443,8 +445,8 @@ function buildWarisCSignerRowsTable(
     columnWidths: [nameW, dotsW],
     layout: TableLayoutType.FIXED,
     borders: NO_TABLE_BORDERS,
-    rows: items.map((item, idx) => {
-      const after = idx === items.length - 1 ? 30 : rowGap;
+    rows: safeItems.map((item, idx) => {
+      const after = idx === safeItems.length - 1 ? 30 : rowGap;
       return new TableRow({
         cantSplit: true,
         children: [
@@ -882,12 +884,16 @@ export function buildWarisCBundle(
   // =========================================================================
   // HAL. 1 — SURAT PERNYATAAN AHLI WARISAN
   // =========================================================================
+  const safeAhliWaris =
+    cfg.ahliWaris.length > 0
+      ? cfg.ahliWaris
+      : [{ no: 1, nama: '......................', ttlSlash: '......................' }];
   const heirListTable = new Table({
     width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
     columnWidths: [4450, F4_CONTENT_WIDTH_DXA - 4450],
     layout: TableLayoutType.FIXED,
     borders: NO_TABLE_BORDERS,
-    rows: cfg.ahliWaris.map(
+    rows: safeAhliWaris.map(
       (aw) =>
         new TableRow({
           children: [
@@ -1701,13 +1707,17 @@ export function buildWarisCBundle(
     ],
   });
 
+  const safeBidangPecahan =
+    cfg.bidangPecahan.length > 0
+      ? cfg.bidangPecahan
+      : [{ no: 1, luasStr: '......', atasNama: '......................' }];
   const ketBidangTable = new Table({
     width: { size: F4_CONTENT_WIDTH_DXA - 240, type: WidthType.DXA },
     columnWidths: [700, 360, F4_CONTENT_WIDTH_DXA - 240 - 1060],
     layout: TableLayoutType.FIXED,
     borders: NO_TABLE_BORDERS,
     indent: { size: 240, type: WidthType.DXA },
-    rows: cfg.bidangPecahan.map(
+    rows: safeBidangPecahan.map(
       (b) =>
         new TableRow({
           children: [

@@ -19,6 +19,7 @@ export const config = {
 
 export default async function handler(req: ServerlessRequest, res: ServerlessResponse) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -42,6 +43,11 @@ export default async function handler(req: ServerlessRequest, res: ServerlessRes
   try {
     const body = await parseServerlessJsonBody<RefineSketchRequestBody>(req);
     const result = await refineSketchWithGemini(apiKey, body);
+    if (!result || typeof result !== 'object') {
+      return res.status(502).json({
+        error: 'Hasil penyempurnaan sket dari AI tidak lengkap. Silakan ulangi atau gunakan Sket Otomatis (CAD).',
+      });
+    }
     return res.status(200).json(result);
   } catch (err: unknown) {
     const mapped = mapGeminiError(

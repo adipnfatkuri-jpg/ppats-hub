@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   BOOTSTRAPPED_ADMIN_EMAIL,
   emailToInviteId,
+  estimateJsonUtf8Bytes,
+  fitNonAktaForCloudBudget,
   sanitizeAllowedEmails,
   sanitizeFirestoreId,
   stripUndefinedDeep,
@@ -47,3 +49,26 @@ test('stripUndefinedDeep removes nested undefined properties without mutating ar
     arr: [{ k: 'v' }],
   });
 });
+
+test('fitNonAktaForCloudBudget keeps small payloads intact and trims foto_sket_kasar first when oversized', () => {
+  const base = { id: 'reg-1', layanan: 'Pemecahan' };
+  const smallNonAkta = {
+    foto_sket_kasar: 'data:image/jpeg;base64,' + 'A'.repeat(200),
+    foto_sket_pecah: 'data:image/png;base64,' + 'B'.repeat(200),
+  };
+  const untouched = fitNonAktaForCloudBudget(base, smallNonAkta, 5000);
+  assert.deepEqual(untouched.trimmedFields, []);
+  assert.equal(untouched.nonAkta.foto_sket_kasar, smallNonAkta.foto_sket_kasar);
+
+  const largeNonAkta = {
+    foto_sket_kasar: 'data:image/jpeg;base64,' + 'A'.repeat(6000),
+    foto_patok_4: 'data:image/jpeg;base64,' + 'B'.repeat(3000),
+    foto_sket_pecah: 'data:image/png;base64,' + 'C'.repeat(1500),
+  };
+  const fitted = fitNonAktaForCloudBudget(base, largeNonAkta, 5000);
+  assert.equal(fitted.trimmedFields[0], 'foto_sket_kasar');
+  assert.equal(fitted.nonAkta.foto_sket_kasar, '');
+  assert.equal(fitted.nonAkta.foto_sket_pecah, largeNonAkta.foto_sket_pecah);
+  assert.ok(estimateJsonUtf8Bytes({ ...base, non_akta: fitted.nonAkta }) <= 5000);
+});
+

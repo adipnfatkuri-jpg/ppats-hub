@@ -6,9 +6,10 @@ import {
   formatCompactFileSize,
   inferDocumentMimeType,
 } from './imageOptimizer.ts';
-import { parseScanResponseText } from './scanApi.ts';
+import { parseScanResponseText, postScanJson } from './scanApi.ts';
 import {
   mapGeminiError,
+  parseGeminiJsonObject,
   resolveGeminiApiKey,
   sanitizeUploadedDoc,
 } from '../../api/_geminiExtractor.ts';
@@ -138,4 +139,97 @@ test('estimateScanPayloadBytes estimates JSON request payload size accurately', 
     { name: 'ktp.jpg', mimeType: 'image/jpeg', dataBase64: 'A'.repeat(1000) },
   ]);
   assert.ok(size > 1000 && size < 2000);
+});
+
+test('parseScanResponseText distinguishes auth redirects, AI Studio cookie-check HTML, SPA HTML fallback, and empty/null HTTP 200 bodies', () => {
+  assert.throws(
+    () =>
+      parseScanResponseText(
+        '<!doctype html><html><head><title>Sign in - Google Accounts</title></head><body></body></html>',
+        200,
+        true,
+        '/api/extract-documents',
+        { contentType: 'text/html', redirected: true, responseUrl: 'https://accounts.google.com/ServiceLogin' }
+      ),
+    /Sesi cookie keamanan browser/
+  );
+
+  assert.throws(
+    () =>
+      parseScanResponseText(
+        '<!doctype html><html lang="en"><head><title>Cookie check</title></head><body><h1>Action required to load your app</h1><script>const AUTH_FLOW_TEST_COOKIE_NAME="__SECURE-aistudio_auth_flow_may_set_cookies";</script></body></html>',
+        200,
+        true,
+        '/api/extract-documents',
+        { contentType: 'text/html', redirected: false }
+      ),
+    /Sesi cookie keamanan browser/
+  );
+
+  assert.throws(
+    () =>
+      parseScanResponseText(
+        '<!doctype html><html><head><title>SIM-PPATS</title></head><body><div id="root"></div></body></html>',
+        200,
+        true,
+        '/api/extract-documents',
+        { contentType: 'text/html; charset=utf-8', redirected: false }
+      ),
+    /mengembalikan halaman HTML aplikasi alih-alih JSON/
+  );
+
+  assert.throws(
+    () => parseScanResponseText('', 200, true, '/api/extract-documents'),
+    /mengembalikan respons kosong/
+  );
+
+  assert.throws(
+    () => parseScanResponseText('null', 200, true, '/api/extract-documents'),
+    /mengembalikan respons kosong/
+  );
+});
+
+test('parseGeminiJsonObject accepts fenced JSON objects and rejects null, arrays, empty, and malformed JSON', () => {
+  assert.deepEqual(parseGeminiJsonObject('```json\n{"tanah":{"luas_m2":500}}\n```'), {
+    tanah: { luas_m2: 500 },
+  });
+
+  for (const invalid of ['', '   ', 'null', '[]', '"hello"', '123', '{broken']) {
+    assert.throws(
+      () => parseGeminiJsonObject(invalid),
+      (err: unknown) =>
+        err instanceof SyntaxError &&
+        (err as { isJsonParseError?: boolean }).isJsonParseError === true
+    );
+  }
+});
+
+test('postScanJson retries once on transient empty HTTP 200 and returns valid JSON on retry', async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    if (calls === 1) {
+      return new Response('', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify({ ok: true, recovered: true }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+
+  try {
+    const res = await postScanJson<{ ok: boolean; recovered: boolean }>(
+      '/api/extract-documents',
+      { files: [] },
+      { maxTransientRetries: 1 }
+    );
+    assert.equal(calls, 2);
+    assert.deepEqual(res, { ok: true, recovered: true });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

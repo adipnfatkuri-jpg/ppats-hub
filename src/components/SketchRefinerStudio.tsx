@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { DataTanah, NonAktaDetail, PemecahanBidangItem } from '../types/ppats';
 import { optimizeDocumentFile } from '../utils/imageOptimizer';
+import { postScanJson } from '../utils/scanApi';
 import {
   AutoCadSketchInput,
   CadSketchSpec,
@@ -129,35 +130,13 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
     setLastUploadedPayload(payload);
     try {
       const ctx = buildSketchContext();
-      const response = await fetch('/api/refine-sketch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          file: payload,
-          context: ctx,
-        }),
-      });
-
-      const rawText = await response.text();
-      let json: {
+      const json = await postScanJson<{
         spec?: Partial<CadSketchSpec>;
         error?: string;
-      } = {};
-      try {
-        json = rawText ? (JSON.parse(rawText) as typeof json) : {};
-      } catch {
-        throw new Error(
-          response.ok
-            ? 'Respons server penyempurnaan sket tidak valid.'
-            : `Gagal menyempurnakan sket kasar (HTTP ${response.status}). Silakan coba lagi atau gunakan Sket Otomatis (CAD).`
-        );
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          json?.error || `Gagal menyempurnakan sket kasar (HTTP ${response.status}).`
-        );
-      }
+      }>('/api/refine-sketch', {
+        file: payload,
+        context: ctx,
+      });
 
       const normalized = normalizeCadSketchSpec(json.spec, ctx);
       await commitSpecToPreview(

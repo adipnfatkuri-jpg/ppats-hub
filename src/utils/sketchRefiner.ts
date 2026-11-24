@@ -1,4 +1,4 @@
-import { PemecahanBidangItem } from '../types/ppats';
+import type { PemecahanBidangItem } from '../types/ppats';
 
 export interface SketchPoint {
   x: number;

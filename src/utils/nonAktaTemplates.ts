@@ -195,9 +195,11 @@ function kvTable(
   const labelW = Math.round((totalWidth * labelPct) / 100);
   const valueW = totalWidth - labelW;
 
-  const filteredRows = rows.filter(
+  const rawFiltered = rows.filter(
     ([k, v]) => !(isPekerjaanLabel(k) && !hasFilledPekerjaan(v))
   );
+  const filteredRows: Array<[string, string, number?]> =
+    rawFiltered.length > 0 ? rawFiltered : [['', '']];
 
   return new Table({
     width: { size: totalWidth, type: WidthType.DXA },
@@ -247,13 +249,15 @@ function kvAlignedTable(
   const labelW = Math.round(((totalWidth - colonW) * labelPct) / 100);
   const valueW = totalWidth - colonW - labelW;
 
-  const filteredRows = rows.filter((row) => {
+  const rawFiltered = rows.filter((row) => {
     if (!isPekerjaanLabel(row.label)) return true;
     const rawVal = row.valueRuns
       ? row.valueRuns.map((r) => r.text).join('')
       : row.valueText ?? '';
     return hasFilledPekerjaan(rawVal);
   });
+  const filteredRows =
+    rawFiltered.length > 0 ? rawFiltered : [{ label: '', valueText: '', noColon: true }];
 
   return new Table({
     width: { size: totalWidth, type: WidthType.DXA },
@@ -612,10 +616,11 @@ function buildNonAktaSignerRowsTable(
   }
 ): Table {
   const safeTotal = Math.max(2600, Math.round(totalWidthDxa));
+  const safeItems = items.length > 0 ? items : [{ no: 1, nama: '................................' }];
   const dotsW = Math.min(opts?.dotsWidthDxa ?? 1540, Math.round(safeTotal * 0.42));
   const nameW = safeTotal - dotsW;
   const dotsText = opts?.dotsText ?? '(.............)';
-  const adaptive = computeSignerRowSpacing(items.length);
+  const adaptive = computeSignerRowSpacing(safeItems.length);
   const rowGap = opts?.spaceAfterRow ?? adaptive.rowGapTwips;
   const line = opts?.line ?? adaptive.lineTwips;
   const fontSize = opts?.size ?? F4_SIZE;
@@ -625,7 +630,7 @@ function buildNonAktaSignerRowsTable(
     columnWidths: [nameW, dotsW],
     layout: TableLayoutType.FIXED,
     borders: NO_TABLE_BORDERS,
-    rows: items.map(
+    rows: safeItems.map(
       (item, idx) =>
         new TableRow({
           cantSplit: true,
@@ -640,7 +645,7 @@ function buildNonAktaSignerRowsTable(
                   size: fontSize,
                   indentLeft: 260,
                   hanging: 260,
-                  spaceAfter: idx === items.length - 1 ? 20 : rowGap,
+                  spaceAfter: idx === safeItems.length - 1 ? 20 : rowGap,
                   line,
                 }),
               ],
