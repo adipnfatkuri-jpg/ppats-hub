@@ -1392,6 +1392,35 @@ test('Akta PPATS (APHB 4-party, AJB, Hibah) uses OOXML hyphen-leader tab stops w
   }
 });
 
+test('Non-Akta Permohonan signature lists all pemohon names in full without dkk abbreviation even for 6+ parties', async () => {
+  const sixParties = ['WIDASIH', 'SUWARNO', 'SUTARMI', 'SUPRIYADI', 'SULISTYOWATI', 'HARTONO'].map(
+    (nama, idx) => ({
+      ...INITIAL_SEED_RECORDS[0].para_pihak[0],
+      id: `p-${idx + 1}`,
+      peran: (['Pihak I', 'Pihak II', 'Pihak III', 'Pihak IV', 'Pihak V', 'Pihak VI'] as const)[idx],
+      nama,
+    })
+  );
+
+  for (const layanan of ['Turun Waris', 'Validasi Sertipikat'] as const) {
+    const rec = {
+      ...INITIAL_SEED_RECORDS[0],
+      layanan,
+      para_pihak: sixParties,
+    };
+    const files = await generateBundleFiles(rec, DEFAULT_OFFICE_SETTINGS, {});
+    const xml = new PizZip(files[0].bytes).file('word/document.xml')?.asText() ?? '';
+    assert.equal(xml.includes('dkk'), false, `${layanan} must not abbreviate pemohon with dkk`);
+    for (let i = 0; i < sixParties.length; i += 1) {
+      assert.ok(
+        xml.includes(`${i + 1}. ${sixParties[i].nama}`),
+        `${layanan} Permohonan qq. signature must include "${i + 1}. ${sixParties[i].nama}"`
+      );
+    }
+  }
+});
+
+
 
 
 

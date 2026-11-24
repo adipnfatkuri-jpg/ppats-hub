@@ -854,9 +854,7 @@ function buildPermohonanPage(params: {
   const qqSignatureLine =
     params.parties.length === 1
       ? `${params.kuasa.nama} QQ ${params.parties[0].nama}`
-      : params.parties.length <= 3
-        ? `${params.kuasa.nama} qq. ${params.parties.map((p) => `${p.no}. ${p.nama}`).join(', ')}`
-        : `${params.kuasa.nama} qq. ${params.parties[0].nama}, dkk (${params.parties.length} orang)`;
+      : `${params.kuasa.nama} qq. ${params.parties.map((p) => `${p.no}. ${p.nama}`).join(', ')}`;
 
   const leftPermohonan: Array<[number, string]> = [
     [1, 'Pengukuran'],
@@ -1003,19 +1001,25 @@ function buildPermohonanPage(params: {
 
     new Table({
       width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4190, F4_CONTENT_WIDTH_DXA - 4190],
+      columnWidths: [
+        params.parties.length >= 4 ? 3600 : 4190,
+        F4_CONTENT_WIDTH_DXA - (params.parties.length >= 4 ? 3600 : 4190),
+      ],
       layout: TableLayoutType.FIXED,
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
           children: [
             new TableCell({
-              width: { size: 4190, type: WidthType.DXA },
+              width: { size: params.parties.length >= 4 ? 3600 : 4190, type: WidthType.DXA },
               borders: NO_BORDER,
               children: [fp('', { spaceAfter: 0 })],
             }),
             new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4190, type: WidthType.DXA },
+              width: {
+                size: F4_CONTENT_WIDTH_DXA - (params.parties.length >= 4 ? 3600 : 4190),
+                type: WidthType.DXA,
+              },
               borders: NO_BORDER,
               children: [
                 fp('Hormat Kami,', {
@@ -3948,7 +3952,7 @@ function buildValidasiSertipikatBundle(
   const qqLine =
     parties.length === 1
       ? `${kuasa.nama}, qq. ${pemohon.nama}`
-      : `${kuasa.nama}, qq. ${pemohon.nama}, dkk (${parties.length} orang)`;
+      : `${kuasa.nama}, qq. ${parties.map((p) => `${p.no}. ${p.nama}`).join(', ')}`;
   const halfW = Math.floor(F4_CONTENT_WIDTH_DXA / 2);
 
   return [
@@ -4033,19 +4037,25 @@ function buildValidasiSertipikatBundle(
 
     new Table({
       width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4190, F4_CONTENT_WIDTH_DXA - 4190],
+      columnWidths: [
+        parties.length >= 4 ? 3600 : 4190,
+        F4_CONTENT_WIDTH_DXA - (parties.length >= 4 ? 3600 : 4190),
+      ],
       layout: TableLayoutType.FIXED,
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
           children: [
             new TableCell({
-              width: { size: 4190, type: WidthType.DXA },
+              width: { size: parties.length >= 4 ? 3600 : 4190, type: WidthType.DXA },
               borders: NO_BORDER,
               children: [fp('', { spaceAfter: 0 })],
             }),
             new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4190, type: WidthType.DXA },
+              width: {
+                size: F4_CONTENT_WIDTH_DXA - (parties.length >= 4 ? 3600 : 4190),
+                type: WidthType.DXA,
+              },
               borders: NO_BORDER,
               children: [
                 fp('Hormat Kami,', {
