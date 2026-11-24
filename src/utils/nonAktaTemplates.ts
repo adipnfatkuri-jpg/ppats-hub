@@ -12,6 +12,7 @@ import {
   TableLayoutType,
   TableRow,
   TextRun,
+  VerticalAlign,
   WidthType,
 } from 'docx';
 import {
@@ -92,11 +93,15 @@ function fp(
     hanging?: number;
     pageBreakBefore?: boolean;
     borderBottom?: boolean;
+    keepNext?: boolean;
+    keepLines?: boolean;
   }
 ): Paragraph {
   return new Paragraph({
     alignment: opts?.align ?? AlignmentType.LEFT,
     pageBreakBefore: opts?.pageBreakBefore ?? false,
+    keepNext: opts?.keepNext ?? false,
+    keepLines: opts?.keepLines ?? false,
     indent:
       opts?.indentLeft || opts?.firstLine || opts?.hanging
         ? {
@@ -549,62 +554,135 @@ function resolvePersonCtx(
   };
 }
 
+/**
+ * Pure rule determining whether a Non-Akta document should attach Pengesahan
+ * ("Mengetahui") when it spans multiple pages or contains multi-party blocks.
+ * Strictly excludes Surat Pengantar and Permohonan documents.
+ */
+export function shouldAttachMultiPagePengesahan(opts: {
+  isPengantarOrPermohonan: boolean;
+  hasExistingPengesahan: boolean;
+  partyCount: number;
+  estimatedLineUnits: number;
+}): boolean {
+  if (opts.isPengantarOrPermohonan || opts.hasExistingPengesahan) {
+    return false;
+  }
+  return opts.estimatedLineUnits > 46 || opts.partyCount >= 2;
+}
+
+/**
+ * Tabel 2 kolom tanpa garis untuk daftar tanda tangan bernomor (`1. NAMA` | `(.............)`).
+ * Menjamin titik-titik tanda tangan selalu rata kanan pada baris bawah sejajar dengan nama,
+ * tidak pernah terpotong menjadi alenia baru walau nama pihak sangat panjang.
+ */
+function buildNonAktaSignerRowsTable(
+  items: Array<{ no: number; nama: string }>,
+  totalWidthDxa: number,
+  opts?: {
+    spaceAfterRow?: number;
+    dotsText?: string;
+    size?: number;
+    dotsWidthDxa?: number;
+  }
+): Table {
+  const safeTotal = Math.max(2600, Math.round(totalWidthDxa));
+  const dotsW = Math.min(opts?.dotsWidthDxa ?? 1540, Math.round(safeTotal * 0.42));
+  const nameW = safeTotal - dotsW;
+  const dotsText = opts?.dotsText ?? '(.............)';
+  const rowGap = opts?.spaceAfterRow ?? 340;
+  const fontSize = opts?.size ?? F4_SIZE;
+
+  return new Table({
+    width: { size: safeTotal, type: WidthType.DXA },
+    columnWidths: [nameW, dotsW],
+    layout: TableLayoutType.FIXED,
+    borders: NO_TABLE_BORDERS,
+    rows: items.map(
+      (item, idx) =>
+        new TableRow({
+          cantSplit: true,
+          children: [
+            new TableCell({
+              width: { size: nameW, type: WidthType.DXA },
+              borders: NO_BORDER,
+              verticalAlign: VerticalAlign.BOTTOM,
+              margins: { top: 0, bottom: 0, left: 0, right: 60 },
+              children: [
+                fp(`${item.no}. ${item.nama}`, {
+                  size: fontSize,
+                  indentLeft: 260,
+                  hanging: 260,
+                  spaceAfter: idx === items.length - 1 ? 40 : rowGap,
+                  line: F4_LINE,
+                }),
+              ],
+            }),
+            new TableCell({
+              width: { size: dotsW, type: WidthType.DXA },
+              borders: NO_BORDER,
+              verticalAlign: VerticalAlign.BOTTOM,
+              margins: { top: 0, bottom: 0, left: 40, right: 0 },
+              children: [
+                fp(dotsText, {
+                  size: fontSize,
+                  align: AlignmentType.RIGHT,
+                  spaceAfter: idx === items.length - 1 ? 40 : rowGap,
+                  line: F4_LINE,
+                }),
+              ],
+            }),
+          ],
+        })
+    ),
+  });
+}
+
 function buildSaksiBlocks(
   saksi1Name: string,
   saksi2Name: string,
   spaceBefore = 220
 ): Array<Paragraph | Table> {
-  const leftW = 4400;
-  const rightW = 2600;
   return [
-    fp('Saksi – saksi :', { spaceBefore, spaceAfter: 160, line: F4_LINE }),
-    new Table({
-      width: { size: leftW + rightW, type: WidthType.DXA },
-      columnWidths: [leftW, rightW],
-      layout: TableLayoutType.FIXED,
-      borders: NO_TABLE_BORDERS,
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: leftW, type: WidthType.DXA },
-              borders: NO_BORDER,
-              children: [fp(`1. ${saksi1Name}`, { spaceAfter: 360, line: F4_LINE })],
-            }),
-            new TableCell({
-              width: { size: rightW, type: WidthType.DXA },
-              borders: NO_BORDER,
-              children: [fp('(                    )', { spaceAfter: 360, line: F4_LINE })],
-            }),
-          ],
-        }),
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: leftW, type: WidthType.DXA },
-              borders: NO_BORDER,
-              children: [fp(`2. ${saksi2Name}`, { spaceAfter: 80, line: F4_LINE })],
-            }),
-            new TableCell({
-              width: { size: rightW, type: WidthType.DXA },
-              borders: NO_BORDER,
-              children: [fp('(                    )', { spaceAfter: 80, line: F4_LINE })],
-            }),
-          ],
-        }),
-      ],
+    fp('Saksi – saksi :', {
+      spaceBefore,
+      spaceAfter: 140,
+      line: F4_LINE,
+      keepNext: true,
+      keepLines: true,
     }),
+    buildNonAktaSignerRowsTable(
+      [
+        { no: 1, nama: saksi1Name },
+        { no: 2, nama: saksi2Name },
+      ],
+      6800,
+      { spaceAfterRow: 340, dotsText: '(.............)', dotsWidthDxa: 1620 }
+    ),
   ];
 }
 
-function buildSinglePengesahanCentered(pengesahan: ResolvedPengesahanTunggal, spaceBefore = 180): Paragraph[] {
+function buildSinglePengesahanCentered(
+  pengesahan: ResolvedPengesahanTunggal,
+  spaceBefore = 180,
+  signatureSpace = SIGNATURE_SPACE_STANDARD
+): Paragraph[] {
   const out: Paragraph[] = [
-    fp('Mengetahui,', { align: AlignmentType.CENTER, spaceBefore, spaceAfter: 0, line: F4_LINE }),
+    fp('Mengetahui,', {
+      align: AlignmentType.CENTER,
+      spaceBefore,
+      spaceAfter: 0,
+      line: F4_LINE,
+      keepNext: true,
+      keepLines: true,
+    }),
     ...pengesahan.jabatanLines.map((lineText, idx) =>
       fp(lineText, {
         align: AlignmentType.CENTER,
-        spaceAfter: idx === pengesahan.jabatanLines.length - 1 ? SIGNATURE_SPACE_STANDARD : 0,
+        spaceAfter: idx === pengesahan.jabatanLines.length - 1 ? signatureSpace : 0,
         line: F4_LINE,
+        keepNext: true,
+        keepLines: true,
       })
     ),
     fp(pengesahan.nama, {
@@ -613,10 +691,19 @@ function buildSinglePengesahanCentered(pengesahan: ResolvedPengesahanTunggal, sp
       align: AlignmentType.CENTER,
       spaceAfter: 0,
       line: F4_LINE,
+      keepNext: Boolean(pengesahan.nip && pengesahan.nip !== '-'),
+      keepLines: true,
     }),
   ];
   if (pengesahan.nip && pengesahan.nip !== '-') {
-    out.push(fp(`NIP. ${pengesahan.nip}`, { align: AlignmentType.CENTER, spaceAfter: 20, line: F4_LINE }));
+    out.push(
+      fp(`NIP. ${pengesahan.nip}`, {
+        align: AlignmentType.CENTER,
+        spaceAfter: 20,
+        line: F4_LINE,
+        keepLines: true,
+      })
+    );
   }
   return out;
 }
@@ -644,6 +731,7 @@ function buildDualPengesahanTable(
     borders: NO_TABLE_BORDERS,
     rows: [
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
             width: { size: halfW, type: WidthType.DXA },
@@ -651,14 +739,22 @@ function buildDualPengesahanTable(
             margins: { top: 0, bottom: 0, left: 0, right: 120 },
             children: [
               ...(withNumbers
-                ? [fp(`Nomor : ${ganda.camatNomor}`, { spaceAfter: 20, line: F4_LINE })]
+                ? [
+                    fp(`Nomor : ${ganda.camatNomor}`, {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: 20,
+                      line: F4_LINE,
+                      keepNext: true,
+                    }),
+                  ]
                 : []),
-              fp(' ', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
-              fp(camatHeader, { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
+              fp('\u00A0', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE, keepNext: true }),
+              fp(camatHeader, { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE, keepNext: true }),
               fp(ganda.camatJabatan, {
                 align: AlignmentType.CENTER,
                 spaceAfter: SIGNATURE_SPACE_STANDARD,
                 line: F4_LINE,
+                keepNext: true,
               }),
               fp(ganda.camatNama, {
                 bold: true,
@@ -666,6 +762,7 @@ function buildDualPengesahanTable(
                 align: AlignmentType.CENTER,
                 spaceAfter: 0,
                 line: F4_LINE,
+                keepLines: true,
               }),
               ...(ganda.camatNip && ganda.camatNip !== '-'
                 ? [
@@ -673,6 +770,7 @@ function buildDualPengesahanTable(
                       align: AlignmentType.CENTER,
                       spaceAfter: 20,
                       line: F4_LINE,
+                      keepLines: true,
                     }),
                   ]
                 : []),
@@ -684,14 +782,27 @@ function buildDualPengesahanTable(
             margins: { top: 0, bottom: 0, left: 120, right: 0 },
             children: [
               ...(withNumbers
-                ? [fp(`Nomor : ${ganda.kadesNomor}`, { spaceAfter: 20, line: F4_LINE })]
+                ? [
+                    fp(`Nomor : ${ganda.kadesNomor}`, {
+                      align: AlignmentType.CENTER,
+                      spaceAfter: 20,
+                      line: F4_LINE,
+                      keepNext: true,
+                    }),
+                  ]
                 : []),
-              fp(kotaTanggalLine, { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
-              fp(kadesHeader, { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
+              fp(kotaTanggalLine, {
+                align: AlignmentType.CENTER,
+                spaceAfter: 0,
+                line: F4_LINE,
+                keepNext: true,
+              }),
+              fp(kadesHeader, { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE, keepNext: true }),
               fp(ganda.kadesJabatan, {
                 align: AlignmentType.CENTER,
                 spaceAfter: SIGNATURE_SPACE_STANDARD,
                 line: F4_LINE,
+                keepNext: true,
               }),
               fp(ganda.kadesNama, {
                 bold: true,
@@ -699,6 +810,7 @@ function buildDualPengesahanTable(
                 align: AlignmentType.CENTER,
                 spaceAfter: 20,
                 line: F4_LINE,
+                keepLines: true,
               }),
             ],
           }),
@@ -748,7 +860,10 @@ function buildNumberedPartiesKvBlocks(
   return out;
 }
 
-function buildNumberedSignerLines(parties: NonAktaPartyView[], indentLeft = 0): Paragraph[] {
+function buildNumberedSignerLines(
+  parties: NonAktaPartyView[],
+  cellInnerWidthDxa = 4600
+): Array<Paragraph | Table> {
   if (parties.length === 1) {
     return [
       fp(parties[0].nama, {
@@ -757,16 +872,17 @@ function buildNumberedSignerLines(parties: NonAktaPartyView[], indentLeft = 0): 
         align: AlignmentType.CENTER,
         spaceAfter: 20,
         line: F4_LINE,
+        keepLines: true,
       }),
     ];
   }
-  return parties.map((pt, idx) =>
-    fp(`${pt.no}. ${pt.nama} (....................)`, {
-      indentLeft,
-      spaceAfter: idx === parties.length - 1 ? 80 : 420,
-      line: F4_LINE,
-    })
-  );
+  return [
+    buildNonAktaSignerRowsTable(
+      parties.map((pt) => ({ no: pt.no, nama: pt.nama })),
+      cellInnerWidthDxa,
+      { spaceAfterRow: 340, dotsText: '(.............)' }
+    ),
+  ];
 }
 
 function resolveNonAktaDocDate(record: BerkasRecord): {
@@ -1121,17 +1237,19 @@ function buildSuratKuasaNonAkta(params: {
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: leftW, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 120 },
               children: [
-                fp(' ', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
+                fp('\u00A0', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE, keepNext: true }),
                 fp('Penerima Kuasa', {
                   align: AlignmentType.CENTER,
                   spaceAfter: SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
                 fp(params.kuasa.nama, {
                   bold: true,
@@ -1151,13 +1269,15 @@ function buildSuratKuasaNonAkta(params: {
                   align: AlignmentType.CENTER,
                   spaceAfter: 0,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
                 fp(params.parties.length > 1 ? 'Para Pemberi Kuasa' : 'Pemberi Kuasa', {
                   align: AlignmentType.CENTER,
                   spaceAfter: params.parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
-                ...buildNumberedSignerLines(params.parties, 260),
+                ...buildNumberedSignerLines(params.parties, rightW - 120),
               ],
             }),
           ],
@@ -1245,15 +1365,22 @@ function buildPenguasaanFisikNonAkta(params: {
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: halfW, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 120 },
               children: [
-                fp('Saksi – saksi :', { spaceAfter: 160, line: F4_LINE }),
-                fp(`1. ${params.saksi1.nama} (...............)`, { spaceAfter: 420, line: F4_LINE }),
-                fp(`2. ${params.saksi2.nama} (...............)`, { spaceAfter: 40, line: F4_LINE }),
+                fp('Saksi – saksi :', { spaceAfter: 160, line: F4_LINE, keepNext: true }),
+                buildNonAktaSignerRowsTable(
+                  [
+                    { no: 1, nama: params.saksi1.nama },
+                    { no: 2, nama: params.saksi2.nama },
+                  ],
+                  halfW - 120,
+                  { spaceAfterRow: 340 }
+                ),
               ],
             }),
             new TableCell({
@@ -1265,8 +1392,9 @@ function buildPenguasaanFisikNonAkta(params: {
                   align: AlignmentType.CENTER,
                   spaceAfter: params.parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
-                ...buildNumberedSignerLines(params.parties, 220),
+                ...buildNumberedSignerLines(params.parties, F4_CONTENT_WIDTH_DXA - halfW - 120),
               ],
             }),
           ],
@@ -1281,6 +1409,7 @@ function buildDataPribadiPage(params: {
   parties: NonAktaPartyView[];
   kotaKabupaten: string;
   tanggalText: string;
+  pengesahan?: ResolvedPengesahanTunggal;
 }): Array<Paragraph | Table> {
   return [
     fp('SURAT PERNYATAAN PERSETUJUAN PEMROSESAN DATA PRIBADI', {
@@ -1332,23 +1461,48 @@ function buildDataPribadiPage(params: {
       '7. Saya memahami dan menyetujui bahwa saya berkewajiban untuk memastikan Data Pribadi yang saya ungkapkan kepada Kementerian ATR/BPN adalah lengkap, akurat, benar dan terkini. Demikian persetujuan ini dibuat dengan sebenar-benarnya tanpa paksaan dari pihak manapun.',
       { align: AlignmentType.JUSTIFIED, indentLeft: 360, hanging: 360, spaceAfter: 200, line: F4_LINE_AIRY }
     ),
-    fp(`${params.kotaKabupaten}, ${params.tanggalText}`, {
-      indentLeft: 4600,
-      spaceAfter: 0,
-      line: F4_LINE,
+    new Table({
+      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+      layout: TableLayoutType.FIXED,
+      borders: NO_TABLE_BORDERS,
+      rows: [
+        new TableRow({
+          cantSplit: true,
+          children: [
+            new TableCell({
+              width: { size: 4280, type: WidthType.DXA },
+              borders: NO_BORDER,
+              margins: { top: 0, bottom: 0, left: 0, right: 120 },
+              children: params.pengesahan
+                ? buildSinglePengesahanCentered(params.pengesahan, 20)
+                : [fp('', { spaceAfter: 0 })],
+            }),
+            new TableCell({
+              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+              borders: NO_BORDER,
+              margins: { top: 0, bottom: 0, left: 120, right: 0 },
+              children: [
+                fp(`${params.kotaKabupaten}, ${params.tanggalText}`, {
+                  align: AlignmentType.CENTER,
+                  spaceBefore: 20,
+                  spaceAfter: 0,
+                  line: F4_LINE,
+                  keepNext: true,
+                }),
+                fp('Yang Membuat Pernyataan,', {
+                  align: AlignmentType.CENTER,
+                  spaceAfter: params.parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
+                  line: F4_LINE,
+                  keepNext: true,
+                }),
+                ...buildNumberedSignerLines(params.parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
+              ],
+            }),
+          ],
+        }),
+      ],
     }),
-    fp('Yang Membuat Pernyataan,', {
-      indentLeft: 4600,
-      spaceAfter: params.parties.length === 1 ? SIGNATURE_SPACE_METERAI : 260,
-      line: F4_LINE,
-    }),
-    ...params.parties.map((pt, idx) =>
-      fp(`${pt.no}. ${pt.nama} ..........................`, {
-        indentLeft: 4200,
-        spaceAfter: idx === params.parties.length - 1 ? 120 : 440,
-        line: F4_LINE,
-      })
-    ),
   ];
 }
 
@@ -1425,15 +1579,22 @@ function buildBedaNamaPage(params: {
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: 4840, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 120 },
               children: [
-                fp('Saksi – saksi :', { spaceAfter: 160, line: F4_LINE }),
-                fp(`1. ${params.saksi1.nama} (...............)`, { spaceAfter: 420, line: F4_LINE }),
-                fp(`2. ${params.saksi2.nama} (...............)`, { spaceAfter: 20, line: F4_LINE }),
+                fp('Saksi – saksi :', { spaceAfter: 160, line: F4_LINE, keepNext: true }),
+                buildNonAktaSignerRowsTable(
+                  [
+                    { no: 1, nama: params.saksi1.nama },
+                    { no: 2, nama: params.saksi2.nama },
+                  ],
+                  4840 - 120,
+                  { spaceAfterRow: 340 }
+                ),
               ],
             }),
             new TableCell({
@@ -1575,15 +1736,22 @@ function buildTurunWarisBundle(
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: 4280, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 120 },
               children: [
-                fp('Saksi – saksi :', { spaceAfter: 160, line: F4_LINE }),
-                fp(`1. ${saksi1.nama} (...............)`, { spaceAfter: 420, line: F4_LINE }),
-                fp(`2. ${saksi2.nama} (...............)`, { spaceAfter: 20, line: F4_LINE }),
+                fp('Saksi – saksi :', { spaceAfter: 160, line: F4_LINE, keepNext: true }),
+                buildNonAktaSignerRowsTable(
+                  [
+                    { no: 1, nama: saksi1.nama },
+                    { no: 2, nama: saksi2.nama },
+                  ],
+                  4280 - 120,
+                  { spaceAfterRow: 340 }
+                ),
               ],
             }),
             new TableCell({
@@ -1591,12 +1759,16 @@ function buildTurunWarisBundle(
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 120, right: 0 },
               children: [
-                fp('Para Ahli Waris :', { spaceAfter: 160, line: F4_LINE }),
-                ...parties.map((pt, idx) =>
-                  fp(`${pt.no}. ${pt.nama} (....................)`, {
-                    spaceAfter: idx === parties.length - 1 ? 60 : 380,
-                    line: F4_LINE,
-                  })
+                fp('Para Ahli Waris :', {
+                  align: AlignmentType.CENTER,
+                  spaceAfter: 160,
+                  line: F4_LINE,
+                  keepNext: true,
+                }),
+                buildNonAktaSignerRowsTable(
+                  parties.map((pt) => ({ no: pt.no, nama: pt.nama })),
+                  F4_CONTENT_WIDTH_DXA - 4280 - 120,
+                  { spaceAfterRow: 340 }
                 ),
               ],
             }),
@@ -1727,7 +1899,7 @@ function buildTurunWarisBundle(
                   spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
                 }),
-                ...buildNumberedSignerLines(parties, 260),
+                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
@@ -1786,7 +1958,7 @@ function buildTurunWarisBundle(
                   spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
                 }),
-                ...buildNumberedSignerLines(parties, 260),
+                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
@@ -1800,6 +1972,7 @@ function buildTurunWarisBundle(
       parties,
       kotaKabupaten,
       tanggalText: docDate.tanggalText,
+      pengesahan: pengesahanTunggal,
     }),
 
     // HALAMAN 12-13: PERTANGGUNGJAWABAN KEABSAHAN DAN KEBENARAN DOKUMEN (TANPA SAKSI)
@@ -1865,7 +2038,7 @@ function buildTurunWarisBundle(
                   spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
                 }),
-                ...buildNumberedSignerLines(parties, 260),
+                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
@@ -2045,7 +2218,7 @@ function buildPemecahanUkurUlangBundle(
                   spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
                 }),
-                ...buildNumberedSignerLines(parties, 260),
+                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
@@ -2306,7 +2479,7 @@ function buildPemecahanUkurUlangBundle(
                       spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                       line: F4_LINE,
                     }),
-                    ...buildNumberedSignerLines(parties, 260),
+                    ...buildNumberedSignerLines(parties, rightSignW - 100),
                   ],
                 }),
               ],
@@ -2402,17 +2575,15 @@ function buildPemecahanUkurUlangBundle(
                   borders: NO_BORDER,
                   margins: { top: 40, bottom: 0, left: 0, right: 120 },
                   children: [
-                    fp('Saksi-saksi:', { spaceAfter: 120, line: F4_LINE }),
-                    fp(`1. ${saksi1.nama} : _____________________`, {
-                      size: 20,
-                      spaceAfter: 360,
-                      line: F4_LINE,
-                    }),
-                    fp(`2. ${saksi2.nama} : _____________________`, {
-                      size: 20,
-                      spaceAfter: 20,
-                      line: F4_LINE,
-                    }),
+                    fp('Saksi-saksi:', { spaceAfter: 120, line: F4_LINE, keepNext: true }),
+                    buildNonAktaSignerRowsTable(
+                      [
+                        { no: 1, nama: saksi1.nama },
+                        { no: 2, nama: saksi2.nama },
+                      ],
+                      4840 - 120,
+                      { size: 20, spaceAfterRow: 320, dotsText: '(.............)' }
+                    ),
                   ],
                 }),
                 new TableCell({
@@ -2568,7 +2739,7 @@ function buildPemecahanUkurUlangBundle(
                       spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                       line: F4_LINE,
                     }),
-                    ...buildNumberedSignerLines(parties, 260),
+                    ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
                   ],
                 }),
               ],
@@ -2632,7 +2803,7 @@ function buildPemecahanUkurUlangBundle(
                     spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                     line: F4_LINE,
                   }),
-                  ...buildNumberedSignerLines(parties, 260),
+                  ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
                 ],
               }),
             ],
@@ -2722,7 +2893,7 @@ function buildPemecahanUkurUlangBundle(
                   spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
                 }),
-                ...buildNumberedSignerLines(parties, 260),
+                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
@@ -2732,12 +2903,15 @@ function buildPemecahanUkurUlangBundle(
   );
 
   // 10. LAMPIRAN FOTO LOKASI TAMPAK DEPAN GEOTAGGING, PATOK 1-4 & POLIGON (2 HALAMAN SESUAI STANDAR BPN)
-  blocks.push(...buildFotoLokasiPatokPoligonPages(record));
+  blocks.push(...buildFotoLokasiPatokPoligonPages(record, pengesahanTunggal));
 
   return blocks;
 }
 
-function buildFotoLokasiPatokPoligonPages(record: BerkasRecord): Array<Paragraph | Table> {
+function buildFotoLokasiPatokPoligonPages(
+  record: BerkasRecord,
+  pengesahan?: ResolvedPengesahanTunggal
+): Array<Paragraph | Table> {
   const na = record.non_akta;
   const sert = getSertipikatInfo(record);
   const hakPrefix = sert.jenisHak.toLowerCase().includes('milik')
@@ -3029,6 +3203,10 @@ function buildFotoLokasiPatokPoligonPages(record: BerkasRecord): Array<Paragraph
     });
   }
 
+  if (pengesahan) {
+    out.push(...buildSinglePengesahanCentered(pengesahan, 140, 960));
+  }
+
   return out;
 }
 
@@ -3189,15 +3367,22 @@ function buildRalatDataBundle(
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: 4840, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 120 },
               children: [
-                fp('Saksi – saksi :', { spaceAfter: 160, line: F4_LINE }),
-                fp(`1. ${saksi1.nama} (...............)`, { spaceAfter: 420, line: F4_LINE }),
-                fp(`2. ${saksi2.nama} (...............)`, { spaceAfter: 20, line: F4_LINE }),
+                fp('Saksi – saksi :', { spaceAfter: 160, line: F4_LINE, keepNext: true }),
+                buildNonAktaSignerRowsTable(
+                  [
+                    { no: 1, nama: saksi1.nama },
+                    { no: 2, nama: saksi2.nama },
+                  ],
+                  4840 - 120,
+                  { spaceAfterRow: 340 }
+                ),
               ],
             }),
             new TableCell({
@@ -3239,6 +3424,7 @@ function buildRalatDataBundle(
       parties,
       kotaKabupaten,
       tanggalText: docDate.tanggalText,
+      pengesahan: pengesahanTunggal,
     }),
   ];
 }
@@ -3314,6 +3500,7 @@ function buildGeotaggingPages(params: {
   record: BerkasRecord;
   titlePrefix: string;
   includePolygonCoords?: boolean;
+  pengesahan?: ResolvedPengesahanTunggal;
 }): Array<Paragraph | Table> {
   const na = params.record.non_akta;
   const sert = getSertipikatInfo(params.record);
@@ -3515,6 +3702,10 @@ function buildGeotaggingPages(params: {
     })
   );
 
+  if (params.pengesahan) {
+    out.push(...buildSinglePengesahanCentered(params.pengesahan, 140, 960));
+  }
+
   return out;
 }
 
@@ -3527,6 +3718,7 @@ function buildPengecekanSertipikatBundle(
   const na = record.non_akta;
   const sert = getSertipikatInfo(record);
   const docDate = resolveNonAktaDocDate(record);
+  const pengesahanTunggal = resolvePengesahanTunggal(record, settings);
   const kotaKabupaten = (sert.kabupaten || settings.nama_kabupaten || '')
     .replace(/^Kabupaten\s+/i, '')
     .trim() || '-';
@@ -3830,23 +4022,28 @@ function buildPengecekanSertipikatBundle(
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 120, right: 0 },
               children: [
-                fp(`${kotaKabupaten}, ${tanggalSlash}`, {
+                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
                   align: AlignmentType.CENTER,
                   spaceAfter: 0,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
                 fp(parties.length > 1 ? 'Para Pemberi Kuasa' : 'Pemberi Kuasa', {
                   align: AlignmentType.CENTER,
                   spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
-                ...buildNumberedSignerLines(parties, 220),
+                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - halfW - 120),
               ],
             }),
           ],
         }),
       ],
     }),
+    ...(!isPpatsMode || parties.length >= 2
+      ? buildSinglePengesahanCentered(pengesahanTunggal, 160)
+      : []),
 
     // HAL. 3 — SURAT PERNYATAAN PERTANGGUNGJAWABAN KEABSAHAN DAN KEBENARAN DOKUMEN
     fp('SURAT PERNYATAAN PERTANGGUNGJAWABAN KEABSAHAN DAN KEBENARAN DOKUMEN', {
@@ -3879,32 +4076,38 @@ function buildPengecekanSertipikatBundle(
     ),
     new Table({
       width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4500, F4_CONTENT_WIDTH_DXA - 4500],
+      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
       layout: TableLayoutType.FIXED,
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
-              width: { size: 4500, type: WidthType.DXA },
+              width: { size: 4280, type: WidthType.DXA },
               borders: NO_BORDER,
-              children: [fp('', { spaceAfter: 0 })],
+              margins: { top: 0, bottom: 0, left: 0, right: 120 },
+              children: buildSinglePengesahanCentered(pengesahanTunggal, 20),
             }),
             new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4500, type: WidthType.DXA },
+              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
               borders: NO_BORDER,
+              margins: { top: 0, bottom: 0, left: 120, right: 0 },
               children: [
-                fp(`${kotaKabupaten}, ${tanggalSlash}`, {
+                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
                   align: AlignmentType.CENTER,
+                  spaceBefore: 20,
                   spaceAfter: 0,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
                 fp('Yang Menyatakan', {
                   align: AlignmentType.CENTER,
                   spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
-                ...buildNumberedSignerLines(parties, 220),
+                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
@@ -3925,6 +4128,7 @@ function buildValidasiSertipikatBundle(
     settings.profil_kuasa,
     record.akta.kuasa_bpn_detail
   );
+  const pengesahanTunggal = resolvePengesahanTunggal(record, settings);
   const sert = getSertipikatInfo(record);
   const docDate = resolveNonAktaDocDate(record);
   const kotaKabupaten = (sert.kabupaten || settings.nama_kabupaten || '')
@@ -4182,19 +4386,21 @@ function buildValidasiSertipikatBundle(
                   spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
                 }),
-                ...buildNumberedSignerLines(parties, 220),
+                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - halfW - 120),
               ],
             }),
           ],
         }),
       ],
     }),
+    ...buildSinglePengesahanCentered(pengesahanTunggal, 160),
 
     // HAL. 3 & 4 — GEOTAGGING (TAMPAK DEPAN, PATOK 1-4 & POLIGON)
     ...buildGeotaggingPages({
       record,
       titlePrefix: 'GEOTAGGING',
       includePolygonCoords: false,
+      pengesahan: pengesahanTunggal,
     }),
   ];
 }
@@ -4599,11 +4805,6 @@ function buildAnalisisBidangBundle(
       'Demikian surat kuasa ini dibuat dengan sebenarnya, untuk dapat digunakan sebagaimana mestinya.',
       { align: AlignmentType.JUSTIFIED, spaceBefore: 140, spaceAfter: 160, line: F4_LINE }
     ),
-    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-      align: AlignmentType.CENTER,
-      spaceAfter: 100,
-      line: F4_LINE,
-    }),
     new Table({
       width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
       columnWidths: [halfW, F4_CONTENT_WIDTH_DXA - halfW],
@@ -4611,18 +4812,21 @@ function buildAnalisisBidangBundle(
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: halfW, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 120 },
               children: [
+                fp('\u00A0', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE, keepNext: true }),
                 fp(parties.length > 1 ? 'Para Pemberi Kuasa' : 'Pemberi Kuasa', {
                   align: AlignmentType.CENTER,
                   spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
-                ...buildNumberedSignerLines(parties, 220),
+                ...buildNumberedSignerLines(parties, halfW - 120),
               ],
             }),
             new TableCell({
@@ -4630,13 +4834,21 @@ function buildAnalisisBidangBundle(
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 120, right: 0 },
               children: [
+                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                  align: AlignmentType.CENTER,
+                  spaceAfter: 0,
+                  line: F4_LINE,
+                  keepNext: true,
+                }),
                 fp('Penerima Kuasa', {
                   align: AlignmentType.CENTER,
                   spaceAfter: SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
                 fp(kuasa.nama, {
                   bold: true,
+                  underline: true,
                   align: AlignmentType.CENTER,
                   spaceAfter: 20,
                   line: F4_LINE,
@@ -4647,6 +4859,7 @@ function buildAnalisisBidangBundle(
         }),
       ],
     }),
+    ...buildSinglePengesahanCentered(pengesahan, 160),
 
     // =========================================================================
     // HAL. 3 — SKET RENCANA PEMECAHAN BIDANG TANAH (BARU — PDF Hal. 1)
@@ -4797,21 +5010,45 @@ function buildAnalisisBidangBundle(
       line: F4_LINE,
     }),
 
-    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-      align: AlignmentType.CENTER,
-      spaceAfter: 10,
-      line: F4_LINE,
-    }),
-    fp('Pemohon', {
-      align: AlignmentType.CENTER,
-      spaceAfter: SIGNATURE_SPACE_STANDARD,
-      line: F4_LINE,
-    }),
-    fp(pemohon.nama, {
-      bold: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 20,
-      line: F4_LINE,
+    new Table({
+      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+      layout: TableLayoutType.FIXED,
+      borders: NO_TABLE_BORDERS,
+      rows: [
+        new TableRow({
+          cantSplit: true,
+          children: [
+            new TableCell({
+              width: { size: 4280, type: WidthType.DXA },
+              borders: NO_BORDER,
+              margins: { top: 0, bottom: 0, left: 0, right: 120 },
+              children: buildSinglePengesahanCentered(pengesahan, 20),
+            }),
+            new TableCell({
+              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+              borders: NO_BORDER,
+              margins: { top: 0, bottom: 0, left: 120, right: 0 },
+              children: [
+                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                  align: AlignmentType.CENTER,
+                  spaceBefore: 20,
+                  spaceAfter: 0,
+                  line: F4_LINE,
+                  keepNext: true,
+                }),
+                fp('Pemohon', {
+                  align: AlignmentType.CENTER,
+                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_STANDARD,
+                  line: F4_LINE,
+                  keepNext: true,
+                }),
+                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
+              ],
+            }),
+          ],
+        }),
+      ],
     }),
 
     // =========================================================================
@@ -4901,21 +5138,45 @@ function buildAnalisisBidangBundle(
       'Demikian Surat Pernyataan ini saya buat dengan sebenar – benarnya untuk dipergunakan sebagaimana mestinya dan apabila pernyataan ini tidak benar, saya sanggup menerima sanksi peraturan yang berlaku',
       { align: AlignmentType.JUSTIFIED, spaceAfter: 140, line: F4_LINE }
     ),
-    fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
-      align: AlignmentType.CENTER,
-      spaceAfter: 10,
-      line: F4_LINE,
-    }),
-    fp('Yang membuat Pernyataan :', {
-      align: AlignmentType.CENTER,
-      spaceAfter: SIGNATURE_SPACE_METERAI,
-      line: F4_LINE,
-    }),
-    fp(pemohon.nama, {
-      bold: true,
-      align: AlignmentType.CENTER,
-      spaceAfter: 20,
-      line: F4_LINE,
+    new Table({
+      width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
+      layout: TableLayoutType.FIXED,
+      borders: NO_TABLE_BORDERS,
+      rows: [
+        new TableRow({
+          cantSplit: true,
+          children: [
+            new TableCell({
+              width: { size: 4280, type: WidthType.DXA },
+              borders: NO_BORDER,
+              margins: { top: 0, bottom: 0, left: 0, right: 120 },
+              children: buildSinglePengesahanCentered(pengesahan, 20),
+            }),
+            new TableCell({
+              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
+              borders: NO_BORDER,
+              margins: { top: 0, bottom: 0, left: 120, right: 0 },
+              children: [
+                fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
+                  align: AlignmentType.CENTER,
+                  spaceBefore: 20,
+                  spaceAfter: 0,
+                  line: F4_LINE,
+                  keepNext: true,
+                }),
+                fp('Yang membuat Pernyataan', {
+                  align: AlignmentType.CENTER,
+                  spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
+                  line: F4_LINE,
+                  keepNext: true,
+                }),
+                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
+              ],
+            }),
+          ],
+        }),
+      ],
     }),
   ];
 
@@ -4973,7 +5234,7 @@ function buildAnalisisBidangBundle(
                     spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                     line: F4_LINE,
                   }),
-                  ...buildNumberedSignerLines(parties, 260),
+                  ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
                 ],
               }),
             ],
@@ -5019,39 +5280,44 @@ function buildAnalisisBidangBundle(
     ),
     new Table({
       width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4500, F4_CONTENT_WIDTH_DXA - 4500],
+      columnWidths: [4280, F4_CONTENT_WIDTH_DXA - 4280],
       layout: TableLayoutType.FIXED,
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
-              width: { size: 4500, type: WidthType.DXA },
+              width: { size: 4280, type: WidthType.DXA },
               borders: NO_BORDER,
-              children: [fp('', { spaceAfter: 0 })],
+              margins: { top: 0, bottom: 0, left: 0, right: 120 },
+              children: buildSinglePengesahanCentered(pengesahan, 20),
             }),
             new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4500, type: WidthType.DXA },
+              width: { size: F4_CONTENT_WIDTH_DXA - 4280, type: WidthType.DXA },
               borders: NO_BORDER,
+              margins: { top: 0, bottom: 0, left: 120, right: 0 },
               children: [
                 fp(`${kotaKabupaten}, ${docDate.tanggalText}`, {
                   align: AlignmentType.CENTER,
+                  spaceBefore: 20,
                   spaceAfter: 0,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
                 fp('Yang Menyatakan', {
                   align: AlignmentType.CENTER,
                   spaceAfter: parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
-                ...buildNumberedSignerLines(parties, 220),
+                ...buildNumberedSignerLines(parties, F4_CONTENT_WIDTH_DXA - 4280 - 120),
               ],
             }),
           ],
         }),
       ],
     }),
-    ...buildSinglePengesahanCentered(pengesahan, 160),
 
     // =========================================================================
     // HAL. 6–7 / 7–8 (DIPERTAHANKAN) — GEOTAGGING & ANALISIS BIDANG (POLIGON + FOTO)
@@ -5060,6 +5326,7 @@ function buildAnalisisBidangBundle(
       record,
       titlePrefix: 'GEOTAGGING & ANALISIS BIDANG',
       includePolygonCoords: true,
+      pengesahan,
     })
   );
 
@@ -5068,7 +5335,9 @@ function buildAnalisisBidangBundle(
 
 function buildPkkprSuratKuasaPage(params: {
   pemohon: NonAktaPartyView;
+  parties: NonAktaPartyView[];
   kuasa: ReturnType<typeof resolvePersonCtx>;
+  pengesahan: ResolvedPengesahanTunggal;
   sert: ReturnType<typeof getSertipikatInfo>;
   jenisKegiatan: string;
   kotaKabupaten: string;
@@ -5172,18 +5441,20 @@ function buildPkkprSuratKuasaPage(params: {
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: halfW, type: WidthType.DXA },
               borders: NO_BORDER,
               margins: { top: 0, bottom: 0, left: 0, right: 120 },
               children: [
-                fp(' ', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
-                fp('PIHAK KEDUA', { bold: true, align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
+                fp('\u00A0', { align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE, keepNext: true }),
+                fp('PIHAK KEDUA', { bold: true, align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE, keepNext: true }),
                 fp('Yang diberi kuasa', {
                   align: AlignmentType.CENTER,
                   spaceAfter: SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
                 fp(params.kuasa.nama, {
                   bold: true,
@@ -5203,26 +5474,23 @@ function buildPkkprSuratKuasaPage(params: {
                   align: AlignmentType.CENTER,
                   spaceAfter: 0,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
-                fp('PIHAK PERTAMA', { bold: true, align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE }),
-                fp('Pemberi Kuasa', {
+                fp('PIHAK PERTAMA', { bold: true, align: AlignmentType.CENTER, spaceAfter: 0, line: F4_LINE, keepNext: true }),
+                fp(params.parties.length > 1 ? 'Para Pemberi Kuasa' : 'Pemberi Kuasa', {
                   align: AlignmentType.CENTER,
-                  spaceAfter: SIGNATURE_SPACE_METERAI,
+                  spaceAfter: params.parties.length > 1 ? 200 : SIGNATURE_SPACE_METERAI,
                   line: F4_LINE,
+                  keepNext: true,
                 }),
-                fp(params.pemohon.nama, {
-                  bold: true,
-                  underline: true,
-                  align: AlignmentType.CENTER,
-                  spaceAfter: 20,
-                  line: F4_LINE,
-                }),
+                ...buildNumberedSignerLines(params.parties, F4_CONTENT_WIDTH_DXA - halfW - 120),
               ],
             }),
           ],
         }),
       ],
     }),
+    ...buildSinglePengesahanCentered(params.pengesahan, 160),
   ];
 }
 
@@ -5233,6 +5501,7 @@ function buildPermohonanPkkprBundle(
   const parties = collectNonAktaParties(record);
   const pemohon = parties[0];
   const na = record.non_akta;
+  const pengesahanTunggal = resolvePengesahanTunggal(record, settings);
   const sert = getSertipikatInfo(record);
   const docDate = resolveNonAktaDocDate(record);
   const kotaKabupaten = (sert.kabupaten || settings.nama_kabupaten || '')
@@ -5450,7 +5719,9 @@ function buildPermohonanPkkprBundle(
     // HAL. 2 — SURAT KUASA PENGURUSAN PKKPR (PENERIMA KUASA 1)
     ...buildPkkprSuratKuasaPage({
       pemohon,
+      parties,
       kuasa: kuasa1,
+      pengesahan: pengesahanTunggal,
       sert,
       jenisKegiatan,
       kotaKabupaten,
@@ -5468,7 +5739,9 @@ function buildPermohonanPkkprBundle(
     children.push(
       ...buildPkkprSuratKuasaPage({
         pemohon,
+        parties,
         kuasa: kuasa2,
+        pengesahan: pengesahanTunggal,
         sert,
         jenisKegiatan,
         kotaKabupaten,

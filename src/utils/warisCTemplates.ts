@@ -10,6 +10,7 @@ import {
   TableLayoutType,
   TableRow,
   TextRun,
+  VerticalAlign,
   WidthType,
 } from 'docx';
 import {
@@ -89,11 +90,15 @@ function fp(
     firstLine?: number;
     hanging?: number;
     pageBreakBefore?: boolean;
+    keepNext?: boolean;
+    keepLines?: boolean;
   }
 ): Paragraph {
   return new Paragraph({
     alignment: opts?.align ?? AlignmentType.LEFT,
     pageBreakBefore: opts?.pageBreakBefore ?? false,
+    keepNext: opts?.keepNext,
+    keepLines: opts?.keepLines,
     indent:
       opts?.indentLeft || opts?.firstLine || opts?.hanging
         ? {
@@ -413,6 +418,57 @@ function mapPemohonParty(p?: ParaPihak) {
   };
 }
 
+function buildWarisCSignerRowsTable(
+  items: Array<{ no: number; nama: string }>,
+  opts: { totalWidthDxa: number; dotsWidthDxa?: number; size?: number; rowSpaceAfter?: number }
+): Table {
+  const dotsW = opts.dotsWidthDxa ?? 1620;
+  const nameW = Math.max(1800, opts.totalWidthDxa - dotsW);
+  const size = opts.size ?? F4_SIZE;
+  const rowGap = opts.rowSpaceAfter ?? 340;
+  return new Table({
+    width: { size: opts.totalWidthDxa, type: WidthType.DXA },
+    columnWidths: [nameW, dotsW],
+    layout: TableLayoutType.FIXED,
+    borders: NO_TABLE_BORDERS,
+    rows: items.map((item, idx) => {
+      const after = idx === items.length - 1 ? 40 : rowGap;
+      return new TableRow({
+        cantSplit: true,
+        children: [
+          new TableCell({
+            width: { size: nameW, type: WidthType.DXA },
+            borders: NO_BORDER,
+            verticalAlign: VerticalAlign.BOTTOM,
+            margins: { top: 0, bottom: 0, left: 0, right: 60 },
+            children: [
+              fp(`${item.no}. ${item.nama}`, {
+                indentLeft: 260,
+                hanging: 260,
+                spaceAfter: after,
+                size,
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: dotsW, type: WidthType.DXA },
+            borders: NO_BORDER,
+            verticalAlign: VerticalAlign.BOTTOM,
+            margins: { top: 0, bottom: 0, left: 20, right: 0 },
+            children: [
+              fp('(.............)', {
+                align: AlignmentType.RIGHT,
+                spaceAfter: after,
+                size,
+              }),
+            ],
+          }),
+        ],
+      });
+    }),
+  });
+}
+
 function buildCenteredKadesBlock(
   kadesJabatan: string,
   kadesNama: string,
@@ -420,12 +476,12 @@ function buildCenteredKadesBlock(
   spaceBefore = 120
 ): Paragraph[] {
   const out: Paragraph[] = [
-    fp('Mengetahui', { align: AlignmentType.CENTER, spaceBefore, spaceAfter: 0 }),
-    fp(kadesJabatan, { align: AlignmentType.CENTER, spaceAfter: SIGNATURE_SPACE_STANDARD }),
-    fp(kadesNama, { bold: true, underline: true, align: AlignmentType.CENTER, spaceAfter: 0 }),
+    fp('Mengetahui,', { align: AlignmentType.CENTER, spaceBefore, spaceAfter: 0, keepNext: true, keepLines: true }),
+    fp(kadesJabatan, { align: AlignmentType.CENTER, spaceAfter: SIGNATURE_SPACE_STANDARD, keepNext: true, keepLines: true }),
+    fp(kadesNama, { bold: true, underline: true, align: AlignmentType.CENTER, spaceAfter: 0, keepNext: Boolean(kadesNip), keepLines: true }),
   ];
   if (kadesNip) {
-    out.push(fp(`NIP : ${kadesNip}`, { align: AlignmentType.CENTER, spaceAfter: 20 }));
+    out.push(fp(`NIP. ${kadesNip}`, { align: AlignmentType.CENTER, spaceAfter: 20, keepLines: true }));
   }
   return out;
 }
@@ -447,22 +503,22 @@ function buildCamatKadesDualTable(params: {
   const rightW = F4_CONTENT_WIDTH_DXA - leftW;
 
   const leftChildren: Paragraph[] = [
-    fp(`Nomor : ${params.camatNomor || ''}`, { spaceAfter: 0, size: 20 }),
-    fp(`${params.kecClean}, Tanggal : ${params.tanggalText}`, { spaceAfter: 0, size: 20 }),
-    fp('Dikuatkan oleh kami :', { spaceAfter: 0, size: 20 }),
-    fp(params.camatJabatan, { spaceAfter: SIGNATURE_SPACE_STANDARD, size: 20 }),
-    fp(params.camatNama, { bold: true, underline: true, align: AlignmentType.CENTER, spaceAfter: 0 }),
+    fp(`Nomor : ${params.camatNomor || '....................'}`, { align: AlignmentType.CENTER, spaceAfter: 0, size: 20, keepNext: true }),
+    fp(`${params.kecClean}, ${params.tanggalText}`, { align: AlignmentType.CENTER, spaceAfter: 0, size: 20, keepNext: true }),
+    fp('Dikuatkan oleh kami,', { align: AlignmentType.CENTER, spaceAfter: 0, size: 20, keepNext: true }),
+    fp(params.camatJabatan, { align: AlignmentType.CENTER, spaceAfter: SIGNATURE_SPACE_STANDARD, size: 20, keepNext: true }),
+    fp(params.camatNama, { bold: true, underline: true, align: AlignmentType.CENTER, spaceAfter: 0, keepNext: Boolean(params.camatNip) }),
   ];
   if (params.camatNip) {
     leftChildren.push(fp(`NIP. ${params.camatNip}`, { align: AlignmentType.CENTER, spaceAfter: 0, size: 20 }));
   }
 
   const rightChildren: Paragraph[] = [
-    fp(`Nomor : ${params.kadesNomor || ''}`, { spaceAfter: 0, size: 20 }),
-    fp('Disaksikan dan dibenarkan oleh kami:', { spaceAfter: 0, size: 20 }),
-    fp(`${params.desaClean}, tanggal : ${params.tanggalText}`, { spaceAfter: 0, size: 20 }),
-    fp(params.kadesJabatan, { spaceAfter: SIGNATURE_SPACE_STANDARD, size: 20 }),
-    fp(params.kadesNama, { bold: true, underline: true, align: AlignmentType.CENTER, spaceAfter: 0 }),
+    fp(`Nomor : ${params.kadesNomor || '....................'}`, { align: AlignmentType.CENTER, spaceAfter: 0, size: 20, keepNext: true }),
+    fp(`${params.desaClean}, ${params.tanggalText}`, { align: AlignmentType.CENTER, spaceAfter: 0, size: 20, keepNext: true }),
+    fp('Disaksikan dan dibenarkan oleh kami,', { align: AlignmentType.CENTER, spaceAfter: 0, size: 20, keepNext: true }),
+    fp(params.kadesJabatan, { align: AlignmentType.CENTER, spaceAfter: SIGNATURE_SPACE_STANDARD, size: 20, keepNext: true }),
+    fp(params.kadesNama, { bold: true, underline: true, align: AlignmentType.CENTER, spaceAfter: 0, keepNext: Boolean(params.kadesNip) }),
   ];
   if (params.kadesNip) {
     rightChildren.push(fp(`NIP. ${params.kadesNip}`, { align: AlignmentType.CENTER, spaceAfter: 0, size: 20 }));
@@ -475,17 +531,18 @@ function buildCamatKadesDualTable(params: {
     borders: NO_TABLE_BORDERS,
     rows: [
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
             width: { size: leftW, type: WidthType.DXA },
             borders: NO_BORDER,
-            margins: { top: 0, bottom: 0, left: 0, right: 160 },
+            margins: { top: 0, bottom: 0, left: 0, right: 140 },
             children: leftChildren,
           }),
           new TableCell({
             width: { size: rightW, type: WidthType.DXA },
             borders: NO_BORDER,
-            margins: { top: 0, bottom: 0, left: 160, right: 0 },
+            margins: { top: 0, bottom: 0, left: 140, right: 0 },
             children: rightChildren,
           }),
         ],
@@ -760,20 +817,14 @@ export function buildWarisCBundle(
   const halfW = Math.floor(F4_CONTENT_WIDTH_DXA / 2);
   const rightHalfW = F4_CONTENT_WIDTH_DXA - halfW;
 
-  // Helper list tanda tangan ahli waris (kanan)
+  // Helper list tanda tangan ahli waris (kanan) — 2 kolom presisi agar titik tanda tangan tidak pindah baris
   const buildHeirSignaturesRight = (kotaLine: string, headerLabel: string): Table => {
-    const spacerW = 4200;
+    const spacerW = 4150;
     const signW = F4_CONTENT_WIDTH_DXA - spacerW;
-    const heirLines =
+    const heirItems =
       cfg.ahliWaris.length > 0
-        ? cfg.ahliWaris.map((aw) =>
-            fp(`${aw.no}.  ${aw.nama} : ................................`, {
-              spaceBefore: 160,
-              spaceAfter: 100,
-              size: 20,
-            })
-          )
-        : [fp('1.  ....................................................', { spaceBefore: 160, spaceAfter: 100, size: 20 })];
+        ? cfg.ahliWaris.map((aw) => ({ no: aw.no, nama: aw.nama }))
+        : [{ no: 1, nama: '........................' }];
 
     return new Table({
       width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
@@ -782,6 +833,7 @@ export function buildWarisCBundle(
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: spacerW, type: WidthType.DXA },
@@ -791,10 +843,16 @@ export function buildWarisCBundle(
             new TableCell({
               width: { size: signW, type: WidthType.DXA },
               borders: NO_BORDER,
+              margins: { top: 0, bottom: 0, left: 80, right: 0 },
               children: [
-                fp(kotaLine, { spaceAfter: 20, size: 20 }),
-                fp(headerLabel, { spaceAfter: 80, size: 20 }),
-                ...heirLines,
+                fp(kotaLine, { align: AlignmentType.CENTER, spaceAfter: 0, size: 20, keepNext: true }),
+                fp(headerLabel, { align: AlignmentType.CENTER, spaceAfter: 200, size: 20, keepNext: true }),
+                buildWarisCSignerRowsTable(heirItems, {
+                  totalWidthDxa: signW - 80,
+                  dotsWidthDxa: 1580,
+                  size: 20,
+                  rowSpaceAfter: 320,
+                }),
               ],
             }),
           ],
@@ -1775,20 +1833,33 @@ export function buildWarisCBundle(
     ),
     new Table({
       width: { size: F4_CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [4800, F4_CONTENT_WIDTH_DXA - 4800],
+      columnWidths: [4350, F4_CONTENT_WIDTH_DXA - 4350],
       layout: TableLayoutType.FIXED,
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
+          cantSplit: true,
           children: [
-            new TableCell({ width: { size: 4800, type: WidthType.DXA }, borders: NO_BORDER, children: [fp('', { spaceAfter: 0 })] }),
             new TableCell({
-              width: { size: F4_CONTENT_WIDTH_DXA - 4800, type: WidthType.DXA },
+              width: { size: 4350, type: WidthType.DXA },
               borders: NO_BORDER,
+              margins: { top: 0, bottom: 0, left: 0, right: 120 },
+              children: buildCenteredKadesBlock(cfg.kadesJabatan, cfg.kadesNama, cfg.kadesNip, 20),
+            }),
+            new TableCell({
+              width: { size: F4_CONTENT_WIDTH_DXA - 4350, type: WidthType.DXA },
+              borders: NO_BORDER,
+              margins: { top: 0, bottom: 0, left: 100, right: 0 },
               children: [
-                fp('Yang Membuat Kesaksian:', { spaceAfter: 360 }),
-                fp(`1.  ${saksi1.nama} ...............................`, { spaceAfter: 420 }),
-                fp(`2.  ${saksi2.nama} ...............................`, { spaceAfter: 40 }),
+                fp(`${kabClean}, ${tanggalText}`, { align: AlignmentType.CENTER, spaceAfter: 0, keepNext: true }),
+                fp('Yang Membuat Kesaksian,', { align: AlignmentType.CENTER, spaceAfter: 240, keepNext: true }),
+                buildWarisCSignerRowsTable(
+                  [
+                    { no: 1, nama: saksi1.nama },
+                    { no: 2, nama: saksi2.nama },
+                  ],
+                  { totalWidthDxa: F4_CONTENT_WIDTH_DXA - 4450, dotsWidthDxa: 1620, rowSpaceAfter: 360 }
+                ),
               ],
             }),
           ],
@@ -1891,11 +1962,17 @@ export function buildWarisCBundle(
             new TableCell({
               width: { size: rightHalfW, type: WidthType.DXA },
               borders: NO_BORDER,
+              margins: { top: 0, bottom: 0, left: 120, right: 0 },
               children: [
-                fp(`${kabClean}, ${tanggalText}`, { indentLeft: 320, spaceAfter: 0, size: 20 }),
-                fp('Yang Memberi Kesaksian', { indentLeft: 320, spaceAfter: 420, size: 20 }),
-                fp(`1.  ${saksi1.nama} ..........................`, { indentLeft: 320, spaceAfter: 420, size: 20 }),
-                fp(`2.  ${saksi2.nama} ..........................`, { indentLeft: 320, spaceAfter: 20, size: 20 }),
+                fp(`${kabClean}, ${tanggalText}`, { align: AlignmentType.CENTER, spaceAfter: 0, size: 20, keepNext: true }),
+                fp('Yang Memberi Kesaksian,', { align: AlignmentType.CENTER, spaceAfter: 240, size: 20, keepNext: true }),
+                buildWarisCSignerRowsTable(
+                  [
+                    { no: 1, nama: saksi1.nama },
+                    { no: 2, nama: saksi2.nama },
+                  ],
+                  { totalWidthDxa: rightHalfW - 120, dotsWidthDxa: 1580, size: 20, rowSpaceAfter: 360 }
+                ),
               ],
             }),
           ],
@@ -1955,7 +2032,7 @@ export function buildWarisCBundle(
     ),
     twoColBatasTable(cfg.batasInduk, 720),
     fp(
-      `sungguh-sungguh sejak tgl. ${cfg.menguasaiSejakTahun} kepunyaan ${pemohon.nama}.`,
+      `sungguh-sungguh sejak tanggal ${cfg.menguasaiSejakTahun} kepunyaan ${pemohon.nama}.`,
       { indentLeft: 320, spaceAfter: 40, size: 20 }
     ),
     fp(
@@ -2000,7 +2077,7 @@ export function buildWarisCBundle(
               width: { size: rightHalfW, type: WidthType.DXA },
               borders: NO_BORDER,
               children: [
-                fp(`${kabClean}, tgl. ${tanggalText}`, { align: AlignmentType.CENTER, spaceAfter: 20, size: 20 }),
+                fp(`${kabClean}, ${tanggalText}`, { align: AlignmentType.CENTER, spaceAfter: 20, size: 20, keepNext: true }),
                 fp(cfg.kadesJabatan, {
                   align: AlignmentType.CENTER,
                   spaceAfter: SIGNATURE_SPACE_STANDARD,
@@ -2089,7 +2166,7 @@ export function buildWarisCBundle(
               width: { size: F4_CONTENT_WIDTH_DXA - 4800, type: WidthType.DXA },
               borders: NO_BORDER,
               children: [
-                fp(`${kabClean}, tgl. ${tanggalText}`, { align: AlignmentType.CENTER, spaceAfter: 20 }),
+                fp(`${kabClean}, ${tanggalText}`, { align: AlignmentType.CENTER, spaceAfter: 20, keepNext: true }),
                 fp(cfg.kadesJabatan, {
                   align: AlignmentType.CENTER,
                   spaceAfter: SIGNATURE_SPACE_STANDARD,

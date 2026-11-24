@@ -1411,16 +1411,16 @@ export async function refineSketchWithGemini(
   const parts: GeminiContentPart[] = [
     ...buildGeminiFileParts([sanitized]),
     {
-      text: `Anda adalah juru gambar kadaster ATR/BPN yang menyempurnakan gambar sket bidang tanah kasar (gambar tangan / hasil scan) menjadi gambar teknis CAD vektor hitam-putih yang rapi untuk Lampiran Surat Pernyataan Pemasangan Tanda Batas dan Gambar Sket Tanah.
+      text: `Anda adalah juru gambar kadaster ATR/BPN profesional yang menyempurnakan gambar sket bidang tanah kasar (gambar tangan / hasil scan / foto kertas) menjadi gambar teknis CAD vektor hitam-putih yang presisi untuk Lampiran Surat Pernyataan Pemasangan Tanda Batas dan Gambar Sket Tanah.
 
 ATURAN KOORDINAT KANVAS (viewBox 1000 x 640):
-- Area kiri x = 20..120 KHUSUS untuk panah arah Utara (U ↑) yang digambar otomatis. JANGAN menempatkan poligon atau label di x < 145.
-- Gambar poligon utama bidang tanah (outerPolygon) di area x = 200..840, y = 115..510, meluruskan garis tangan yang bengkok namun MEMPERTAHANKAN bentuk geometri sebenarnya dari sket kasar (persegi panjang, trapesium, miring mengikuti jalan, huruf L, segi lima, dll).
-- Jika sket kasar dibagi menjadi beberapa bagian/pecahan, gambar garis pemisah internal lurus yang akurat pada "subdivisions" (titik ujung menyentuh tepat sisi poligon) dan letakkan angka bidang ("1", "2", dst.) tepat di tengah tiap bagian pada "lotLabels".
-- Jika pada sket kasar terdapat Jalan, Gang, atau strip "Dilepaskan Untuk Jalan", gambar sebagai poligon koridor rapi pada "roads" (set isPelepasanJalan=true untuk jalur pelepasan jalan, false untuk jalan eksisting). Putar label jalan vertikal/miring sesuai arah koridor (mis. labelAngle = -85 atau -90 untuk jalan di kanan/kiri, 0 untuk jalan di atas/bawah).
-- Tulis nama pemilik tetangga yang berbatasan pada "edgeLabels" di luar sisi poligon yang sesuai (sisi utara y sekitar 75-95 angle 0, sisi selatan y sekitar 535-565 angle 0, sisi barat x sekitar 165-190 angle -90, sisi timur x sekitar 865-905 angle -90). Jangan duplikasi nama "Jalan" di edgeLabels jika sudah masuk di roads.
-- Jika sket kasar mencantumkan ukuran panjang sisi (mis. "15 m", "20,5 m"), masukkan ke "dimensions".
-- Isi "detectedBoundaries" (utara, timur, selatan, barat) berdasarkan tulisan di gambar sket kasar (atau lengkapi dengan konteks form bila tidak tertulis).
+1. Area kiri x = 20..135 KHUSUS untuk panah arah Utara (U ↑) yang digambar otomatis. JANGAN menempatkan poligon, jalan, atau label di x < 150.
+2. Gambar poligon utama bidang tanah (outerPolygon) berurutan SEARAH JARUM JAM dimulai dari sudut kiri-atas, memenuhi area tengah x = 215..815, y = 125..500. Luruskan coretan tangan yang goyang menjadi garis lurus CAD yang rapi, namun PERTAHANKAN bentuk geometri asli sket kasar (persegi panjang, trapesium, miring mengikuti jalan, huruf L, segi lima, dst.).
+3. Jika sket kasar dibagi menjadi beberapa bagian/pecahan, gambar garis pemisah internal lurus pada "subdivisions" dengan kedua titik ujung MENYENTUH TEPAT sisi poligon luar (tidak melayang dan tidak keluar batas), lalu letakkan angka bidang ("1", "2", dst.) tepat di pusat tiap bagian pada "lotLabels" (tambahkan subtext luas mis. "200 m²" jika diketahui).
+4. Jika terdapat Jalan, Gang, Saluran, atau strip "Dilepaskan Untuk Jalan", gambar sebagai poligon koridor rapi sejajar sisi terkait pada "roads" (set isPelepasanJalan=true khusus jalur pelepasan jalan, false untuk jalan eksisting). Putar label jalan sesuai arah koridor (labelAngle = -90 untuk jalan vertikal di kiri/kanan, 0 untuk jalan horizontal di atas/bawah).
+5. Tulis nama pemilik tetangga yang berbatasan pada "edgeLabels" DI LUAR sisi poligon (utara: y ≈ 75-95 angle 0; selatan: y ≈ 540-565 angle 0; barat: x ≈ 168-185 angle -90; timur: x ≈ 860-905 angle -90). Jangan duplikasi nama jalan di edgeLabels bila sudah digambar pada roads.
+6. Jika sket kasar mencantumkan angka panjang sisi (mis. "15 m", "20,5 m"), masukkan ke "dimensions" tepat di dekat sisi terkait.
+7. Isi "detectedBoundaries" (utara, timur, selatan, barat) HANYA dengan nama tetangga/jalan singkat yang benar-benar tertulis pada gambar (maks 30 karakter). Jika sisi tidak tertulis di gambar, KOSONGKAN string "" — JANGAN menulis penjelasan atau tanda kurung seperti "(dari form...)".
 
 KONTEKS FORM BERKAS (referensi ejaan jika tulisan tangan kurang jelas):
 - Jenis layanan: ${ctx.isPemecahan === false ? 'Pengukuran Ulang (1 bidang)' : 'Pemecahan Bidang'}
@@ -1433,9 +1433,9 @@ Keluarkan HANYA JSON valid sesuai skema.`,
   ];
 
   const attempts: GeminiModelAttempt[] = [
-    { model: 'gemini-4-hydrogen', level: ThinkingLevel.MEDIUM, timeoutMs: 38000 },
-    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 26000 },
-    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 22000 },
+    { model: 'gemini-4-hydrogen', level: ThinkingLevel.MEDIUM, timeoutMs: 36000 },
+    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 24000 },
+    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 20000 },
   ];
 
   const { parsed, model, elapsedMs } = await generateJsonWithFallback(

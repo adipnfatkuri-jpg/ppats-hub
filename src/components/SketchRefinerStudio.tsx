@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import {
   CheckCircle2,
+  Columns2,
   Compass,
   ImagePlus,
   Loader2,
   RefreshCw,
+  RotateCw,
+  Rows2,
   Sparkles,
+  Tag,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -19,6 +23,8 @@ import {
   normalizeCadSketchSpec,
   rasterizeSvgToPngDataUrl,
   renderCadSketchToSvg,
+  rotateCadSketchSpec90,
+  syncFormLabelsToCadSpec,
 } from '../utils/sketchRefiner';
 
 interface SketchRefinerStudioProps {
@@ -37,6 +43,12 @@ interface DetectedBoundarySuggestion {
   barat?: string;
 }
 
+interface UploadedRoughPayload {
+  name: string;
+  mimeType: string;
+  dataBase64: string;
+}
+
 export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
   nonAkta,
   setNonAkta,
@@ -50,8 +62,13 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
   const [refineSummary, setRefineSummary] = useState<string | null>(null);
   const [refineError, setRefineError] = useState<string | null>(null);
   const [detectedBounds, setDetectedBounds] = useState<DetectedBoundarySuggestion | null>(null);
+  const [activeSpec, setActiveSpec] = useState<CadSketchSpec | null>(null);
+  const [splitOrientation, setSplitOrientation] = useState<'vertical' | 'horizontal'>('vertical');
+  const [lastUploadedPayload, setLastUploadedPayload] = useState<UploadedRoughPayload | null>(null);
 
-  const buildSketchContext = (): AutoCadSketchInput => ({
+  const buildSketchContext = (
+    orientationOverride?: 'vertical' | 'horizontal'
+  ): AutoCadSketchInput => ({
     batasUtara: tanah.batas_utara,
     batasTimur: tanah.batas_timur,
     batasSelatan: tanah.batas_selatan,
@@ -63,25 +80,37 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
     pelepasanJalanLuasM2: nonAkta.pelepasan_jalan_luas_m2 ?? 0,
     pelepasanJalanSisi: (nonAkta.pelepasan_jalan_sisi ?? 'utara') as CardinalSide,
     pelepasanJalanKeterangan: nonAkta.pelepasan_jalan_keterangan,
+    splitOrientation: orientationOverride ?? splitOrientation,
   });
 
-  const handleGenerateAutoCad = async () => {
+  const commitSpecToPreview = async (spec: CadSketchSpec, toastMessage?: string) => {
+    const svg = renderCadSketchToSvg(spec);
+    const pngDataUrl = await rasterizeSvgToPngDataUrl(svg, 1200, 768);
+    setActiveSpec(spec);
+    setNonAkta((prev) => ({
+      ...prev,
+      foto_sket_pecah: pngDataUrl,
+    }));
+    setRefineSummary(
+      spec.summary || 'Sket CAD rapi berhasil diperbarui dan disematkan ke berkas.'
+    );
+    if (toastMessage) {
+      onNotify(toastMessage, 'success');
+    }
+  };
+
+  const handleGenerateAutoCad = async (orientationOverride?: 'vertical' | 'horizontal') => {
+    const nextOrient = orientationOverride ?? splitOrientation;
+    if (orientationOverride) {
+      setSplitOrientation(orientationOverride);
+    }
     setIsAutoBuilding(true);
     setRefineError(null);
     try {
-      const spec = buildAutoCadSketchSpec(buildSketchContext());
-      const svg = renderCadSketchToSvg(spec);
-      const pngDataUrl = await rasterizeSvgToPngDataUrl(svg, 1200, 768);
-      setNonAkta((prev) => ({
-        ...prev,
-        foto_sket_pecah: pngDataUrl,
-      }));
-      setRefineSummary(
-        spec.summary || 'Sket CAD rapi berhasil dibuat otomatis dari batas & rincian bidang.'
-      );
-      onNotify(
-        'Sket bidang tanah CAD rapi berhasil dibuat dan disematkan ke Pemasangan Tanda Batas & Gambar Sket Tanah.',
-        'success'
+      const spec = buildAutoCadSketchSpec(buildSketchContext(nextOrient));
+      await commitSpecToPreview(
+        spec,
+        'Sket bidang tanah CAD rapi berhasil dibuat dan disematkan ke Pemasangan Tanda Batas & Gambar Sket Tanah.'
       );
     } catch (err) {
       const msg =
@@ -93,14 +122,11 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
     }
   };
 
-  const runAiRefineOnPayload = async (payload: {
-    name: string;
-    mimeType: string;
-    dataBase64: string;
-  }) => {
+  const runAiRefineOnPayload = async (payload: UploadedRoughPayload) => {
     setIsRefining(true);
     setRefineError(null);
     setDetectedBounds(null);
+    setLastUploadedPayload(payload);
     try {
       const ctx = buildSketchContext();
       const response = await fetch('/api/refine-sketch', {
@@ -111,11 +137,22 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
           context: ctx,
         }),
       });
-      const json = (await response.json()) as {
+
+      const rawText = await response.text();
+      let json: {
         spec?: Partial<CadSketchSpec>;
         error?: string;
-        model?: string;
-      };
+      } = {};
+      try {
+        json = rawText ? (JSON.parse(rawText) as typeof json) : {};
+      } catch {
+        throw new Error(
+          response.ok
+            ? 'Respons server penyempurnaan sket tidak valid.'
+            : `Gagal menyempurnakan sket kasar (HTTP ${response.status}). Silakan coba lagi atau gunakan Sket Otomatis (CAD).`
+        );
+      }
+
       if (!response.ok) {
         throw new Error(
           json?.error || `Gagal menyempurnakan sket kasar (HTTP ${response.status}).`
@@ -123,27 +160,15 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
       }
 
       const normalized = normalizeCadSketchSpec(json.spec, ctx);
-      const svg = renderCadSketchToSvg(normalized);
-      const pngDataUrl = await rasterizeSvgToPngDataUrl(svg, 1200, 768);
-
-      setNonAkta((prev) => ({
-        ...prev,
-        foto_sket_pecah: pngDataUrl,
-      }));
-      setRefineSummary(
-        normalized.summary ||
-          'Sket kasar berhasil disempurnakan menjadi gambar teknis CAD rapi.'
+      await commitSpecToPreview(
+        normalized,
+        'Sket kasar berhasil disempurnakan menjadi sket CAD rapi untuk Pemasangan Tanda Batas & Gambar Sket Tanah.'
       );
 
       const det = normalized.detectedBoundaries;
       if (det && (det.utara || det.timur || det.selatan || det.barat)) {
         setDetectedBounds(det);
       }
-
-      onNotify(
-        'Sket kasar berhasil disempurnakan menjadi sket CAD rapi untuk Pemasangan Tanda Batas & Gambar Sket Tanah.',
-        'success'
-      );
     } catch (err) {
       const msg =
         err instanceof Error
@@ -165,7 +190,7 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
     try {
       const optimized = await optimizeDocumentFile(file, {
         maxEdge: 1400,
-        quality: 0.84,
+        quality: 0.85,
       });
 
       if (optimized.mimeType.startsWith('image/')) {
@@ -190,6 +215,10 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
   };
 
   const handleReRefineStoredRough = async () => {
+    if (lastUploadedPayload) {
+      await runAiRefineOnPayload(lastUploadedPayload);
+      return;
+    }
     const raw = nonAkta.foto_sket_kasar;
     if (!raw) return;
     const match = /^data:([^;]+);base64,(.+)$/s.exec(raw.trim());
@@ -199,6 +228,38 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
       mimeType: match[1],
       dataBase64: match[2],
     });
+  };
+
+  const handleRotateSpec90 = async () => {
+    if (!activeSpec) return;
+    setIsAutoBuilding(true);
+    setRefineError(null);
+    try {
+      const rotated = rotateCadSketchSpec90(activeSpec);
+      await commitSpecToPreview(rotated, 'Orientasi sket diputar 90° dan diperbarui ke berkas.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal memutar gambar sket.';
+      setRefineError(msg);
+      onNotify(msg, 'error');
+    } finally {
+      setIsAutoBuilding(false);
+    }
+  };
+
+  const handleSyncFormLabels = async () => {
+    if (!activeSpec) return;
+    setIsAutoBuilding(true);
+    setRefineError(null);
+    try {
+      const synced = syncFormLabelsToCadSpec(activeSpec, buildSketchContext());
+      await commitSpecToPreview(synced, 'Label batas tetangga & luas bidang berhasil disinkronkan.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal menyinkronkan label batas.';
+      setRefineError(msg);
+      onNotify(msg, 'error');
+    } finally {
+      setIsAutoBuilding(false);
+    }
   };
 
   const handleDirectCleanSketchUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,6 +274,7 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
         quality: 0.85,
       });
       const dataUrl = `data:${optimized.mimeType};base64,${optimized.dataBase64}`;
+      setActiveSpec(null);
       setNonAkta((prev) => ({
         ...prev,
         foto_sket_pecah: dataUrl,
@@ -242,6 +304,8 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
 
   const hasCleanSketch = Boolean(nonAkta.foto_sket_pecah);
   const hasRoughSketch = Boolean(nonAkta.foto_sket_kasar);
+  const canReRefine = hasRoughSketch || Boolean(lastUploadedPayload);
+  const hasMultipleLots = isPemecahan && (nonAkta.bidang_pecahan?.length ?? 0) >= 2;
 
   return (
     <div className="p-3.5 rounded-xl border border-teal-900/15 dark:border-teal-500/25 bg-white dark:bg-[#081E22] space-y-3">
@@ -264,7 +328,10 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
                 foto_sket_pecah: '',
                 foto_sket_kasar: '',
               }));
+              setActiveSpec(null);
+              setLastUploadedPayload(null);
               setRefineSummary(null);
+              setRefineError(null);
               setDetectedBounds(null);
             }}
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-500/35 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-[11px] font-semibold shrink-0 self-start"
@@ -336,8 +403,9 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
           />
         </label>
 
-        {hasRoughSketch && (
+        {canReRefine && (
           <button
+            id="btn-rerefine-sket"
             type="button"
             onClick={() => void handleReRefineStoredRough()}
             disabled={isRefining || isAutoBuilding}
@@ -348,6 +416,67 @@ export const SketchRefinerStudio: React.FC<SketchRefinerStudioProps> = ({
           </button>
         )}
       </div>
+
+      {/* Precision CAD Adjustment Bar (when active CAD/AI spec exists) */}
+      {(activeSpec || hasMultipleLots) && (
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-teal-900/10 dark:border-teal-500/20">
+          {hasMultipleLots && (
+            <div className="inline-flex items-center rounded-lg border border-teal-900/15 dark:border-teal-500/30 bg-slate-50 dark:bg-[#06181B] p-0.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => void handleGenerateAutoCad('vertical')}
+                disabled={isRefining || isAutoBuilding}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold transition ${
+                  splitOrientation === 'vertical'
+                    ? 'bg-teal-700 text-white'
+                    : 'text-slate-600 dark:text-teal-200 hover:bg-white/70 dark:hover:bg-teal-900/40'
+                }`}
+              >
+                <Columns2 className="w-3 h-3" />
+                <span>Bagi Kiri–Kanan</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleGenerateAutoCad('horizontal')}
+                disabled={isRefining || isAutoBuilding}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold transition ${
+                  splitOrientation === 'horizontal'
+                    ? 'bg-teal-700 text-white'
+                    : 'text-slate-600 dark:text-teal-200 hover:bg-white/70 dark:hover:bg-teal-900/40'
+                }`}
+              >
+                <Rows2 className="w-3 h-3" />
+                <span>Bagi Atas–Bawah</span>
+              </button>
+            </div>
+          )}
+
+          {activeSpec && (
+            <>
+              <button
+                id="btn-rotate-sket-90"
+                type="button"
+                onClick={() => void handleRotateSpec90()}
+                disabled={isRefining || isAutoBuilding}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-teal-500/30 bg-white dark:bg-[#0B262B] hover:bg-slate-50 dark:hover:bg-teal-900/40 text-[11px] font-semibold text-slate-700 dark:text-teal-100 disabled:opacity-50"
+              >
+                <RotateCw className="w-3 h-3 text-teal-600 dark:text-teal-300" />
+                <span>Putar 90°</span>
+              </button>
+              <button
+                id="btn-sync-sket-labels"
+                type="button"
+                onClick={() => void handleSyncFormLabels()}
+                disabled={isRefining || isAutoBuilding}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-teal-500/30 bg-white dark:bg-[#0B262B] hover:bg-slate-50 dark:hover:bg-teal-900/40 text-[11px] font-semibold text-slate-700 dark:text-teal-100 disabled:opacity-50"
+              >
+                <Tag className="w-3 h-3 text-teal-600 dark:text-teal-300" />
+                <span>Sinkronkan Batas &amp; Luas Form</span>
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Status / Error / Boundary Suggestion */}
       {refineError && (

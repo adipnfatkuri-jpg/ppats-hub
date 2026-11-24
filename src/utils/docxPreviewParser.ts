@@ -42,6 +42,7 @@ export interface PreviewParagraphBlock {
 export interface PreviewTableCell {
   blocks: PreviewBlock[];
   widthPct?: number;
+  verticalAlign?: 'top' | 'center' | 'bottom';
   rowSpan: number;
   hidden: boolean;
   borders: {
@@ -504,7 +505,11 @@ function hasVisibleBorder(borderXml: string, side: string): boolean | undefined 
   return v !== 'none' && v !== 'nil';
 }
 
-function parseTableXml(innerXml: string, imageMap?: Map<string, string>): PreviewTableBlock {
+function parseTableXml(
+  innerXml: string,
+  imageMap?: Map<string, string>,
+  parentWidthDxa = 9310
+): PreviewTableBlock {
   const tblPr = extractElements(innerXml, ['w:tblPr'])[0]?.inner ?? '';
   const tblW = extractElements(tblPr, ['w:tblW'])[0];
   const tblWVal = tblW ? getAttr(tblW.open, 'w:w') : undefined;
@@ -523,8 +528,14 @@ function parseTableXml(innerXml: string, imageMap?: Map<string, string>): Previe
   let widthPct = tblW ? parsePercentageWidth(tblWVal, tblWType) : undefined;
   if (widthPct === undefined) {
     if (tblDxa) {
-      const printableDxa = Math.max(4000, 9310 - (Number.isFinite(indentTwips) ? indentTwips : 0));
-      widthPct = tblDxa >= printableDxa * 0.94 ? 100 : Math.min(100, Math.round((tblDxa / printableDxa) * 100));
+      const printableDxa = Math.max(
+        1800,
+        parentWidthDxa - (Number.isFinite(indentTwips) ? indentTwips : 0)
+      );
+      widthPct =
+        tblDxa >= printableDxa * 0.9
+          ? 100
+          : Math.min(100, Math.round((tblDxa / printableDxa) * 100));
     } else {
       widthPct = 100;
     }
@@ -564,6 +575,11 @@ function parseTableXml(innerXml: string, imageMap?: Map<string, string>): Previe
         vMerge = val === 'restart' ? 'restart' : 'continue';
       }
 
+      const vAlignEl = extractElements(tcPr, ['w:vAlign'])[0];
+      const vAlignVal = vAlignEl ? getAttr(vAlignEl.open, 'w:val') : undefined;
+      const verticalAlign: PreviewTableCell['verticalAlign'] =
+        vAlignVal === 'bottom' ? 'bottom' : vAlignVal === 'center' ? 'center' : 'top';
+
       const tcBorders = extractElements(tcPr, ['w:tcBorders'])[0]?.inner ?? '';
       const borders = {
         top: hasVisibleBorder(tcBorders, 'w:top') ?? defaultBorders.top,
@@ -574,18 +590,20 @@ function parseTableXml(innerXml: string, imageMap?: Map<string, string>): Previe
 
       const children = extractElements(tc.inner, ['w:p', 'w:tbl']);
       const blocks: PreviewBlock[] = [];
+      const childParentDxa = cellDxa && cellDxa > 0 ? cellDxa : parentWidthDxa;
       for (const ch of children) {
         if (ch.tag === 'w:p') {
           const parsedP = parseParagraphXml(ch.inner, imageMap);
           blocks.push(parsedP.paragraph);
         } else if (ch.tag === 'w:tbl') {
-          blocks.push(parseTableXml(ch.inner, imageMap));
+          blocks.push(parseTableXml(ch.inner, imageMap, childParentDxa));
         }
       }
 
       cells.push({
         blocks,
         widthPct: cellWidthPct,
+        verticalAlign,
         rowSpan: 1,
         hidden: false,
         borders,

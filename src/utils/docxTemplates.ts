@@ -16,6 +16,7 @@ import {
   TableLayoutType,
   TableRow,
   TextRun,
+  VerticalAlign,
   VerticalMergeType,
   WidthType,
 } from 'docx';
@@ -1308,11 +1309,15 @@ function lp(
     hanging?: number;
     pageBreakBefore?: boolean;
     borderBottom?: boolean;
+    keepNext?: boolean;
+    keepLines?: boolean;
   }
 ): Paragraph {
   return new Paragraph({
     alignment: opts?.align ?? AlignmentType.LEFT,
     pageBreakBefore: opts?.pageBreakBefore ?? false,
+    keepNext: opts?.keepNext,
+    keepLines: opts?.keepLines,
     indent:
       opts?.indentLeft || opts?.firstLine || opts?.hanging
         ? {
@@ -1499,11 +1504,11 @@ function makeLampiranTwoColList(
 }
 
 function makeSaksiSignLines(spaceBefore = 200): Array<Paragraph | Table> {
-  const tableW = 6800;
-  const nameW = 4300;
-  const signW = tableW - nameW;
+  const tableW = 6600;
+  const signW = 2100;
+  const nameW = tableW - signW;
   return [
-    lp('Saksi – saksi :', { spaceBefore, spaceAfter: 160, line: LAMPIRAN_LINE }),
+    lp('Saksi – saksi :', { spaceBefore, spaceAfter: 160, line: LAMPIRAN_LINE, keepNext: true }),
     new Table({
       width: { size: tableW, type: WidthType.DXA },
       layout: TableLayoutType.FIXED,
@@ -1511,30 +1516,66 @@ function makeSaksiSignLines(spaceBefore = 200): Array<Paragraph | Table> {
       borders: NO_TABLE_BORDERS,
       rows: [
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: nameW, type: WidthType.DXA },
               borders: NO_BORDER,
-              children: [lp('1. {{saksi_1_nama}}', { spaceAfter: 360, line: LAMPIRAN_LINE })],
+              verticalAlign: VerticalAlign.BOTTOM,
+              margins: { top: 0, bottom: 0, left: 0, right: 80 },
+              children: [
+                lp('1. {{saksi_1_nama}}', {
+                  indentLeft: 260,
+                  hanging: 260,
+                  spaceAfter: 340,
+                  line: LAMPIRAN_LINE,
+                }),
+              ],
             }),
             new TableCell({
               width: { size: signW, type: WidthType.DXA },
               borders: NO_BORDER,
-              children: [lp('( .............................. )', { spaceAfter: 360, line: LAMPIRAN_LINE })],
+              verticalAlign: VerticalAlign.BOTTOM,
+              margins: { top: 0, bottom: 0, left: 40, right: 0 },
+              children: [
+                lp('( ................. )', {
+                  align: AlignmentType.RIGHT,
+                  spaceAfter: 340,
+                  line: LAMPIRAN_LINE,
+                }),
+              ],
             }),
           ],
         }),
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: nameW, type: WidthType.DXA },
               borders: NO_BORDER,
-              children: [lp('2. {{saksi_2_nama}}', { spaceAfter: 80, line: LAMPIRAN_LINE })],
+              verticalAlign: VerticalAlign.BOTTOM,
+              margins: { top: 0, bottom: 0, left: 0, right: 80 },
+              children: [
+                lp('2. {{saksi_2_nama}}', {
+                  indentLeft: 260,
+                  hanging: 260,
+                  spaceAfter: 60,
+                  line: LAMPIRAN_LINE,
+                }),
+              ],
             }),
             new TableCell({
               width: { size: signW, type: WidthType.DXA },
               borders: NO_BORDER,
-              children: [lp('( .............................. )', { spaceAfter: 80, line: LAMPIRAN_LINE })],
+              verticalAlign: VerticalAlign.BOTTOM,
+              margins: { top: 0, bottom: 0, left: 40, right: 0 },
+              children: [
+                lp('( ................. )', {
+                  align: AlignmentType.RIGHT,
+                  spaceAfter: 60,
+                  line: LAMPIRAN_LINE,
+                }),
+              ],
             }),
           ],
         }),
@@ -2016,10 +2057,10 @@ function buildLampiranBundelDocument(): Document {
               }),
             ],
           }),
-          lp('Mengetahui,', { align: AlignmentType.CENTER, spaceBefore: 160, spaceAfter: 0, line: LAMPIRAN_LINE }),
-          lp('PPATS / {{jabatan_camat_upper}}', { align: AlignmentType.CENTER, spaceAfter: SIGNATURE_SPACE_STANDARD, line: LAMPIRAN_LINE }),
-          lp('{{nama_ppats}}', { bold: true, underline: true, align: AlignmentType.CENTER, spaceAfter: 0, line: LAMPIRAN_LINE }),
-          lp('NIP. {{nip_ppats}}', { align: AlignmentType.CENTER, spaceAfter: 20, line: LAMPIRAN_LINE }),
+          lp('Mengetahui,', { align: AlignmentType.CENTER, spaceBefore: 160, spaceAfter: 0, line: LAMPIRAN_LINE, keepNext: true, keepLines: true }),
+          lp('PPATS / {{jabatan_camat_upper}}', { align: AlignmentType.CENTER, spaceAfter: SIGNATURE_SPACE_STANDARD, line: LAMPIRAN_LINE, keepNext: true, keepLines: true }),
+          lp('{{nama_ppats}}', { bold: true, underline: true, align: AlignmentType.CENTER, spaceAfter: 0, line: LAMPIRAN_LINE, keepNext: true, keepLines: true }),
+          lp('NIP. {{nip_ppats}}', { align: AlignmentType.CENTER, spaceAfter: 20, line: LAMPIRAN_LINE, keepLines: true }),
 
           // ==================== HALAMAN 4: SURAT PERNYATAAN BPHTB ====================
           lp('SURAT PERNYATAAN', { pageBreakBefore: true, bold: true, underline: true, align: AlignmentType.CENTER, spaceAfter: 200, line: LAMPIRAN_LINE }),
@@ -2146,49 +2187,118 @@ function buildLampiranBundelDocument(): Document {
           new Table({
             width: { size: LAMPIRAN_CONTENT_WIDTH_DXA, type: WidthType.DXA },
             layout: TableLayoutType.FIXED,
-            columnWidths: [3400, 1900, 4010],
+            columnWidths: [5100, LAMPIRAN_CONTENT_WIDTH_DXA - 5100],
             borders: NO_TABLE_BORDERS,
             rows: [
               new TableRow({
+                cantSplit: true,
                 children: [
                   new TableCell({
-                    width: { size: 3400, type: WidthType.DXA },
+                    width: { size: 5100, type: WidthType.DXA },
                     borders: NO_BORDER,
+                    margins: { top: 0, bottom: 0, left: 0, right: 120 },
                     children: [
-                      lp('Saksi – saksi :', { spaceAfter: 200, line: LAMPIRAN_LINE }),
-                      lp('1. {{saksi_1_nama}}', { spaceAfter: 440, line: LAMPIRAN_LINE }),
-                      lp('2. {{saksi_2_nama}}', { spaceAfter: 40, line: LAMPIRAN_LINE }),
+                      lp('Saksi – saksi :', { spaceAfter: 180, line: LAMPIRAN_LINE, keepNext: true }),
+                      new Table({
+                        width: { size: 4980, type: WidthType.DXA },
+                        layout: TableLayoutType.FIXED,
+                        columnWidths: [3280, 1700],
+                        borders: NO_TABLE_BORDERS,
+                        rows: [
+                          new TableRow({
+                            cantSplit: true,
+                            children: [
+                              new TableCell({
+                                width: { size: 3280, type: WidthType.DXA },
+                                borders: NO_BORDER,
+                                verticalAlign: VerticalAlign.BOTTOM,
+                                margins: { top: 0, bottom: 0, left: 0, right: 60 },
+                                children: [
+                                  lp('1. {{saksi_1_nama}}', {
+                                    indentLeft: 260,
+                                    hanging: 260,
+                                    spaceAfter: 380,
+                                    line: LAMPIRAN_LINE,
+                                  }),
+                                ],
+                              }),
+                              new TableCell({
+                                width: { size: 1700, type: WidthType.DXA },
+                                borders: NO_BORDER,
+                                verticalAlign: VerticalAlign.BOTTOM,
+                                margins: { top: 0, bottom: 0, left: 20, right: 0 },
+                                children: [
+                                  lp('(.............)', {
+                                    align: AlignmentType.RIGHT,
+                                    spaceAfter: 380,
+                                    line: LAMPIRAN_LINE,
+                                  }),
+                                ],
+                              }),
+                            ],
+                          }),
+                          new TableRow({
+                            cantSplit: true,
+                            children: [
+                              new TableCell({
+                                width: { size: 3280, type: WidthType.DXA },
+                                borders: NO_BORDER,
+                                verticalAlign: VerticalAlign.BOTTOM,
+                                margins: { top: 0, bottom: 0, left: 0, right: 60 },
+                                children: [
+                                  lp('2. {{saksi_2_nama}}', {
+                                    indentLeft: 260,
+                                    hanging: 260,
+                                    spaceAfter: 40,
+                                    line: LAMPIRAN_LINE,
+                                  }),
+                                ],
+                              }),
+                              new TableCell({
+                                width: { size: 1700, type: WidthType.DXA },
+                                borders: NO_BORDER,
+                                verticalAlign: VerticalAlign.BOTTOM,
+                                margins: { top: 0, bottom: 0, left: 20, right: 0 },
+                                children: [
+                                  lp('(.............)', {
+                                    align: AlignmentType.RIGHT,
+                                    spaceAfter: 40,
+                                    line: LAMPIRAN_LINE,
+                                  }),
+                                ],
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
                     ],
                   }),
                   new TableCell({
-                    width: { size: 1900, type: WidthType.DXA },
+                    width: { size: LAMPIRAN_CONTENT_WIDTH_DXA - 5100, type: WidthType.DXA },
                     borders: NO_BORDER,
+                    margins: { top: 0, bottom: 0, left: 100, right: 0 },
                     children: [
-                      lp('', { spaceAfter: 200, line: LAMPIRAN_LINE }),
-                      lp('( .................... )', { spaceAfter: 440, line: LAMPIRAN_LINE }),
-                      lp('( .................... )', { spaceAfter: 40, line: LAMPIRAN_LINE }),
-                    ],
-                  }),
-                  new TableCell({
-                    width: { size: 4010, type: WidthType.DXA },
-                    borders: NO_BORDER,
-                    children: [
+                      lp('{{kota_kabupaten}}, {{tanggal_akta}}', {
+                        align: AlignmentType.CENTER,
+                        spaceAfter: 0,
+                        line: LAMPIRAN_LINE,
+                      }),
                       lp('Yang membuat pernyataan,', {
                         align: AlignmentType.CENTER,
                         spaceAfter: SIGNATURE_SPACE_METERAI,
                         line: LAMPIRAN_LINE,
                       }),
-                      lp('{{penerima_nama}}', { bold: true, align: AlignmentType.CENTER, spaceAfter: 20, line: LAMPIRAN_LINE }),
+                      lp('{{penerima_nama}}', { bold: true, underline: true, align: AlignmentType.CENTER, spaceAfter: 20, line: LAMPIRAN_LINE }),
                     ],
                   }),
                 ],
               }),
             ],
           }),
-          lp('Mengetahui,', { align: AlignmentType.CENTER, spaceBefore: 100, spaceAfter: 0, line: LAMPIRAN_LINE }),
-          lp('PPATS / {{jabatan_camat_upper}}', { align: AlignmentType.CENTER, spaceAfter: SIGNATURE_SPACE_STANDARD, line: LAMPIRAN_LINE }),
-          lp('{{nama_ppats}}', { bold: true, underline: true, align: AlignmentType.CENTER, spaceAfter: 0, line: LAMPIRAN_LINE }),
-          lp('NIP. {{nip_ppats}}', { align: AlignmentType.CENTER, spaceAfter: 20, line: LAMPIRAN_LINE }),
+          lp('Mengetahui,', { align: AlignmentType.CENTER, spaceBefore: 100, spaceAfter: 0, line: LAMPIRAN_LINE, keepNext: true, keepLines: true }),
+          lp('PPATS / {{jabatan_camat_upper}}', { align: AlignmentType.CENTER, spaceAfter: SIGNATURE_SPACE_STANDARD, line: LAMPIRAN_LINE, keepNext: true, keepLines: true }),
+          lp('{{nama_ppats}}', { bold: true, underline: true, align: AlignmentType.CENTER, spaceAfter: 0, line: LAMPIRAN_LINE, keepNext: true, keepLines: true }),
+          lp('NIP. {{nip_ppats}}', { align: AlignmentType.CENTER, spaceAfter: 20, line: LAMPIRAN_LINE, keepLines: true }),
 
           // ==================== HALAMAN 6: SURAT PERNYATAAN SPPT / PBB (PEMILIK AWAL) ====================
           lp('SURAT PERNYATAAN', { pageBreakBefore: true, bold: true, underline: true, align: AlignmentType.CENTER, spaceAfter: 200, line: LAMPIRAN_LINE }),
@@ -2433,12 +2543,118 @@ function buildLampiranBundelDocument(): Document {
             spaceAfter: 260,
             line: LAMPIRAN_LINE_AIRY,
           }),
-          lp('{{kota_kabupaten}}, {{tanggal_akta}}', { indentLeft: 4600, spaceAfter: 20, line: LAMPIRAN_LINE }),
-          lp('Yang Membuat Pernyataan,', { indentLeft: 4600, spaceAfter: 360, line: LAMPIRAN_LINE }),
-          lp('{{#pihak_data_pribadi_ttd}}', { indentLeft: 4200, spaceAfter: 0, line: 220 }),
-          lp('{{no}}. {{nama}}   ( .......................... )', { indentLeft: 4200, spaceAfter: 480, line: LAMPIRAN_LINE }),
-          lp('{{/pihak_data_pribadi_ttd}}', { indentLeft: 4200, spaceAfter: 160, line: 220 }),
-          ...makeSaksiSignLines(240),
+          new Table({
+            width: { size: LAMPIRAN_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+            layout: TableLayoutType.FIXED,
+            columnWidths: [4250, LAMPIRAN_CONTENT_WIDTH_DXA - 4250],
+            borders: NO_TABLE_BORDERS,
+            rows: [
+              new TableRow({
+                cantSplit: true,
+                children: [
+                  new TableCell({
+                    width: { size: 4250, type: WidthType.DXA },
+                    borders: NO_BORDER,
+                    margins: { top: 0, bottom: 0, left: 0, right: 120 },
+                    children: [
+                      lp('Mengetahui,', {
+                        align: AlignmentType.CENTER,
+                        spaceAfter: 0,
+                        line: LAMPIRAN_LINE,
+                        keepNext: true,
+                        keepLines: true,
+                      }),
+                      lp('PPATS / {{jabatan_camat_upper}}', {
+                        align: AlignmentType.CENTER,
+                        spaceAfter: SIGNATURE_SPACE_STANDARD,
+                        line: LAMPIRAN_LINE,
+                        keepNext: true,
+                        keepLines: true,
+                      }),
+                      lp('{{nama_ppats}}', {
+                        bold: true,
+                        underline: true,
+                        align: AlignmentType.CENTER,
+                        spaceAfter: 0,
+                        line: LAMPIRAN_LINE,
+                        keepNext: true,
+                        keepLines: true,
+                      }),
+                      lp('NIP. {{nip_ppats}}', {
+                        align: AlignmentType.CENTER,
+                        spaceAfter: 20,
+                        line: LAMPIRAN_LINE,
+                        keepLines: true,
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    width: { size: LAMPIRAN_CONTENT_WIDTH_DXA - 4250, type: WidthType.DXA },
+                    borders: NO_BORDER,
+                    margins: { top: 0, bottom: 0, left: 100, right: 0 },
+                    children: [
+                      lp('{{kota_kabupaten}}, {{tanggal_akta}}', {
+                        align: AlignmentType.CENTER,
+                        spaceAfter: 0,
+                        line: LAMPIRAN_LINE,
+                        keepNext: true,
+                      }),
+                      lp('Yang Membuat Pernyataan,', {
+                        align: AlignmentType.CENTER,
+                        spaceAfter: 240,
+                        line: LAMPIRAN_LINE,
+                        keepNext: true,
+                      }),
+                      new Table({
+                        width: { size: LAMPIRAN_CONTENT_WIDTH_DXA - 4350, type: WidthType.DXA },
+                        layout: TableLayoutType.FIXED,
+                        columnWidths: [LAMPIRAN_CONTENT_WIDTH_DXA - 4350 - 1650, 1650],
+                        borders: NO_TABLE_BORDERS,
+                        rows: [
+                          new TableRow({
+                            cantSplit: true,
+                            children: [
+                              new TableCell({
+                                width: {
+                                  size: LAMPIRAN_CONTENT_WIDTH_DXA - 4350 - 1650,
+                                  type: WidthType.DXA,
+                                },
+                                borders: NO_BORDER,
+                                verticalAlign: VerticalAlign.BOTTOM,
+                                margins: { top: 0, bottom: 0, left: 0, right: 60 },
+                                children: [
+                                  lp('{{#pihak_data_pribadi_ttd}}{{no}}. {{nama}}', {
+                                    indentLeft: 260,
+                                    hanging: 260,
+                                    spaceAfter: 360,
+                                    line: LAMPIRAN_LINE,
+                                  }),
+                                ],
+                              }),
+                              new TableCell({
+                                width: { size: 1650, type: WidthType.DXA },
+                                borders: NO_BORDER,
+                                verticalAlign: VerticalAlign.BOTTOM,
+                                margins: { top: 0, bottom: 0, left: 20, right: 0 },
+                                children: [
+                                  lp('(.............){{/pihak_data_pribadi_ttd}}', {
+                                    align: AlignmentType.RIGHT,
+                                    spaceAfter: 360,
+                                    line: LAMPIRAN_LINE,
+                                  }),
+                                ],
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+          ...makeSaksiSignLines(220),
         ],
       },
     ],

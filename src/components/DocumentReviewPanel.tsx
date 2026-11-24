@@ -184,10 +184,19 @@ const RenderBlock: React.FC<{ block: PreviewBlock; inTable?: boolean }> = ({
   return <RenderTable block={block} />;
 };
 
-const RenderTable: React.FC<{ block: PreviewTableBlock }> = ({ block }) => {
+const isSignatureDotsCell = (blocks: PreviewBlock[]): boolean => {
+  if (blocks.length !== 1 || blocks[0].kind !== 'paragraph') return false;
+  const txt = blocks[0].runs.map((r) => r.text).join('').trim();
+  return /^\(\s*[._\s]{4,}\s*\)$/.test(txt);
+};
+
+const RenderTable: React.FC<{ block: PreviewTableBlock; nested?: boolean }> = ({
+  block,
+  nested,
+}) => {
   return (
     <div
-      className="my-1.5"
+      className={nested ? 'my-0.5' : 'my-1.5'}
       style={{
         paddingLeft: block.indentLeftPx > 0 ? `${block.indentLeftPx}px` : undefined,
       }}
@@ -207,23 +216,36 @@ const RenderTable: React.FC<{ block: PreviewTableBlock }> = ({ block }) => {
                   borderBottom: cell.borders.bottom ? '1px solid #334155' : 'none',
                   borderLeft: cell.borders.left ? '1px solid #334155' : 'none',
                   borderRight: cell.borders.right ? '1px solid #334155' : 'none',
-                  verticalAlign: 'top',
+                  verticalAlign:
+                    cell.verticalAlign === 'bottom'
+                      ? 'bottom'
+                      : cell.verticalAlign === 'center'
+                      ? 'middle'
+                      : 'top',
                 };
                 const hasAnyBorder =
                   cell.borders.top ||
                   cell.borders.bottom ||
                   cell.borders.left ||
                   cell.borders.right;
+                const noWrapDots = isSignatureDotsCell(cell.blocks);
                 return (
                   <td
                     key={cIdx}
                     rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
                     style={borderStyle}
-                    className={hasAnyBorder ? 'px-2 py-1' : 'px-1 py-0.5'}
+                    className={`${hasAnyBorder ? 'px-2 py-1' : 'px-1 py-0.5'}${
+                      noWrapDots ? ' whitespace-nowrap' : ''
+                    }`}
+                    data-sig-dots={noWrapDots ? 'true' : undefined}
                   >
-                    {cell.blocks.map((b, bIdx) => (
-                      <RenderBlock key={bIdx} block={b} inTable />
-                    ))}
+                    {cell.blocks.map((b, bIdx) =>
+                      b.kind === 'table' ? (
+                        <RenderTable key={bIdx} block={b} nested />
+                      ) : (
+                        <RenderBlock key={bIdx} block={b} inTable />
+                      )
+                    )}
                   </td>
                 );
               })}

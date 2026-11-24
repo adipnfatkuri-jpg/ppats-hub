@@ -1420,6 +1420,141 @@ test('Non-Akta Permohonan signature lists all pemohon names in full without dkk 
   }
 });
 
+test('Multi-party & long-name signatures use non-wrapping 2-column dot cells, consistent dates, and Pengesahan on non-Pengantar/non-Permohonan docs', async () => {
+  const { shouldAttachMultiPagePengesahan } = await import('./nonAktaTemplates');
+
+  // 1. Pure multi-page Pengesahan rule strictly excludes Pengantar & Permohonan
+  assert.equal(
+    shouldAttachMultiPagePengesahan({
+      isPengantarOrPermohonan: true,
+      hasExistingPengesahan: false,
+      partyCount: 6,
+      estimatedLineUnits: 90,
+    }),
+    false
+  );
+  assert.equal(
+    shouldAttachMultiPagePengesahan({
+      isPengantarOrPermohonan: false,
+      hasExistingPengesahan: true,
+      partyCount: 4,
+      estimatedLineUnits: 60,
+    }),
+    false
+  );
+  assert.equal(
+    shouldAttachMultiPagePengesahan({
+      isPengantarOrPermohonan: false,
+      hasExistingPengesahan: false,
+      partyCount: 2,
+      estimatedLineUnits: 40,
+    }),
+    true
+  );
+  assert.equal(
+    shouldAttachMultiPagePengesahan({
+      isPengantarOrPermohonan: false,
+      hasExistingPengesahan: false,
+      partyCount: 1,
+      estimatedLineUnits: 52,
+    }),
+    true
+  );
+
+  // 2. Long signer names across Turun Waris, Pengecekan, Akta Lampiran, and Waris C
+  const longParties = [
+    'TUMIYEM BINTI HARJOWIYONO ALMARHUM',
+    'YUDI WIYONO PRASETYO NUGROHO, S.H., M.Kn.',
+    'GIYEM KARTINI WIDYANINGRUM',
+    'SUWARDJO MARTODIHARJO',
+  ].map((nama, idx) => ({
+    ...INITIAL_SEED_RECORDS[0].para_pihak[0],
+    id: `long-${idx + 1}`,
+    peran: (['Pihak I', 'Pihak II', 'Pihak III', 'Pihak IV'] as const)[idx],
+    nama,
+  }));
+
+  const twRec = {
+    ...INITIAL_SEED_RECORDS[0],
+    layanan: 'Turun Waris' as const,
+    para_pihak: longParties,
+    akta: { ...INITIAL_SEED_RECORDS[0].akta, tanggal_akta: '15-01-2026' },
+  };
+  const twFiles = await generateBundleFiles(twRec, DEFAULT_OFFICE_SETTINGS, {});
+  const twXml = new PizZip(twFiles[0].bytes).file('word/document.xml')?.asText() ?? '';
+  assert.equal(
+    twXml.includes('(....................)'),
+    false,
+    'Turun Waris must not concatenate inline (....................) after signer names'
+  );
+  assert.equal(
+    /ALMARHUM\s*\.{4,}|M\.Kn\.\s*\.{4,}/.test(twXml),
+    false,
+    'Data Pribadi must not concatenate inline dots after signer names'
+  );
+  assert.ok(twXml.includes('(.............)'), 'Signer dot cells must render compact (.............)');
+  assert.ok(twXml.includes('<w:vAlign w:val="bottom"/>'), 'Signer rows must align dots to bottom of name');
+
+  const twPreview = await renderDocxPreviewPages(twRec, DEFAULT_OFFICE_SETTINGS, {}, '02_lampiran_bundel');
+  const twPermohonan = twPreview.pages.find((p) => p.title.includes('Permohonan ATR/BPN'));
+  const twDataPribadi = twPreview.pages.find((p) => p.title.includes('Data Pribadi'));
+  assert.ok(twPermohonan && twDataPribadi, 'Turun Waris preview must have Permohonan and Data Pribadi pages');
+  const pageText = (pg: typeof twPreview.pages[number]) => JSON.stringify(pg.blocks);
+  assert.equal(
+    pageText(twPermohonan).includes('Mengetahui,'),
+    false,
+    'Permohonan ATR/BPN must NOT include Mengetahui Pengesahan'
+  );
+  assert.ok(
+    pageText(twDataPribadi).includes('Mengetahui,'),
+    'Non-Akta Pemrosesan Data Pribadi must include Mengetahui Pengesahan'
+  );
+
+  // Pengecekan Sertipikat: uniform date (no slash date in signatures), Permohonan has no Mengetahui, Keabsahan has Mengetahui
+  const cekRec = {
+    ...INITIAL_SEED_RECORDS[0],
+    layanan: 'Pengecekan Sertipikat' as const,
+    para_pihak: longParties.slice(0, 2),
+    akta: { ...INITIAL_SEED_RECORDS[0].akta, tanggal_akta: '09-04-2026' },
+  };
+  const cekPreview = await renderDocxPreviewPages(cekRec, DEFAULT_OFFICE_SETTINGS, {}, '02_lampiran_bundel');
+  assert.equal(pageText(cekPreview.pages[0]).includes('Mengetahui,'), false, 'Permohonan Pengecekan must NOT have Mengetahui');
+  assert.ok(pageText(cekPreview.pages[1]).includes('9 April 2026'), 'Surat Kuasa Pengecekan must use uniform Indonesian date');
+  assert.equal(pageText(cekPreview.pages[1]).includes('09/04/2026'), false, 'Surat Kuasa Pengecekan must not use slash date');
+  assert.ok(pageText(cekPreview.pages[2]).includes('Mengetahui,'), 'Keabsahan Dokumen Pengecekan must include Mengetahui');
+  assert.ok(pageText(cekPreview.pages[2]).includes('9 April 2026'), 'Keabsahan Dokumen Pengecekan must use uniform Indonesian date');
+
+  // Akta Bundel Lampiran: Hal. 1 Pengantar & Hal. 2 Permohonan have NO Mengetahui, Hal. 8 Data Pribadi HAS Mengetahui & 2-col table
+  const aktaRec = {
+    ...INITIAL_SEED_RECORDS[0],
+    layanan: 'AJB' as const,
+    para_pihak: [
+      { ...longParties[0], peran: 'Pihak I' as const },
+      { ...longParties[1], peran: 'Pihak I' as const },
+      { ...longParties[2], peran: 'Pihak II' as const },
+    ],
+  };
+  const aktaLampPreview = await renderDocxPreviewPages(aktaRec, DEFAULT_OFFICE_SETTINGS, {}, '02_lampiran_bundel');
+  assert.equal(pageText(aktaLampPreview.pages[0]).includes('Mengetahui,'), false, 'Surat Pengantar must NOT have Mengetahui');
+  assert.equal(pageText(aktaLampPreview.pages[1]).includes('Mengetahui,'), false, 'Permohonan ATR/BPN Akta must NOT have Mengetahui');
+  const aktaDataPribadi = aktaLampPreview.pages.find((p) => p.title.includes('Data Pribadi'));
+  assert.ok(aktaDataPribadi && pageText(aktaDataPribadi).includes('Mengetahui,'), 'Akta Data Pribadi (2 hal) must include Mengetahui');
+  assert.ok(pageText(aktaDataPribadi).includes('(.............)'), 'Akta Data Pribadi must render 2-col signer dots');
+
+  // Waris C: no inline dots, no 'tgl.' inconsistency, Berita Acara Kesaksian has Mengetahui
+  const warisCRec = {
+    ...INITIAL_SEED_RECORDS[0],
+    layanan: 'Waris C' as const,
+    para_pihak: longParties,
+    akta: { ...INITIAL_SEED_RECORDS[0].akta, tanggal_akta: '15-01-2026' },
+  };
+  const warisCFiles = await generateBundleFiles(warisCRec, DEFAULT_OFFICE_SETTINGS, {});
+  const warisCXml = new PizZip(warisCFiles[0].bytes).file('word/document.xml')?.asText() ?? '';
+  assert.equal(warisCXml.includes('tgl. '), false, 'Waris C must not contain inconsistent "tgl." date prefix');
+  assert.equal(warisCXml.includes('(....................)'), false, 'Waris C must not concatenate inline (....................) dots');
+  assert.ok(warisCXml.includes('Mengetahui,'), 'Waris C multi-page Berita Acara / Pengesahan must include Mengetahui,');
+});
+
 
 
 
