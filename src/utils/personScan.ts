@@ -63,7 +63,7 @@ export function normalizeScannedPersonInfo(
 }
 
 /**
- * Mengoptimalkan file KTP/identitas lalu memanggil endpoint /api/extract-person.
+ * Mengoptimalkan file KTP/identitas lalu memindai melalui layanan AI (/api/extract-person).
  */
 export async function scanPersonFromFiles(
   files: File[],

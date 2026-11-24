@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { auth, googleProvider } from './firebase';
@@ -52,15 +52,44 @@ import {
 } from './utils/cloudSync';
 import { NavSection, Sidebar } from './components/Sidebar';
 import { DashboardModule } from './components/DashboardModule';
-import { WizardModule } from './components/WizardModule';
-import { TaxCalculatorModule } from './components/TaxCalculatorModule';
-import { RegisterModule } from './components/RegisterModule';
-import { ReportModule } from './components/ReportModule';
-import { NonAktaRekapModule } from './components/NonAktaRekapModule';
-import { SettingsModule } from './components/SettingsModule';
-import { ReceiptModal } from './components/ReceiptModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { useTheme } from './hooks/useTheme';
+
+const WizardModule = lazy(() =>
+  import('./components/WizardModule').then((m) => ({ default: m.WizardModule }))
+);
+const TaxCalculatorModule = lazy(() =>
+  import('./components/TaxCalculatorModule').then((m) => ({ default: m.TaxCalculatorModule }))
+);
+const RegisterModule = lazy(() =>
+  import('./components/RegisterModule').then((m) => ({ default: m.RegisterModule }))
+);
+const ReportModule = lazy(() =>
+  import('./components/ReportModule').then((m) => ({ default: m.ReportModule }))
+);
+const NonAktaRekapModule = lazy(() =>
+  import('./components/NonAktaRekapModule').then((m) => ({ default: m.NonAktaRekapModule }))
+);
+const SettingsModule = lazy(() =>
+  import('./components/SettingsModule').then((m) => ({ default: m.SettingsModule }))
+);
+const ReceiptModal = lazy(() =>
+  import('./components/ReceiptModal').then((m) => ({ default: m.ReceiptModal }))
+);
+
+const ModuleLoadingFallback: React.FC = () => (
+  <div className="space-y-4" aria-busy="true" aria-label="Memuat modul">
+    <div className="h-8 w-56 bg-teal-900/10 dark:bg-teal-400/10 rounded-xl animate-pulse" />
+    <div className="bento-card p-6 space-y-3">
+      <div className="h-5 w-72 bg-teal-900/10 dark:bg-teal-400/10 rounded-lg animate-pulse" />
+      <div className="h-28 w-full bg-teal-900/5 dark:bg-teal-400/5 rounded-xl animate-pulse" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="h-16 bg-teal-900/5 dark:bg-teal-400/5 rounded-xl animate-pulse" />
+        <div className="h-16 bg-teal-900/5 dark:bg-teal-400/5 rounded-xl animate-pulse" />
+      </div>
+    </div>
+  </div>
+);
 
 const SIGNED_OUT_SESSION: CloudSessionInfo = {
   status: 'signed_out',
@@ -650,7 +679,7 @@ export default function App() {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(url);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
       notify(`Backup berhasil diekspor (${payload.records.length} berkas).`, 'success');
     } catch (err) {
       notify(
@@ -763,7 +792,7 @@ export default function App() {
             </div>
           </div>
         ) : (
-          <>
+          <Suspense fallback={<ModuleLoadingFallback />}>
             {activeSection === 'dashboard' && (
               <DashboardModule
                 records={records}
@@ -871,15 +900,19 @@ export default function App() {
                 }}
               />
             )}
-          </>
+          </Suspense>
         )}
       </main>
 
-      <ReceiptModal
-        record={receiptRecord}
-        settings={settings}
-        onClose={() => setReceiptRecord(null)}
-      />
+      {receiptRecord && (
+        <Suspense fallback={null}>
+          <ReceiptModal
+            record={receiptRecord}
+            settings={settings}
+            onClose={() => setReceiptRecord(null)}
+          />
+        </Suspense>
+      )}
       <OfflineIndicator />
     </div>
   );

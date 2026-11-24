@@ -4,37 +4,34 @@ import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  let isInIframe = false;
-  try {
-    isInIframe = window.self !== window.top;
-  } catch {
-    isInIframe = true;
+declare global {
+  interface Window {
+    __simPpatsDeferredPrompt?: Event | null;
   }
-  const isDevOrPreviewHost =
-    import.meta.env.DEV ||
-    isInIframe ||
-    /^ais-dev-/i.test(window.location.hostname);
+}
 
-  if (isDevOrPreviewHost) {
-    navigator.serviceWorker
-      .getRegistrations()
-      .then((regs) => Promise.all(regs.map((reg) => reg.unregister())))
-      .catch(() => {});
-    if ('caches' in window) {
-      window.caches
-        .keys()
-        .then((keys) =>
-          Promise.all(
-            keys
-              .filter((k) => /workbox|precache|pages-cache/i.test(k))
-              .map((k) => window.caches.delete(k))
-          )
-        )
-        .catch(() => {});
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    window.__simPpatsDeferredPrompt = event;
+  });
+
+  if ('serviceWorker' in navigator) {
+    let isInCrossOriginIframe = false;
+    try {
+      isInCrossOriginIframe = window.self !== window.top && window.top?.location.origin !== window.location.origin;
+    } catch {
+      isInCrossOriginIframe = true;
     }
-  } else {
-    registerSW({ immediate: true });
+
+    if (!isInCrossOriginIframe) {
+      registerSW({
+        immediate: true,
+        onRegisterError() {
+          // Abaikan error registrasi SW pada lingkungan browser terbatas
+        },
+      });
+    }
   }
 }
 

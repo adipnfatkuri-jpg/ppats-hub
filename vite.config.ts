@@ -27,9 +27,11 @@ export default defineConfig(() => {
           description:
             'Sistem operasional kantor PPATS & layanan pertanahan terpadu: ekstraksi dokumen cerdas, generator bundel akta Word, buku register repertorium, dan pelaporan BPN & Bapenda.',
           lang: 'id',
-          theme_color: '#0f172a',
-          background_color: '#0f172a',
+          theme_color: '#0F3D3E',
+          background_color: '#0F3D3E',
           display: 'standalone',
+          orientation: 'any',
+          categories: ['business', 'productivity'],
           start_url: '/',
           scope: '/',
           icons: [
@@ -54,26 +56,18 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           globIgnores: ['assets/aistudio/**'],
-          navigateFallback: null,
-          maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+          navigateFallback: '/index.html',
+          navigateFallbackDenylist: [/^\/api\//, /^\/__\//],
+          cleanupOutdatedCaches: true,
+          skipWaiting: true,
+          clientsClaim: true,
+          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
           runtimeCaching: [
             {
-              urlPattern: ({ request, url }) =>
-                request.mode === 'navigate' && !url.pathname.startsWith('/api/'),
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'pages-cache',
-                networkTimeoutSeconds: 5,
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24,
-                },
-                cacheableResponse: {
-                  statuses: [200],
-                },
-              },
+              urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
+              handler: 'NetworkOnly',
             },
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -106,7 +100,7 @@ export default defineConfig(() => {
           ],
         },
         devOptions: {
-          enabled: false,
+          enabled: true,
           type: 'module',
           suppressWarnings: true,
         },
@@ -130,6 +124,41 @@ export default defineConfig(() => {
         },
       },
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('/firebase/') || id.includes('/@firebase/')) {
+              return 'vendor-firebase';
+            }
+            if (
+              id.includes('/docx/') ||
+              id.includes('/docxtemplater/') ||
+              id.includes('/pizzip/') ||
+              id.includes('/jszip/') ||
+              id.includes('/file-saver/')
+            ) {
+              return 'vendor-docx';
+            }
+            if (id.includes('/xlsx/')) {
+              return 'vendor-xlsx';
+            }
+            if (id.includes('/lucide-react/')) {
+              return 'vendor-icons';
+            }
+            if (
+              id.includes('/react/') ||
+              id.includes('/react-dom/') ||
+              id.includes('/scheduler/')
+            ) {
+              return 'vendor-react';
+            }
+            return undefined;
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname, '.'),

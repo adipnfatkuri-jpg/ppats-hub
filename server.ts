@@ -7,11 +7,9 @@ import {
   extractDocumentsWithGemini,
   extractPersonWithGemini,
   mapGeminiError,
-  refineSketchWithGemini,
   resolveGeminiApiKey,
   type ExtractDocumentsRequestBody,
   type ExtractPersonRequestBody,
-  type RefineSketchRequestBody,
 } from './api/_geminiExtractor.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -43,7 +41,7 @@ async function startServer() {
       if (!apiKey) {
         return res.status(503).json({
           error:
-            'GEMINI_API_KEY belum terkonfigurasi dengan benar di server. Silakan periksa atau pilih API key di panel Settings > Secrets (AI Studio) atau Environment Variables (Vercel), atau lanjutkan input manual pada Langkah 2.',
+            'Layanan pemindaian dokumen otomatis belum aktif di server. Hubungi administrator sistem atau lanjutkan input manual pada Langkah 2.',
         });
       }
 
@@ -58,7 +56,7 @@ async function startServer() {
       return res.json(parsed);
     } catch (err: unknown) {
       if (res.headersSent) return;
-      const mapped = mapGeminiError(err, 'Gagal mengekstrak dokumen menggunakan Gemini API.');
+      const mapped = mapGeminiError(err, 'Gagal mengekstrak dokumen melalui layanan pemindaian otomatis.');
       return res.status(mapped.status).json({ error: mapped.error });
     }
   });
@@ -69,7 +67,7 @@ async function startServer() {
       if (!apiKey) {
         return res.status(503).json({
           error:
-            'GEMINI_API_KEY belum terkonfigurasi dengan benar di server. Silakan periksa atau pilih API key di panel Settings > Secrets (AI Studio) atau Environment Variables (Vercel), atau isi data secara manual.',
+            'Layanan pemindaian KTP otomatis belum aktif di server. Hubungi administrator sistem atau isi data secara manual.',
         });
       }
 
@@ -84,36 +82,7 @@ async function startServer() {
       return res.json(result);
     } catch (err: unknown) {
       if (res.headersSent) return;
-      const mapped = mapGeminiError(err, 'Gagal memindai KTP saksi/kuasa menggunakan Gemini API.');
-      return res.status(mapped.status).json({ error: mapped.error });
-    }
-  });
-
-  app.post('/api/refine-sketch', async (req, res) => {
-    try {
-      const apiKey = resolveGeminiApiKey(process.env.GEMINI_API_KEY);
-      if (!apiKey) {
-        return res.status(503).json({
-          error:
-            'GEMINI_API_KEY belum terkonfigurasi dengan benar di server. Gunakan tombol "Buat Sket Otomatis (CAD)" atau periksa API key di Settings > Secrets.',
-        });
-      }
-
-      const body = (req.body ?? {}) as RefineSketchRequestBody;
-      const result = await refineSketchWithGemini(apiKey, body);
-      if (res.headersSent) return;
-      if (!result || typeof result !== 'object') {
-        return res.status(502).json({
-          error: 'Hasil penyempurnaan sket dari AI tidak lengkap. Silakan ulangi atau gunakan Sket Otomatis (CAD).',
-        });
-      }
-      return res.json(result);
-    } catch (err: unknown) {
-      if (res.headersSent) return;
-      const mapped = mapGeminiError(
-        err,
-        'Gagal menyempurnakan gambar sket kasar menggunakan Gemini API.'
-      );
+      const mapped = mapGeminiError(err, 'Gagal memindai KTP melalui layanan pemindaian otomatis.');
       return res.status(mapped.status).json({ error: mapped.error });
     }
   });
@@ -160,13 +129,6 @@ async function startServer() {
   let viteServer: { close: () => Promise<void> } | null = null;
 
   if (process.env.NODE_ENV !== 'production') {
-    app.get('/dev-sw.js', (_req, res) => {
-      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-      res.send(
-        "self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',(e)=>{e.waitUntil(self.registration.unregister().then(()=>self.clients.matchAll()).then((cs)=>cs.forEach((c)=>c.navigate&&c.url&&c.postMessage({type:'SW_UNREGISTERED'}))))});"
-      );
-    });
     const { createServer: createViteServer } = await import('vite');
     const isHmrDisabled = process.env.DISABLE_HMR === 'true';
     const vite = await createViteServer({
@@ -181,7 +143,18 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distDir = path.resolve(__dirname, 'dist');
-    app.use(express.static(distDir));
+    app.use(
+      express.static(distDir, {
+        setHeaders(res, filePath) {
+          if (filePath.endsWith('sw.js') || filePath.endsWith('registerSW.js')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          } else if (filePath.endsWith('manifest.json')) {
+            res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-cache');
+          }
+        },
+      })
+    );
     app.get('*', (_req, res) => {
       res.sendFile(path.join(distDir, 'index.html'));
     });

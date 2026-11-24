@@ -403,7 +403,26 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
   );
   const [uploadedFiles, setUploadedFiles] = useState<UploadedDocFile[]>([]);
   const [preparingFiles, setPreparingFiles] = useState(false);
-  const [scanMode, setScanMode] = useState<'fast' | 'accurate'>('fast');
+  const [scanMode, setScanModeState] = useState<'fast' | 'accurate'>(() => {
+    try {
+      const saved = window.localStorage.getItem('sim_ppats_scan_mode');
+      if (saved === 'accurate') return 'accurate';
+      if (saved === 'local') {
+        window.localStorage.setItem('sim_ppats_scan_mode', 'fast');
+      }
+    } catch {
+      // ignore storage errors
+    }
+    return 'fast';
+  });
+  const setScanMode = (nextMode: 'fast' | 'accurate') => {
+    setScanModeState(nextMode);
+    try {
+      window.localStorage.setItem('sim_ppats_scan_mode', nextMode);
+    } catch {
+      // ignore storage errors
+    }
+  };
   const [extracting, setExtracting] = useState(false);
   const [extractElapsedSec, setExtractElapsedSec] = useState(0);
   const [extractError, setExtractError] = useState<string | null>(null);
@@ -635,7 +654,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
         '/api/extract-documents',
         {
           layanan,
-          scanMode: 'fast',
+          scanMode,
           scope: 'object_only',
           files: optimized,
         }
@@ -716,7 +735,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
         '/api/extract-documents',
         {
           layanan,
-          scanMode: 'fast',
+          scanMode,
           scope: slot,
           files: optimized,
         }
@@ -1059,8 +1078,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       const projectedCount = uploadedFiles.length + incoming.length;
       const optimizeOpts =
         projectedCount >= 3
-          ? { maxEdge: 960, quality: 0.70, skipBelowBytes: 75 * 1024 }
-          : { maxEdge: 1120, quality: 0.74, skipBelowBytes: 90 * 1024 };
+          ? { maxEdge: 960, quality: 0.72, skipBelowBytes: 75 * 1024 }
+          : { maxEdge: 1120, quality: 0.76, skipBelowBytes: 90 * 1024 };
 
       const added = await Promise.all(
         incoming.map(async (file) => {
@@ -1233,7 +1252,26 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
         );
       }
 
-      onNotify('Ekstraksi dokumen AI selesai. Silakan verifikasi hasil pada Langkah 2.', 'success');
+      const summaryBits: string[] = [];
+      if (Array.isArray(parsed.para_pihak) && parsed.para_pihak.length > 0) {
+        summaryBits.push(`${parsed.para_pihak.length} Pihak`);
+      }
+      if (
+        parsed.tanah &&
+        (parsed.tanah.nomor_hak_lama || parsed.tanah.nib || parsed.tanah.luas_m2 > 0)
+      ) {
+        summaryBits.push('Sertipikat');
+      }
+      if (parsed.pbb && (parsed.pbb.nop || parsed.pbb.njop_bumi_m2 > 0)) {
+        summaryBits.push('SPPT PBB');
+      }
+
+      onNotify(
+        summaryBits.length > 0
+          ? `Ekstraksi AI selesai (${summaryBits.join(' · ')} terbaca). Silakan verifikasi hasil pada Langkah 2.`
+          : 'Ekstraksi dokumen selesai. Silakan verifikasi hasil pada Langkah 2.',
+        'success'
+      );
       setStep(2);
     } catch (err) {
       const isAbort =
@@ -1243,10 +1281,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
         return;
       }
       const msg = isAbort
-        ? 'Pemindaian dokumen melebihi batas waktu 75 detik. Perkecil jumlah halaman atau gunakan Mode Cepat.'
+        ? 'Pemindaian dokumen melebihi batas waktu. Perkecil jumlah file atau gunakan Mode Cepat.'
         : err instanceof Error
         ? err.message
-        : 'Terjadi kesalahan saat mengekstrak dokumen.';
+        : 'Terjadi kesalahan saat memindai dokumen dengan AI.';
       setExtractError(msg);
       onNotify(msg, 'error');
     } finally {
@@ -1928,23 +1966,25 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               </h2>
               <div
                 role="group"
-                aria-label="Mode Kecepatan Scan AI"
+                aria-label="Mode Pemindaian AI"
                 className="inline-flex rounded-full border border-teal-900/10 dark:border-teal-400/20 bg-[#EAF3F1] dark:bg-[#081F22] p-1 text-xs shrink-0 shadow-inner"
               >
                 <button
                   type="button"
                   onClick={() => setScanMode('fast')}
+                  aria-pressed={scanMode === 'fast'}
                   className={`px-3 py-1 rounded-full font-semibold transition-all duration-150 ${
                     scanMode === 'fast'
                       ? 'bg-gradient-to-b from-teal-400 to-teal-600 text-white shadow-sm'
                       : 'text-slate-600 dark:text-teal-200/75 hover:text-teal-900 dark:hover:text-white'
                   }`}
                 >
-                  Mode Cepat (~3 dtk)
+                  Mode Cepat
                 </button>
                 <button
                   type="button"
                   onClick={() => setScanMode('accurate')}
+                  aria-pressed={scanMode === 'accurate'}
                   className={`px-3 py-1 rounded-full font-semibold transition-all duration-150 ${
                     scanMode === 'accurate'
                       ? 'bg-gradient-to-b from-sky-400 to-sky-600 text-white shadow-sm'
@@ -1992,8 +2032,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               </p>
               <p className="text-xs text-slate-600 dark:text-teal-200/75 mt-1 max-w-xl mx-auto">
                 {scanMode === 'fast'
-                  ? 'Mode Cepat (gemini-4-hydrogen) + ekstraksi Word (.docx/.doc) & kompresi foto otomatis untuk pembacaan KTP, KK, Sertipikat, Letter C, dan SPPT.'
-                  : 'Mode Detail (gemini-4-hydrogen penalaran tinggi) untuk dokumen buram/tulisan tangan/Word dengan fallback otomatis jika jaringan sibuk.'}
+                  ? 'Mode Cepat: ekstraksi AI berkecepatan tinggi dengan kompresi foto & pembacaan Word (.docx/.doc) otomatis untuk KTP, KK, Sertipikat, Letter C, dan SPPT.'
+                  : 'Mode Detail: pembacaan AI mendalam untuk dokumen buram, tulisan tangan, atau multi-halaman dengan penyesuaian otomatis jika antrean sibuk.'}
               </p>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
                 <label className="btn-3d btn-3d-light inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer">
@@ -2074,7 +2114,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 <div className="flex items-start gap-2.5">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
                   <div>
-                    <p className="font-semibold">Ekstraksi AI Tidak Dapat Dilanjutkan</p>
+                    <p className="font-semibold">Pemindaian Otomatis Belum Berhasil</p>
                     <p className="mt-0.5 leading-relaxed">{extractError}</p>
                   </div>
                 </div>
@@ -2091,7 +2131,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                     )}
                     <button
                       type="button"
-                      onClick={handleExtractAi}
+                      onClick={() => void handleExtractAi()}
                       className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-rose-900/60 border border-rose-300 dark:border-rose-600/70 text-rose-800 dark:text-rose-100 hover:bg-rose-100 dark:hover:bg-rose-900 font-semibold whitespace-nowrap transition-colors"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
@@ -2126,14 +2166,16 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               )}
               <button
                 type="button"
-                onClick={handleExtractAi}
+                onClick={() => void handleExtractAi()}
                 disabled={extracting || preparingFiles}
                 className="btn-3d btn-3d-teal inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60"
               >
                 {extracting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Memindai Dokumen ({extractElapsedSec} dtk)...</span>
+                    <span>
+                      Memindai Dokumen dengan AI ({extractElapsedSec} dtk)...
+                    </span>
                   </>
                 ) : (
                   <>
@@ -4332,12 +4374,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         </div>
                       )}
 
-                      {/* Studio Sket Bidang Tanah: Penyempurnaan Sket Kasar (AI) & Generator Sket CAD */}
+                      {/* Studio Sket Bidang Tanah: Generator Sket CAD & Unggah Sket Jadi */}
                       <SketchRefinerStudio
                         nonAkta={nonAkta}
                         setNonAkta={setNonAkta}
                         tanah={tanah}
-                        setTanah={setTanah}
                         isPemecahan={
                           layanan === 'Pemecahan' || layanan === 'Pemecahan/Ukur Ulang'
                         }

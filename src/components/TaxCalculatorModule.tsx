@@ -309,7 +309,6 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
           };
         })
       );
-
       const data = await postScanJson<ExtractionApiResponse>(
         '/api/extract-documents',
         {

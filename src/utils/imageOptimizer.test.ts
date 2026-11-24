@@ -88,7 +88,8 @@ test('mapGeminiError maps 401 ACCESS_TOKEN_TYPE_UNSUPPORTED to clean auth guidan
   );
   const mapped = mapGeminiError(err, 'Fallback');
   assert.equal(mapped.status, 401);
-  assert.match(mapped.error, /Settings > Secrets/);
+  assert.match(mapped.error, /konfigurasi akses server belum aktif/i);
+  assert.doesNotMatch(mapped.error, /Gemini|Settings > Secrets|AI Studio|Vercel/i);
 });
 
 test('parseScanResponseText handles plain-text 404, 413, 504, and valid JSON cleanly', () => {

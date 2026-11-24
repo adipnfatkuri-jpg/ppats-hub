@@ -36,7 +36,7 @@ export default async function handler(req: ServerlessRequest, res: ServerlessRes
   if (!apiKey) {
     return res.status(503).json({
       error:
-        'GEMINI_API_KEY belum terkonfigurasi dengan benar di server. Tambahkan API key yang valid pada Environment Variables / Secrets deployment Anda, atau isi data secara manual.',
+        'Layanan pemindaian KTP otomatis belum aktif di server. Hubungi administrator sistem atau isi data secara manual.',
     });
   }
 
@@ -50,7 +50,7 @@ export default async function handler(req: ServerlessRequest, res: ServerlessRes
     }
     return res.status(200).json(result);
   } catch (err: unknown) {
-    const mapped = mapGeminiError(err, 'Gagal memindai KTP saksi/kuasa menggunakan Gemini API.');
+    const mapped = mapGeminiError(err, 'Gagal memindai KTP melalui layanan pemindaian otomatis.');
     return res.status(mapped.status).json({ error: mapped.error });
   }
 }

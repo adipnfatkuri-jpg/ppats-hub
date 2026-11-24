@@ -10,11 +10,6 @@ import {
   isWordFilename,
   isWordMimeType,
 } from '../src/utils/wordDocExtractor.ts';
-import {
-  normalizeCadSketchSpec,
-  type AutoCadSketchInput,
-  type CadSketchSpec,
-} from '../src/utils/sketchRefiner.ts';
 
 export interface UploadedDocPayload {
   name: string;
@@ -34,11 +29,6 @@ export interface ExtractDocumentsRequestBody {
 export interface ExtractPersonRequestBody {
   role?: string;
   files?: UploadedDocPayload[];
-}
-
-export interface RefineSketchRequestBody {
-  file?: UploadedDocPayload;
-  context?: AutoCadSketchInput;
 }
 
 export interface ApiHttpError {
@@ -978,30 +968,31 @@ export function mapGeminiError(err: unknown, fallbackLabel: string): ApiHttpErro
   let clientMessage = rawMessage;
   if (isAuthError) {
     clientMessage =
-      'Kunci API Gemini tidak valid atau belum aktif (401/403). Silakan periksa atau pilih API key yang valid di panel Settings > Secrets (AI Studio) atau Environment Variables (Vercel).';
+      'Layanan pemindaian otomatis belum dapat digunakan karena konfigurasi akses server belum aktif. Hubungi administrator sistem atau lanjutkan melalui "Lanjut Isi / Verifikasi Manual".';
   } else if (isDailyAnd503) {
     clientMessage =
-      'Kuota harian gratis (Free Tier 20 permintaan/hari) pada model utama Gemini telah habis (429), dan model cadangan sedang mengalami lonjakan beban (503). Pilih API key berbayar (billing aktif) di panel Settings > Secrets untuk meningkatkan kuota, coba klik "Coba Pindai Ulang" beberapa saat lagi, atau lanjutkan lewat "Lanjut Isi / Verifikasi Manual".';
+      'Layanan pemindaian otomatis sedang mencapai batas penggunaan harian dan antrean server sedang padat. Silakan coba kembali beberapa saat lagi lewat "Coba Pindai Ulang", atau lanjutkan pengisian melalui "Lanjut Isi / Verifikasi Manual".';
   } else if (isQuotaError) {
     clientMessage =
-      'Kuota API Gemini pada paket gratis (Free Tier) telah mencapai batas (429). Untuk meningkatkan kuota, pilih API key dengan billing aktif di panel Settings > Secrets (AI Studio), tunggu hingga kuota direset, atau lanjutkan lewat "Lanjut Isi / Verifikasi Manual".';
+      'Batas penggunaan layanan pemindaian otomatis untuk sementara telah tercapai. Silakan coba kembali beberapa saat lagi, atau lanjutkan pengisian melalui "Lanjut Isi / Verifikasi Manual".';
   } else if (httpStatus === 504 || isTimeout) {
     clientMessage =
-      'Waktu pemindaian dokumen melebihi batas (timeout). Coba unggah 1–2 gambar lebih kecil atau gunakan Mode Cepat.';
+      'Waktu pemindaian dokumen melebihi batas. Coba unggah 1–2 file berukuran lebih kecil, gunakan Mode Cepat, atau lanjutkan pengisian manual.';
   } else if (httpStatus === 503 || isUnavailable) {
     clientMessage =
-      'Server Gemini AI sedang mengalami lonjakan permintaan sementara (503). File Anda tetap tersimpan — tunggu beberapa detik lalu klik "Coba Pindai Ulang", atau lanjutkan melalui "Lanjut Isi / Verifikasi Manual".';
+      'Layanan pemindaian otomatis sedang sibuk untuk sementara waktu. File Anda tetap tersimpan — tunggu beberapa saat lalu klik "Coba Pindai Ulang", atau lanjutkan melalui "Lanjut Isi / Verifikasi Manual".';
   } else if (isJsonParseErr) {
     clientMessage =
-      'Hasil pembacaan AI terpotong atau tidak lengkap. Silakan coba pindai ulang dengan foto/dokumen yang lebih jelas.';
+      'Hasil pembacaan dokumen terpotong atau tidak lengkap. Silakan coba pindai ulang dengan foto/dokumen yang lebih jelas.';
   } else if (
     httpStatus === 400 &&
     /Unsupported MIME|Unable to process input image|could not be decoded|image.*invalid|media/i.test(rawMessage)
   ) {
     clientMessage =
-      'Format gambar/dokumen tidak dapat dibaca oleh AI. Gunakan foto JPG/PNG/WebP, PDF, atau Word (.docx/.doc) yang jelas, lalu coba lagi.';
+      'Format gambar/dokumen tidak dapat dibaca oleh sistem. Gunakan foto JPG/PNG/WebP, PDF, atau Word (.docx/.doc) yang jelas, lalu coba lagi.';
   } else if (httpStatus === 404 || /NOT_FOUND/i.test(rawMessage)) {
-    clientMessage = `Model AI tidak tersedia (404): ${rawMessage}`;
+    clientMessage =
+      'Layanan pemindaian otomatis sedang dalam penyesuaian sistem. Silakan coba beberapa saat lagi atau lanjutkan melalui "Lanjut Isi / Verifikasi Manual".';
   }
 
   return { status: isJsonParseErr ? 502 : httpStatus, error: clientMessage };
@@ -1423,195 +1414,6 @@ Ambil nama (huruf KAPITAL semua), NIK 16 digit, tempat_lahir, tanggal_lahir (DD-
 
   return {
     person: parsed,
-    model,
-    elapsed_ms: elapsedMs,
-  };
-}
-
-export const sketchRefineResponseSchema = {
-  type: Type.OBJECT,
-  properties: {
-    northArrowAngle: {
-      type: Type.NUMBER,
-      description: 'Sudut rotasi panah Utara (derajat, 0 = menghadap lurus ke atas).',
-    },
-    outerPolygon: {
-      type: Type.ARRAY,
-      description:
-        'Daftar titik sudut poligon batas luar bidang tanah searah jarum jam dalam koordinat kanvas x: 180..860, y: 100..520.',
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          x: { type: Type.NUMBER },
-          y: { type: Type.NUMBER },
-        },
-        required: ['x', 'y'],
-      },
-    },
-    subdivisions: {
-      type: Type.ARRAY,
-      description: 'Garis pemisah internal untuk pecahan bidang tanah (kosong jika 1 bidang utuh).',
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          x1: { type: Type.NUMBER },
-          y1: { type: Type.NUMBER },
-          x2: { type: Type.NUMBER },
-          y2: { type: Type.NUMBER },
-          dashed: { type: Type.BOOLEAN },
-        },
-        required: ['x1', 'y1', 'x2', 'y2'],
-      },
-    },
-    lotLabels: {
-      type: Type.ARRAY,
-      description: 'Nomor atau label di dalam masing-masing bagian bidang (mis. "1", "2", "3").',
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          text: { type: Type.STRING },
-          x: { type: Type.NUMBER },
-          y: { type: Type.NUMBER },
-          subtext: { type: Type.STRING },
-        },
-        required: ['text', 'x', 'y'],
-      },
-    },
-    roads: {
-      type: Type.ARRAY,
-      description:
-        'Koridor jalan eksisting (Jalan/Gang) atau jalur tanah yang dilepaskan untuk jalan (isPelepasanJalan=true).',
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          points: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                x: { type: Type.NUMBER },
-                y: { type: Type.NUMBER },
-              },
-              required: ['x', 'y'],
-            },
-          },
-          label: { type: Type.STRING },
-          labelX: { type: Type.NUMBER },
-          labelY: { type: Type.NUMBER },
-          labelAngle: { type: Type.NUMBER },
-          isPelepasanJalan: { type: Type.BOOLEAN },
-        },
-        required: ['points', 'label', 'labelX', 'labelY'],
-      },
-    },
-    edgeLabels: {
-      type: Type.ARRAY,
-      description:
-        'Nama pemilik tetangga / batas non-jalan di sisi luar bidang (utara/selatan angle=0, barat/timur angle=-90).',
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          side: { type: Type.STRING, description: '"utara" | "timur" | "selatan" | "barat" | "lain"' },
-          text: { type: Type.STRING },
-          x: { type: Type.NUMBER },
-          y: { type: Type.NUMBER },
-          angle: { type: Type.NUMBER },
-        },
-        required: ['side', 'text', 'x', 'y'],
-      },
-    },
-    dimensions: {
-      type: Type.ARRAY,
-      description: 'Ukuran panjang sisi dalam meter bila tertulis pada sket kasar (mis. "15 m", "24,5 m").',
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          text: { type: Type.STRING },
-          x: { type: Type.NUMBER },
-          y: { type: Type.NUMBER },
-          angle: { type: Type.NUMBER },
-        },
-        required: ['text', 'x', 'y'],
-      },
-    },
-    detectedBoundaries: {
-      type: Type.OBJECT,
-      properties: {
-        utara: { type: Type.STRING },
-        timur: { type: Type.STRING },
-        selatan: { type: Type.STRING },
-        barat: { type: Type.STRING },
-      },
-    },
-    summary: {
-      type: Type.STRING,
-      description: 'Ringkasan singkat Bahasa Indonesia hasil penyempurnaan sket kasar.',
-    },
-  },
-  required: ['northArrowAngle', 'outerPolygon', 'subdivisions', 'lotLabels', 'roads', 'edgeLabels', 'dimensions', 'summary'],
-};
-
-export async function refineSketchWithGemini(
-  apiKey: string,
-  body: RefineSketchRequestBody
-): Promise<{ spec: CadSketchSpec; model: string; elapsed_ms: number }> {
-  const sanitized = body?.file ? sanitizeUploadedDoc(body.file) : null;
-  if (!sanitized || sanitized.dataBase64.length === 0) {
-    const err = new Error('Unggah foto atau scan gambar sket kasar terlebih dahulu.') as Error & {
-      status?: number;
-    };
-    err.status = 400;
-    throw err;
-  }
-
-  const ai = createGeminiClient(apiKey);
-  const ctx = body?.context ?? {};
-  const bidangSummary = (ctx.bidangPecahan ?? [])
-    .map((b, i) => `${i + 1}. ${b.label || `Bagian ${i + 1}`} (${b.luas_m2 || 0} m²)`)
-    .join('; ');
-
-  const parts: GeminiContentPart[] = [
-    ...buildGeminiFileParts([sanitized]),
-    {
-      text: `Anda adalah juru gambar kadaster ATR/BPN profesional yang menyempurnakan gambar sket bidang tanah kasar (gambar tangan / hasil scan / foto kertas) menjadi gambar teknis CAD vektor hitam-putih yang presisi untuk Lampiran Surat Pernyataan Pemasangan Tanda Batas dan Gambar Sket Tanah.
-
-ATURAN KOORDINAT KANVAS (viewBox 1000 x 640):
-1. Area kiri x = 20..135 KHUSUS untuk panah arah Utara (U ↑) yang digambar otomatis. JANGAN menempatkan poligon, jalan, atau label di x < 150.
-2. Gambar poligon utama bidang tanah (outerPolygon) berurutan SEARAH JARUM JAM dimulai dari sudut kiri-atas, memenuhi area tengah x = 215..815, y = 125..500. Luruskan coretan tangan yang goyang menjadi garis lurus CAD yang rapi, namun PERTAHANKAN bentuk geometri asli sket kasar (persegi panjang, trapesium, miring mengikuti jalan, huruf L, segi lima, dst.).
-3. Jika sket kasar dibagi menjadi beberapa bagian/pecahan, gambar garis pemisah internal lurus pada "subdivisions" dengan kedua titik ujung MENYENTUH TEPAT sisi poligon luar (tidak melayang dan tidak keluar batas), lalu letakkan angka bidang ("1", "2", dst.) tepat di pusat tiap bagian pada "lotLabels" (tambahkan subtext luas mis. "200 m²" jika diketahui).
-4. Jika terdapat Jalan, Gang, Saluran, atau strip "Dilepaskan Untuk Jalan", gambar sebagai poligon koridor rapi sejajar sisi terkait pada "roads" (set isPelepasanJalan=true khusus jalur pelepasan jalan, false untuk jalan eksisting). Putar label jalan sesuai arah koridor (labelAngle = -90 untuk jalan vertikal di kiri/kanan, 0 untuk jalan horizontal di atas/bawah).
-5. Tulis nama pemilik tetangga yang berbatasan pada "edgeLabels" DI LUAR sisi poligon (utara: y ≈ 75-95 angle 0; selatan: y ≈ 540-565 angle 0; barat: x ≈ 168-185 angle -90; timur: x ≈ 860-905 angle -90). Jangan duplikasi nama jalan di edgeLabels bila sudah digambar pada roads.
-6. Jika sket kasar mencantumkan angka panjang sisi (mis. "15 m", "20,5 m"), masukkan ke "dimensions" tepat di dekat sisi terkait.
-7. Isi "detectedBoundaries" (utara, timur, selatan, barat) HANYA dengan nama tetangga/jalan singkat yang benar-benar tertulis pada gambar (maks 30 karakter). Jika sisi tidak tertulis di gambar, KOSONGKAN string "" — JANGAN menulis penjelasan atau tanda kurung seperti "(dari form...)".
-
-KONTEKS FORM BERKAS (referensi ejaan jika tulisan tangan kurang jelas):
-- Jenis layanan: ${ctx.isPemecahan === false ? 'Pengukuran Ulang (1 bidang)' : 'Pemecahan Bidang'}
-- Batas di form -> Utara: "${ctx.batasUtara || '-'}", Timur: "${ctx.batasTimur || '-'}", Selatan: "${ctx.batasSelatan || '-'}", Barat: "${ctx.batasBarat || '-'}"
-- Daftar bidang pecahan: ${bidangSummary || '(1 bidang utuh)'}
-- Pelepasan jalan di form: ${ctx.sertakanPelepasanJalan ? `Ya, luas ± ${ctx.pelepasanJalanLuasM2 || 0} m² (${ctx.pelepasanJalanKeterangan || 'Dilepaskan Untuk Jalan'})` : 'Tidak'}
-
-Keluarkan HANYA JSON valid sesuai skema.`,
-    },
-  ];
-
-  const attempts: GeminiModelAttempt[] = [
-    { model: 'gemini-4-hydrogen', level: ThinkingLevel.MEDIUM, timeoutMs: 36000 },
-    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 22000 },
-    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 26000 },
-    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 20000 },
-  ];
-
-  const { parsed, model, elapsedMs } = await generateJsonWithFallback(
-    ai,
-    parts,
-    sketchRefineResponseSchema,
-    attempts,
-    'refine-sketch'
-  );
-
-  const spec = normalizeCadSketchSpec(parsed as Partial<CadSketchSpec>, ctx);
-  return {
-    spec,
     model,
     elapsed_ms: elapsedMs,
   };

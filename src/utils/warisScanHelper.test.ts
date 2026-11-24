@@ -202,8 +202,9 @@ test('computeGeminiRetryBackoffMs scales progressively for 503 spikes and fast-f
   );
   const mapped503 = mapGeminiError(err503, 'fallback');
   assert.equal(mapped503.status, 503);
-  assert.match(mapped503.error, /lonjakan permintaan sementara \(503\)/i);
+  assert.match(mapped503.error, /sedang sibuk/i);
   assert.match(mapped503.error, /Coba Pindai Ulang/i);
+  assert.doesNotMatch(mapped503.error, /Gemini|Settings > Secrets|Free Tier|AI Studio|Vercel/i);
 
   const errDaily429 = Object.assign(
     new Error(
@@ -216,7 +217,8 @@ test('computeGeminiRetryBackoffMs scales progressively for 503 spikes and fast-f
 
   const mappedDaily429 = mapGeminiError(errDaily429, 'fallback');
   assert.equal(mappedDaily429.status, 429);
-  assert.match(mappedDaily429.error, /Settings > Secrets/i);
+  assert.match(mappedDaily429.error, /Batas penggunaan layanan pemindaian otomatis/i);
+  assert.doesNotMatch(mappedDaily429.error, /Gemini|Settings > Secrets|Free Tier|AI Studio|Vercel/i);
 
   const combinedErr = Object.assign(
     new Error('DAILY_QUOTA_AND_FALLBACK_503: Kuota harian habis dan model cadangan 503.'),
@@ -224,8 +226,9 @@ test('computeGeminiRetryBackoffMs scales progressively for 503 spikes and fast-f
   );
   const mappedCombined = mapGeminiError(combinedErr, 'fallback');
   assert.equal(mappedCombined.status, 429);
-  assert.match(mappedCombined.error, /Free Tier 20 permintaan\/hari/i);
-  assert.match(mappedCombined.error, /Settings > Secrets/i);
+  assert.match(mappedCombined.error, /batas penggunaan harian/i);
+  assert.match(mappedCombined.error, /Coba Pindai Ulang/i);
+  assert.doesNotMatch(mappedCombined.error, /Gemini|Settings > Secrets|Free Tier|AI Studio|Vercel|\(429\)|\(503\)/i);
 });
 
 test('Waris Gemini extraction schemas declare required root containers', () => {

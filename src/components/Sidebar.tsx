@@ -101,16 +101,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Mobile Header Bar */}
-      <div className="no-print lg:hidden flex items-center justify-between bg-gradient-to-r from-[#0F3D3E] via-[#124E52] to-[#0D3338] text-white px-4 py-3 border-b border-teal-400/15 shadow-lg sticky top-0 z-30">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className="no-print lg:hidden flex items-center justify-between gap-2 bg-gradient-to-r from-[#0F3D3E] via-[#124E52] to-[#0D3338] text-white px-3 sm:px-4 py-2.5 border-b border-teal-400/15 shadow-lg sticky top-0 z-30">
+        <div className="flex items-center gap-2 min-w-0 shrink">
           <GlossyIcon3D tone="teal" size="xs">
             <Scale className="w-4 h-4 text-amber-200" />
           </GlossyIcon3D>
-          <span className="font-display font-bold text-base tracking-tight whitespace-nowrap text-white">
+          <span className="font-display font-bold text-sm sm:text-base tracking-tight whitespace-nowrap text-white">
             SIM-PPATS
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <PWAInstallButton variant="mobile-header" />
           <button
             type="button"
@@ -128,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               type="button"
               onClick={onSignIn}
               disabled={authBusy}
-              className="btn-3d btn-3d-sky inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap"
+              className="btn-3d btn-3d-sky inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>Login</span>

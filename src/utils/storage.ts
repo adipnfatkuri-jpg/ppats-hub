@@ -18,9 +18,15 @@ const LS_FALLBACK_SETTINGS = 'sim_ppats_settings_v1';
 const LS_FALLBACK_TEMPLATES = 'sim_ppats_templates_v1';
 const LS_SEED_INITIALIZED = 'sim_ppats_seeded_v1';
 
+let cachedDbPromise: Promise<IDBDatabase | null> | null = null;
+
 function openDatabase(): Promise<IDBDatabase | null> {
-  return new Promise((resolve) => {
+  if (cachedDbPromise) {
+    return cachedDbPromise;
+  }
+  cachedDbPromise = new Promise((resolve) => {
     if (typeof window === 'undefined' || !window.indexedDB) {
+      cachedDbPromise = null;
       resolve(null);
       return;
     }
@@ -38,12 +44,31 @@ function openDatabase(): Promise<IDBDatabase | null> {
           db.createObjectStore(STORE_TEMPLATES, { keyPath: 'key' });
         }
       };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => resolve(null);
+      req.onsuccess = () => {
+        const db = req.result;
+        db.onversionchange = () => {
+          db.close();
+          cachedDbPromise = null;
+        };
+        db.onclose = () => {
+          cachedDbPromise = null;
+        };
+        resolve(db);
+      };
+      req.onerror = () => {
+        cachedDbPromise = null;
+        resolve(null);
+      };
+      req.onblocked = () => {
+        cachedDbPromise = null;
+        resolve(null);
+      };
     } catch {
+      cachedDbPromise = null;
       resolve(null);
     }
   });
+  return cachedDbPromise;
 }
 
 async function getAllFromStore<T>(storeName: string): Promise<T[] | null> {

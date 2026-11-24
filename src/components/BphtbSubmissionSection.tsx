@@ -332,7 +332,6 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
           };
         })
       );
-
       const data = await postScanJson<ExtractionApiResponse>(
         '/api/extract-documents',
         {

@@ -36,7 +36,7 @@ export default async function handler(req: ServerlessRequest, res: ServerlessRes
   if (!apiKey) {
     return res.status(503).json({
       error:
-        'GEMINI_API_KEY belum terkonfigurasi dengan benar di server. Tambahkan API key yang valid pada Environment Variables / Secrets deployment Anda, atau lanjutkan input manual pada Langkah 2.',
+        'Layanan pemindaian dokumen otomatis belum aktif di server. Hubungi administrator sistem atau lanjutkan input manual pada Langkah 2.',
     });
   }
 
@@ -50,7 +50,7 @@ export default async function handler(req: ServerlessRequest, res: ServerlessRes
     }
     return res.status(200).json(parsed);
   } catch (err: unknown) {
-    const mapped = mapGeminiError(err, 'Gagal mengekstrak dokumen menggunakan Gemini API.');
+    const mapped = mapGeminiError(err, 'Gagal mengekstrak dokumen melalui layanan pemindaian otomatis.');
     return res.status(mapped.status).json({ error: mapped.error });
   }
 }

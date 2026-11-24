@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Check,
   Copy,
@@ -27,6 +27,18 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   const [showDesktopGuide, setShowDesktopGuide] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [downloadedShortcut, setDownloadedShortcut] = useState(false);
+
+  useEffect(() => {
+    if (!showIOSGuide && !showDesktopGuide) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowIOSGuide(false);
+        setShowDesktopGuide(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showIOSGuide, showDesktopGuide]);
 
   if (isInstalled) {
     return null;
@@ -72,11 +84,12 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         <button
           type="button"
           onClick={() => void install()}
-          className="btn-3d btn-3d-amber inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap"
+          aria-label="Install aplikasi SIM-PPATS"
+          className="btn-3d btn-3d-amber inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap"
           title="Install SIM-PPATS ke layar utama / desktop"
         >
           <Download className="w-3.5 h-3.5 shrink-0" />
-          <span>Install</span>
+          <span className="hidden sm:inline">Install</span>
         </button>
       );
     }
@@ -86,10 +99,10 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         type="button"
         onClick={() => void install()}
         className="btn-3d btn-3d-amber w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold"
-        title="Pasang SIM-PPATS sebagai aplikasi mandiri & shortcut di desktop laptop"
+        title="Pasang SIM-PPATS sebagai aplikasi mandiri & shortcut di desktop/ponsel"
       >
         <MonitorDown className="w-3.5 h-3.5 shrink-0" />
-        <span>Pasang Shortcut Desktop</span>
+        <span>Install Aplikasi SIM-PPATS</span>
       </button>
     );
   }
@@ -101,11 +114,12 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           <button
             type="button"
             onClick={() => setShowIOSGuide(true)}
-            className="btn-3d btn-3d-sidebar inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-amber-300 text-xs font-medium whitespace-nowrap"
+            aria-label="Install SIM-PPATS di iPhone atau iPad"
+            className="btn-3d btn-3d-sidebar inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl text-amber-300 text-xs font-medium whitespace-nowrap"
             title="Cara install SIM-PPATS di iPhone/iPad"
           >
             <Smartphone className="w-3.5 h-3.5 shrink-0" />
-            <span>Install iOS</span>
+            <span className="hidden sm:inline">Install iOS</span>
           </button>
         ) : (
           <button
@@ -211,11 +225,12 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         <button
           type="button"
           onClick={() => setShowDesktopGuide(true)}
-          className="btn-3d btn-3d-sidebar inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-amber-300 text-xs font-medium whitespace-nowrap"
-          title="Buat shortcut aplikasi di desktop laptop"
+          aria-label="Buat shortcut aplikasi SIM-PPATS"
+          className="btn-3d btn-3d-sidebar inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl text-amber-300 text-xs font-medium whitespace-nowrap"
+          title="Buat shortcut aplikasi di desktop/ponsel"
         >
           <MonitorDown className="w-3.5 h-3.5 shrink-0" />
-          <span>Shortcut</span>
+          <span className="hidden sm:inline">Shortcut</span>
         </button>
       ) : (
         <button
