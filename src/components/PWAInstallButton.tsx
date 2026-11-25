@@ -5,15 +5,24 @@ import {
   Download,
   MonitorDown,
   PlusSquare,
+  RefreshCw,
   Share,
   Smartphone,
   X,
 } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
+declare const __APP_BUILD_TIMESTAMP__: string;
+
 interface PWAInstallButtonProps {
   variant?: 'sidebar' | 'mobile-header' | 'menu-item' | 'settings-button';
   onActionTriggered?: () => void;
+}
+
+function getBuildVersionParam(): string {
+  return typeof __APP_BUILD_TIMESTAMP__ === 'string' && __APP_BUILD_TIMESTAMP__
+    ? __APP_BUILD_TIMESTAMP__
+    : Date.now().toString();
 }
 
 function buildDesktopUrlShortcut(appUrl: string): string {
@@ -29,6 +38,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   const [showDesktopGuide, setShowDesktopGuide] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [downloadedShortcut, setDownloadedShortcut] = useState(false);
+  const [refreshingCache, setRefreshingCache] = useState(false);
 
   useEffect(() => {
     if (!showIOSGuide && !showDesktopGuide) return;
@@ -46,13 +56,15 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
     return null;
   }
 
-  const getAppUrl = () => {
+  const getAppUrl = (withCacheBust = false) => {
     if (typeof window === 'undefined') return '';
-    return `${window.location.origin}/`;
+    return withCacheBust
+      ? `${window.location.origin}/?shortcut=desktop&v=${getBuildVersionParam()}`
+      : `${window.location.origin}/`;
   };
 
   const handleDownloadDesktopShortcut = () => {
-    const appUrl = getAppUrl();
+    const appUrl = getAppUrl(true);
     if (!appUrl) return;
     const content = buildDesktopUrlShortcut(appUrl);
     const blob = new Blob([content], { type: 'application/internet-shortcut;charset=utf-8' });
@@ -68,8 +80,26 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
     window.setTimeout(() => setDownloadedShortcut(false), 3500);
   };
 
+  const handleForceRefreshPwa = async () => {
+    setRefreshingCache(true);
+    try {
+      if ('caches' in window) {
+        const keys = await window.caches.keys();
+        await Promise.all(keys.map((k) => window.caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+    } catch {
+      // Lanjutkan muat ulang meski API cache dibatasi
+    }
+    const targetUrl = `${window.location.origin}/?v=${Date.now()}`;
+    window.location.replace(targetUrl);
+  };
+
   const handleCopyAppLink = async () => {
-    const appUrl = getAppUrl();
+    const appUrl = getAppUrl(false);
     if (!appUrl) return;
     try {
       await navigator.clipboard.writeText(appUrl);
@@ -387,6 +417,27 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   <span>{copiedLink ? 'Tersalin' : 'Salin Link'}</span>
                 </button>
               </div>
+            </div>
+
+            {/* Opsi 3: Bersihkan Cache PWA & Muat Versi Terbaru */}
+            <div className="rounded-lg border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/70 dark:bg-amber-950/25 p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900 dark:text-white">
+                  Shortcut Masih Menampilkan Versi Lama?
+                </p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                  Bersihkan cache PWA lama lalu muat manifest &amp; aset terbaru.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={refreshingCache}
+                onClick={() => void handleForceRefreshPwa()}
+                className="btn-3d btn-3d-light inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold shrink-0 disabled:opacity-60"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshingCache ? 'animate-spin' : ''}`} />
+                <span>{refreshingCache ? 'Memuat...' : 'Perbarui'}</span>
+              </button>
             </div>
 
             <button

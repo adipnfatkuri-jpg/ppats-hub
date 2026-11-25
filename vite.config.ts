@@ -6,7 +6,15 @@ import {defineConfig} from 'vite';
 import {VitePWA} from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
+  const buildDate = new Date();
+  const buildTimestamp = buildDate.getTime().toString();
+  const buildIso = buildDate.toISOString();
+
   return {
+    define: {
+      __APP_BUILD_TIMESTAMP__: JSON.stringify(buildTimestamp),
+      __APP_BUILD_ISO__: JSON.stringify(buildIso),
+    },
     plugins: [
       react(),
       tailwindcss(),
@@ -19,6 +27,10 @@ export default defineConfig(() => {
           'pwa-192x192.png',
           'pwa-512x512.png',
           'pwa-maskable-512x512.png',
+          'bg-grandline.jpg',
+          'luffy-chibi.png',
+          'nami-chibi.png',
+          'zoro-chibi.png',
         ],
         manifest: {
           id: '/',
@@ -30,44 +42,146 @@ export default defineConfig(() => {
           theme_color: '#0B1F3A',
           background_color: '#0B1F3A',
           display: 'standalone',
+          display_override: ['window-controls-overlay', 'standalone'],
           orientation: 'any',
           categories: ['business', 'productivity'],
-          start_url: '/',
+          start_url: `/?source=pwa&v=${buildTimestamp}`,
           scope: '/',
+          // Custom build timestamp metadata to force browsers & desktop shortcuts to detect new deployments
+          ...({
+            version: buildTimestamp,
+            build_timestamp: buildIso,
+          } as Record<string, unknown>),
           icons: [
             {
-              src: '/pwa-192x192.png',
+              src: `/pwa-192x192.png?v=${buildTimestamp}`,
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-512x512.png',
+              src: `/pwa-512x512.png?v=${buildTimestamp}`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-maskable-512x512.png',
+              src: `/pwa-maskable-512x512.png?v=${buildTimestamp}`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',
             },
           ],
+          shortcuts: [
+            {
+              name: 'Buat Berkas Baru',
+              short_name: 'Berkas Baru',
+              description: 'Buka Wizard 4 Langkah untuk membuat akta atau berkas non-akta baru.',
+              url: `/?section=wizard&v=${buildTimestamp}`,
+              icons: [
+                {
+                  src: `/pwa-192x192.png?v=${buildTimestamp}`,
+                  sizes: '192x192',
+                  type: 'image/png',
+                },
+              ],
+            },
+            {
+              name: 'Perhitungan Pajak',
+              short_name: 'Pajak BPHTB',
+              description: 'Hitung BPHTB & PPh Final untuk berkas pertanahan.',
+              url: `/?section=tax&v=${buildTimestamp}`,
+              icons: [
+                {
+                  src: `/pwa-192x192.png?v=${buildTimestamp}`,
+                  sizes: '192x192',
+                  type: 'image/png',
+                },
+              ],
+            },
+            {
+              name: 'Buku Register Akta',
+              short_name: 'Repertorium',
+              description: 'Lihat Buku Register Akta & Berkas kronologis.',
+              url: `/?section=register&v=${buildTimestamp}`,
+              icons: [
+                {
+                  src: `/pwa-192x192.png?v=${buildTimestamp}`,
+                  sizes: '192x192',
+                  type: 'image/png',
+                },
+              ],
+            },
+            {
+              name: 'Laporan Bulanan PPATS',
+              short_name: 'Laporan',
+              description: 'Cetak dan ekspor Laporan Bulanan PPATS ke BPN & Bapenda.',
+              url: `/?section=report&v=${buildTimestamp}`,
+              icons: [
+                {
+                  src: `/pwa-192x192.png?v=${buildTimestamp}`,
+                  sizes: '192x192',
+                  type: 'image/png',
+                },
+              ],
+            },
+          ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          cacheId: `sim-ppats-${buildTimestamp}`,
+          globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,webp,svg,woff,woff2}'],
           globIgnores: ['assets/aistudio/**'],
+          ignoreURLParametersMatching: [/^v$/, /^source$/, /^section$/, /^shortcut$/, /^utm_/],
           navigateFallback: '/index.html',
           navigateFallbackDenylist: [/^\/api\//, /^\/__\//],
           cleanupOutdatedCaches: true,
           skipWaiting: true,
           clientsClaim: true,
-          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           runtimeCaching: [
             {
               urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
               handler: 'NetworkOnly',
+            },
+            {
+              urlPattern: ({ url }) =>
+                url.pathname === '/manifest.json' || url.pathname === '/manifest.webmanifest',
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: `sim-ppats-manifest-${buildTimestamp}`,
+                networkTimeoutSeconds: 3,
+                expiration: {
+                  maxEntries: 4,
+                  maxAgeSeconds: 60 * 5,
+                },
+              },
+            },
+            {
+              urlPattern: ({ request }) => request.mode === 'navigate',
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: `sim-ppats-pages-${buildTimestamp}`,
+                networkTimeoutSeconds: 3,
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24,
+                },
+              },
+            },
+            {
+              urlPattern: ({ url, request }) =>
+                url.origin === self.location.origin &&
+                request.destination === 'image' &&
+                !url.pathname.startsWith('/assets/'),
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: `sim-ppats-public-images-${buildTimestamp}`,
+                networkTimeoutSeconds: 3,
+                expiration: {
+                  maxEntries: 30,
+                  maxAgeSeconds: 60 * 60 * 24 * 7,
+                },
+              },
             },
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -105,6 +219,30 @@ export default defineConfig(() => {
           suppressWarnings: true,
         },
       }),
+      // Appends build timestamp query param to manifest & icon links in index.html
+      // so browsers, Vercel CDN, and desktop shortcuts always fetch the latest manifest & assets.
+      {
+        name: 'bust-pwa-manifest-and-icons',
+        enforce: 'post',
+        transformIndexHtml: {
+          order: 'post',
+          handler(html: string): string {
+            return html
+              .replace(
+                /href="\/manifest\.json(?:\?[^"]*)?"/g,
+                `href="/manifest.json?v=${buildTimestamp}"`
+              )
+              .replace(
+                /href="\/(apple-touch-icon\.png|icon\.svg|pwa-192x192\.png)(?:\?[^"]*)?"/g,
+                `href="/$1?v=${buildTimestamp}"`
+              )
+              .replace(
+                /<\/head>/i,
+                `    <meta name="app-build-timestamp" content="${buildTimestamp}" />\n  </head>`
+              );
+          },
+        },
+      },
       // Copies src/assets into dist/ so root-relative URLs like
       // "/src/assets/images/..." (e.g. generate_image output) still resolve
       // in production builds. Do not remove.

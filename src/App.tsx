@@ -128,7 +128,22 @@ function formatCloudErrorMessage(err: unknown, fallback: string): string {
 
 export default function App() {
   const { theme, setTheme } = useTheme();
-  const [activeSection, setActiveSection] = useState<NavSection>('dashboard');
+  const [activeSection, setActiveSection] = useState<NavSection>(() => {
+    if (typeof window === 'undefined') return 'dashboard';
+    const requested = new URLSearchParams(window.location.search).get('section');
+    const validSections: NavSection[] = [
+      'dashboard',
+      'wizard',
+      'tax',
+      'register',
+      'report',
+      'non_akta_rekap',
+      'settings',
+    ];
+    return requested && validSections.includes(requested as NavSection)
+      ? (requested as NavSection)
+      : 'dashboard';
+  });
   const [records, setRecords] = useState<BerkasRecord[]>([]);
   const [settings, setSettings] = useState<OfficeSettings>(DEFAULT_OFFICE_SETTINGS);
   const [customTemplates, setCustomTemplates] = useState<
