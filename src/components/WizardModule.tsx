@@ -1813,12 +1813,12 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             {!isAkta && (
               <div className="space-y-3">
                 {/* Sumber Data Berkas Non-Akta: Input Mandiri vs Kaitkan ke Berkas Terdaftar */}
-                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] p-4 space-y-3">
+                <div className="rounded-xl border border-[#E2D5C1] dark:border-[#1E3A54] bg-[#FFFDF9] dark:bg-[#0E2236] p-4 space-y-3">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                     <div
                       role="tablist"
                       aria-label="Mode Sumber Data Berkas Non-Akta"
-                      className="inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 w-fit"
+                      className="inline-flex items-center gap-1 p-1 bg-[#F3ECE0] dark:bg-[#132C44] rounded-lg border border-[#E2D5C1] dark:border-[#244564] w-fit"
                     >
                       <button
                         type="button"
@@ -1827,8 +1827,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         onClick={() => handleSelectNonAktaMode('manual')}
                         className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                           nonAktaSourceMode === 'manual'
-                            ? 'bg-[#064E3B] dark:bg-emerald-700 text-white'
-                            : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white'
+                            ? 'bg-[#0F2942] dark:bg-[#1D4A73] text-[#F8FAFC]'
+                            : 'text-[#6B5E4C] dark:text-slate-300 hover:text-[#0F2942] dark:hover:text-white'
                         }`}
                       >
                         Input Mandiri (Baru)
@@ -1841,8 +1841,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         onClick={() => handleSelectNonAktaMode('linked')}
                         className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors disabled:opacity-50 ${
                           nonAktaSourceMode === 'linked'
-                            ? 'bg-[#064E3B] dark:bg-emerald-700 text-white'
-                            : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white'
+                            ? 'bg-[#0F2942] dark:bg-[#1D4A73] text-[#F8FAFC]'
+                            : 'text-[#6B5E4C] dark:text-slate-300 hover:text-[#0F2942] dark:hover:text-white'
                         }`}
                       >
                         Kaitkan ke Berkas Terdaftar ({linkableRecords.length})
@@ -1877,7 +1877,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   {nonAktaSourceMode === 'linked' && linkedSourceRecord && (
                     <div className="rounded-xl border border-teal-200/90 dark:border-teal-500/30 bg-teal-50/75 dark:bg-teal-950/50 px-3.5 py-3 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
                       <div className="flex items-start gap-2.5 min-w-0">
-                        <div className="w-7 h-7 rounded-lg bg-[#064E3B] dark:bg-emerald-700 text-white flex items-center justify-center shrink-0 mt-0.5">
+                        <div className="w-7 h-7 rounded-lg bg-[#0F2942] dark:bg-[#1D4A73] text-white flex items-center justify-center shrink-0 mt-0.5">
                           <Link2 className="w-3.5 h-3.5" />
                         </div>
                         <div className="min-w-0 text-xs">
@@ -1967,7 +1967,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               <div
                 role="group"
                 aria-label="Mode Pemindaian AI"
-                className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 p-1 text-xs shrink-0"
+                className="inline-flex rounded-lg border border-[#E2D5C1] dark:border-[#244564] bg-[#F3ECE0] dark:bg-[#132C44] p-1 text-xs shrink-0"
               >
                 <button
                   type="button"
@@ -1975,8 +1975,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   aria-pressed={scanMode === 'fast'}
                   className={`px-3 py-1 rounded-md font-semibold transition-colors ${
                     scanMode === 'fast'
-                      ? 'bg-[#064E3B] dark:bg-emerald-700 text-white'
-                      : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white'
+                      ? 'bg-[#0F2942] dark:bg-[#1D4A73] text-[#F8FAFC]'
+                      : 'text-[#6B5E4C] dark:text-slate-300 hover:text-[#0F2942] dark:hover:text-white'
                   }`}
                 >
                   Mode Cepat
@@ -1987,8 +1987,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   aria-pressed={scanMode === 'accurate'}
                   className={`px-3 py-1 rounded-md font-semibold transition-colors ${
                     scanMode === 'accurate'
-                      ? 'bg-[#0F4C5C] dark:bg-sky-700 text-white'
-                      : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white'
+                      ? 'bg-[#B91C1C] dark:bg-[#B91C1C] text-white'
+                      : 'text-[#6B5E4C] dark:text-slate-300 hover:text-[#0F2942] dark:hover:text-white'
                   }`}
                 >
                   Mode Detail
@@ -2010,8 +2010,8 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               }}
               className={`dropzone-3d-inset border border-dashed rounded-xl p-8 sm:p-10 text-center transition-colors ${
                 isDragging
-                  ? 'border-[#064E3B] bg-emerald-50/70 dark:bg-emerald-950/30'
-                  : 'border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/50 hover:border-slate-400 dark:hover:border-slate-600'
+                  ? 'border-[#D97706] bg-[#FAF3E3] dark:bg-[#163450]'
+                  : 'border-[#D5C6AE] dark:border-[#254563] bg-[#FAF6EE] dark:bg-[#0B1D2E]/70 hover:border-[#0F2942] dark:hover:border-[#D97706]/60'
               }`}
             >
               <div className="flex justify-center mb-4">
@@ -2021,7 +2021,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   </GlossyIcon3D>
                   <span
                     aria-hidden="true"
-                    className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#064E3B] dark:bg-emerald-600 text-white flex items-center justify-center border-2 border-white dark:border-slate-900"
+                    className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#D97706] text-white flex items-center justify-center border-2 border-[#FFFDF9] dark:border-[#0E2236]"
                   >
                     <Sparkles className="w-3 h-3" />
                   </span>

@@ -335,7 +335,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
       {/* Filters */}
       <div className="no-print bento-card p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg">
+          <div className="flex flex-wrap items-center gap-1 p-1 bg-[#F3ECE0] dark:bg-[#132C44] border border-[#E2D5C1] dark:border-[#244564] rounded-lg">
             {NON_AKTA_TABS.map((tab) => {
               const active = layananFilter === tab.id;
               return (
@@ -345,8 +345,8 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                   onClick={() => setLayananFilter(tab.id)}
                   className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap ${
                     active
-                      ? 'bg-[#064E3B] dark:bg-emerald-700 text-white'
-                      : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white hover:bg-white/80 dark:hover:bg-slate-700/60'
+                      ? 'bg-[#0F2942] dark:bg-[#1D4A73] text-[#F8FAFC]'
+                      : 'text-[#6B5E4C] dark:text-slate-300 hover:text-[#0F2942] dark:hover:text-white hover:bg-[#FFFDF9]/80 dark:hover:bg-[#1A3957]'
                   }`}
                 >
                   {tab.label}
@@ -620,10 +620,10 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                           onClick={() => onChangeStatus(rec.id, stage)}
                           className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-left text-[11px] font-semibold transition-colors ${
                             isCurrent
-                              ? 'border-[#064E3B] bg-[#064E3B] dark:border-emerald-600 dark:bg-emerald-700 text-white'
+                              ? 'border-[#0F2942] bg-[#0F2942] dark:border-[#D97706] dark:bg-[#1D4A73] text-[#F8FAFC]'
                               : isDone
-                              ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/50'
-                              : 'border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/50 text-[#64748B] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                              ? 'border-emerald-200 dark:border-emerald-800 bg-[#E2F3EB] dark:bg-emerald-950/50 text-[#115E3B] dark:text-emerald-200 hover:bg-[#D5ECE1] dark:hover:bg-emerald-900/50'
+                              : 'border-[#E2D5C1] dark:border-[#244564] bg-[#FAF6EE] dark:bg-[#132C44] text-[#6B5E4C] dark:text-slate-300 hover:bg-[#F3ECE0] dark:hover:bg-[#1A3957]'
                           }`}
                         >
                           <CheckCircle2

@@ -242,7 +242,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                 <span>
                   Ketuk ikon{' '}
                   <span className="inline-flex items-center gap-1 font-semibold text-slate-900 dark:text-white">
-                    <Share className="w-3.5 h-3.5 text-[#064E3B] dark:text-emerald-400" />
+                    <Share className="w-3.5 h-3.5 text-[#D97706] dark:text-[#F59E0B]" />
                     Bagikan (Share)
                   </span>{' '}
                   di bilah menu Safari.
@@ -255,7 +255,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                 <span>
                   Gulir ke bawah lalu pilih{' '}
                   <span className="inline-flex items-center gap-1 font-semibold text-slate-900 dark:text-white">
-                    <PlusSquare className="w-3.5 h-3.5 text-[#064E3B] dark:text-emerald-400" />
+                    <PlusSquare className="w-3.5 h-3.5 text-[#D97706] dark:text-[#F59E0B]" />
                     Tambahkan ke Layar Utama
                   </span>
                   .

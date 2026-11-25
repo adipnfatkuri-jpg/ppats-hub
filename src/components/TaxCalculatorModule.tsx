@@ -448,7 +448,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
         <div
           role="tablist"
           aria-label="Mode jalur perhitungan pajak"
-          className="inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 w-fit"
+          className="inline-flex items-center gap-1 p-1 bg-[#F3ECE0] dark:bg-[#132C44] rounded-lg border border-[#E2D5C1] dark:border-[#244564] w-fit"
         >
           <button
             type="button"
@@ -457,8 +457,8 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
             onClick={() => handleModeChange('standalone')}
             className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap ${
               mode === 'standalone'
-                ? 'bg-[#064E3B] dark:bg-emerald-700 text-white'
-                : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white'
+                ? 'bg-[#0F2942] dark:bg-[#1D4A73] text-[#F8FAFC]'
+                : 'text-[#6B5E4C] dark:text-slate-300 hover:text-[#0F2942] dark:hover:text-white'
             }`}
           >
             Simulasi Mandiri (Baru)
@@ -471,8 +471,8 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
             disabled={records.length === 0}
             className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap disabled:opacity-50 ${
               mode === 'linked'
-                ? 'bg-[#064E3B] dark:bg-emerald-700 text-white'
-                : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white'
+                ? 'bg-[#0F2942] dark:bg-[#1D4A73] text-[#F8FAFC]'
+                : 'text-[#6B5E4C] dark:text-slate-300 hover:text-[#0F2942] dark:hover:text-white'
             }`}
           >
             Kaitkan ke Berkas Terdaftar ({records.length})
@@ -548,8 +548,8 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                       onClick={() => handleServiceChange(type)}
                       className={`px-3 py-2.5 rounded-lg border text-xs font-semibold text-left transition-colors ${
                         active
-                          ? 'border-[#064E3B] dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-[#064E3B] dark:text-emerald-200'
-                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                          ? 'border-[#0F2942] dark:border-[#D97706] bg-[#F3ECE0] dark:bg-[#173654] text-[#0F2942] dark:text-[#FDE68A]'
+                          : 'border-[#E2D5C1] dark:border-[#244564] bg-[#FFFDF9] dark:bg-[#0E2236] hover:bg-[#F7F2E7] dark:hover:bg-[#15314B] text-[#475569] dark:text-slate-300'
                       }`}
                     >
                       {type}
@@ -1164,24 +1164,24 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
               </div>
             </div>
 
-            {/* Flat Deep Forest Highlight Card: Total Estimasi Pajak */}
-            <div className="px-5 py-4 rounded-xl bg-[#064E3B] dark:bg-[#042F2E] border border-emerald-900/20 dark:border-emerald-800/60">
+            {/* Flat Deep Marine Navy + Gold Accent Card: Total Estimasi Pajak */}
+            <div className="px-5 py-4 rounded-xl bg-[#0F2942] dark:bg-[#0A1D30] border border-[#1E3A54] border-t-2 border-t-[#D97706]">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 text-emerald-100 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-white/10 border border-[#D97706]/50 text-[#FBBF24] flex items-center justify-center shrink-0">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-emerald-200/85">
+                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-[#FDE68A]">
                       Total Estimasi Pajak
                     </span>
-                    <span className="block text-xs font-medium text-emerald-100/90">
+                    <span className="block text-xs font-medium text-slate-200/85">
                       BPHTB (5%) + PPh Final (2,5%)
                     </span>
                   </div>
                 </div>
                 <div className="sm:text-right">
-                  <span className="font-mono text-2xl font-bold text-white tracking-tight tabular-nums">
+                  <span className="font-cinzel text-2xl font-bold text-[#F8FAFC] tracking-tight tabular-nums">
                     {formatRupiah(taxSummary.total_pajak)}
                   </span>
                 </div>
