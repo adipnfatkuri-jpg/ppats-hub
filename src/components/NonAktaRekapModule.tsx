@@ -335,7 +335,7 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
       {/* Filters */}
       <div className="no-print bento-card p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-teal-950/[0.04] dark:bg-teal-950/60 border border-teal-900/10 dark:border-teal-500/15 rounded-2xl">
+          <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg">
             {NON_AKTA_TABS.map((tab) => {
               const active = layananFilter === tab.id;
               return (
@@ -343,10 +343,10 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => setLayananFilter(tab.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 whitespace-nowrap ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap ${
                     active
-                      ? 'bg-gradient-to-b from-teal-500 to-teal-600 text-white border-b-[3px] border-teal-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_6px_14px_-4px_rgba(20,184,166,0.5)] -translate-y-0.5'
-                      : 'text-slate-600 dark:text-teal-200/80 hover:text-teal-900 dark:hover:text-white hover:bg-white/70 dark:hover:bg-teal-900/40'
+                      ? 'bg-[#064E3B] dark:bg-emerald-700 text-white'
+                      : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white hover:bg-white/80 dark:hover:bg-slate-700/60'
                   }`}
                 >
                   {tab.label}
@@ -618,12 +618,12 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
                           key={stage}
                           type="button"
                           onClick={() => onChangeStatus(rec.id, stage)}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-left text-[11px] font-semibold transition-all duration-150 ${
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-left text-[11px] font-semibold transition-colors ${
                             isCurrent
-                              ? 'border-teal-500 bg-gradient-to-b from-teal-500 to-teal-600 text-white border-b-[3px] border-b-teal-800 shadow-[0_6px_14px_-4px_rgba(20,184,166,0.45)] -translate-y-0.5'
+                              ? 'border-[#064E3B] bg-[#064E3B] dark:border-emerald-600 dark:bg-emerald-700 text-white'
                               : isDone
-                              ? 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/80 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/50'
-                              : 'border-teal-900/10 dark:border-teal-500/15 bg-teal-50/30 dark:bg-teal-950/40 text-slate-600 dark:text-teal-200/75 hover:bg-teal-50 dark:hover:bg-teal-900/30'
+                              ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/50'
+                              : 'border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/50 text-[#64748B] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                           }`}
                         >
                           <CheckCircle2

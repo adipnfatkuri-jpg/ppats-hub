@@ -175,7 +175,7 @@ export const ReportModule: React.FC<ReportModuleProps> = ({
       </div>
 
       {/* Printable Official Preview Sheet (intentionally crisp white paper for print fidelity) */}
-      <div className="bg-white text-slate-900 border border-teal-900/10 dark:border-teal-400/20 rounded-2xl shadow-[0_14px_30px_-8px_rgba(15,61,62,0.12)] p-6 sm:p-8 space-y-6">
+      <div className="bg-white text-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6 sm:p-8 space-y-6">
         <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
             Pemerintah {settings.nama_kabupaten}

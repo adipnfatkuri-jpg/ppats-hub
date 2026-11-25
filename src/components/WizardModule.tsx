@@ -1813,22 +1813,22 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
             {!isAkta && (
               <div className="space-y-3">
                 {/* Sumber Data Berkas Non-Akta: Input Mandiri vs Kaitkan ke Berkas Terdaftar */}
-                <div className="rounded-2xl border border-teal-900/10 dark:border-teal-400/20 bg-white/95 dark:bg-[#092024] p-4 shadow-[0_8px_20px_-6px_rgba(15,61,62,0.08)] space-y-3">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] p-4 space-y-3">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                     <div
                       role="tablist"
                       aria-label="Mode Sumber Data Berkas Non-Akta"
-                      className="inline-flex items-center gap-1 p-1.5 bg-[#EAF3F1] dark:bg-[#081F22] rounded-2xl border border-teal-900/8 dark:border-teal-400/15 shadow-inner w-fit"
+                      className="inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 w-fit"
                     >
                       <button
                         type="button"
                         role="tab"
                         aria-selected={nonAktaSourceMode === 'manual'}
                         onClick={() => handleSelectNonAktaMode('manual')}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 ${
+                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                           nonAktaSourceMode === 'manual'
-                            ? 'bg-gradient-to-b from-teal-400 to-teal-600 text-white border-b-2 border-teal-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_6px_14px_-4px_rgba(13,148,136,0.5)]'
-                            : 'text-slate-600 dark:text-teal-200/75 hover:text-teal-900 dark:hover:text-white'
+                            ? 'bg-[#064E3B] dark:bg-emerald-700 text-white'
+                            : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white'
                         }`}
                       >
                         Input Mandiri (Baru)
@@ -1839,10 +1839,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         aria-selected={nonAktaSourceMode === 'linked'}
                         disabled={linkableRecords.length === 0}
                         onClick={() => handleSelectNonAktaMode('linked')}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 disabled:opacity-50 ${
+                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors disabled:opacity-50 ${
                           nonAktaSourceMode === 'linked'
-                            ? 'bg-gradient-to-b from-teal-400 to-teal-600 text-white border-b-2 border-teal-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_6px_14px_-4px_rgba(13,148,136,0.5)]'
-                            : 'text-slate-600 dark:text-teal-200/75 hover:text-teal-900 dark:hover:text-white'
+                            ? 'bg-[#064E3B] dark:bg-emerald-700 text-white'
+                            : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white'
                         }`}
                       >
                         Kaitkan ke Berkas Terdaftar ({linkableRecords.length})
@@ -1877,7 +1877,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   {nonAktaSourceMode === 'linked' && linkedSourceRecord && (
                     <div className="rounded-xl border border-teal-200/90 dark:border-teal-500/30 bg-teal-50/75 dark:bg-teal-950/50 px-3.5 py-3 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
                       <div className="flex items-start gap-2.5 min-w-0">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-b from-teal-400 to-teal-600 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                        <div className="w-7 h-7 rounded-lg bg-[#064E3B] dark:bg-emerald-700 text-white flex items-center justify-center shrink-0 mt-0.5">
                           <Link2 className="w-3.5 h-3.5" />
                         </div>
                         <div className="min-w-0 text-xs">
@@ -1967,16 +1967,16 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               <div
                 role="group"
                 aria-label="Mode Pemindaian AI"
-                className="inline-flex rounded-full border border-teal-900/10 dark:border-teal-400/20 bg-[#EAF3F1] dark:bg-[#081F22] p-1 text-xs shrink-0 shadow-inner"
+                className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 p-1 text-xs shrink-0"
               >
                 <button
                   type="button"
                   onClick={() => setScanMode('fast')}
                   aria-pressed={scanMode === 'fast'}
-                  className={`px-3 py-1 rounded-full font-semibold transition-all duration-150 ${
+                  className={`px-3 py-1 rounded-md font-semibold transition-colors ${
                     scanMode === 'fast'
-                      ? 'bg-gradient-to-b from-teal-400 to-teal-600 text-white shadow-sm'
-                      : 'text-slate-600 dark:text-teal-200/75 hover:text-teal-900 dark:hover:text-white'
+                      ? 'bg-[#064E3B] dark:bg-emerald-700 text-white'
+                      : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white'
                   }`}
                 >
                   Mode Cepat
@@ -1985,10 +1985,10 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   type="button"
                   onClick={() => setScanMode('accurate')}
                   aria-pressed={scanMode === 'accurate'}
-                  className={`px-3 py-1 rounded-full font-semibold transition-all duration-150 ${
+                  className={`px-3 py-1 rounded-md font-semibold transition-colors ${
                     scanMode === 'accurate'
-                      ? 'bg-gradient-to-b from-sky-400 to-sky-600 text-white shadow-sm'
-                      : 'text-slate-600 dark:text-teal-200/75 hover:text-teal-900 dark:hover:text-white'
+                      ? 'bg-[#0F4C5C] dark:bg-sky-700 text-white'
+                      : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white'
                   }`}
                 >
                   Mode Detail
@@ -1996,7 +1996,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               </div>
             </div>
 
-            {/* Inset 3D AI Dropzone */}
+            {/* Clean Flat AI Dropzone */}
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -2008,22 +2008,22 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                 setIsDragging(false);
                 handleFilesSelected(e.dataTransfer.files);
               }}
-              className={`dropzone-3d-inset border-2 border-dashed rounded-2xl p-8 sm:p-10 text-center transition-all duration-200 ${
+              className={`dropzone-3d-inset border border-dashed rounded-xl p-8 sm:p-10 text-center transition-colors ${
                 isDragging
-                  ? 'border-teal-500 bg-gradient-to-br from-sky-100/80 via-teal-100/70 to-emerald-100/70 dark:from-sky-900/50 dark:via-teal-900/50 dark:to-emerald-900/50 scale-[1.01]'
-                  : 'border-teal-400/75 dark:border-teal-500/45 bg-gradient-to-br from-sky-50/70 via-teal-50/55 to-emerald-50/50 dark:from-sky-950/35 dark:via-[#082024] dark:to-teal-950/40 hover:border-teal-500'
+                  ? 'border-[#064E3B] bg-emerald-50/70 dark:bg-emerald-950/30'
+                  : 'border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/50 hover:border-slate-400 dark:hover:border-slate-600'
               }`}
             >
               <div className="flex justify-center mb-4">
-                <div className="animate-float-slow relative">
-                  <GlossyIcon3D tone="cyan" size="lg">
-                    <UploadCloud className="w-8 h-8" />
+                <div className="relative">
+                  <GlossyIcon3D tone="teal" size="lg">
+                    <UploadCloud className="w-7 h-7" />
                   </GlossyIcon3D>
                   <span
                     aria-hidden="true"
-                    className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 text-white flex items-center justify-center border-2 border-white dark:border-[#082024] shadow-md"
+                    className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#064E3B] dark:bg-emerald-600 text-white flex items-center justify-center border-2 border-white dark:border-slate-900"
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <Sparkles className="w-3 h-3" />
                   </span>
                 </div>
               </div>

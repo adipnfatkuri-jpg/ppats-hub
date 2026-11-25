@@ -50,7 +50,7 @@ import {
   type OfficeMemberInfo,
   type OfficeRole,
 } from './utils/cloudSync';
-import { NavSection, Sidebar } from './components/Sidebar';
+import { NavSection, Sidebar, TopHeader } from './components/Sidebar';
 import { DashboardModule } from './components/DashboardModule';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { useTheme } from './hooks/useTheme';
@@ -79,13 +79,13 @@ const ReceiptModal = lazy(() =>
 
 const ModuleLoadingFallback: React.FC = () => (
   <div className="space-y-4" aria-busy="true" aria-label="Memuat modul">
-    <div className="h-8 w-56 bg-teal-900/10 dark:bg-teal-400/10 rounded-xl animate-pulse" />
+    <div className="h-7 w-56 bg-slate-200/80 dark:bg-slate-800 rounded-lg animate-pulse" />
     <div className="bento-card p-6 space-y-3">
-      <div className="h-5 w-72 bg-teal-900/10 dark:bg-teal-400/10 rounded-lg animate-pulse" />
-      <div className="h-28 w-full bg-teal-900/5 dark:bg-teal-400/5 rounded-xl animate-pulse" />
+      <div className="h-5 w-72 bg-slate-200/70 dark:bg-slate-800 rounded-md animate-pulse" />
+      <div className="h-28 w-full bg-slate-100 dark:bg-slate-800/60 rounded-lg animate-pulse" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="h-16 bg-teal-900/5 dark:bg-teal-400/5 rounded-xl animate-pulse" />
-        <div className="h-16 bg-teal-900/5 dark:bg-teal-400/5 rounded-xl animate-pulse" />
+        <div className="h-16 bg-slate-100 dark:bg-slate-800/60 rounded-lg animate-pulse" />
+        <div className="h-16 bg-slate-100 dark:bg-slate-800/60 rounded-lg animate-pulse" />
       </div>
     </div>
   </div>
@@ -719,52 +719,64 @@ export default function App() {
     }
   };
 
+  const handleSelectNavSection = (sec: NavSection) => {
+    if (sec === 'wizard' && activeSection !== 'wizard' && !editingRecord) {
+      setWizardDefaultLayanan(undefined);
+      setWizardKey((k) => k + 1);
+    }
+    if (sec === 'tax') {
+      setSelectedTaxRecordId(null);
+    }
+    setActiveSection(sec);
+  };
+
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row app-canvas text-slate-900 dark:text-teal-50">
+    <div className="min-h-screen flex flex-col lg:flex-row app-canvas text-[#1E293B] dark:text-slate-100">
       <Sidebar
         activeSection={activeSection}
-        onSelectSection={(sec) => {
-          if (sec === 'wizard' && activeSection !== 'wizard' && !editingRecord) {
-            setWizardDefaultLayanan(undefined);
-            setWizardKey((k) => k + 1);
-          }
-          if (sec === 'tax') {
-            setSelectedTaxRecordId(null);
-          }
-          setActiveSection(sec);
-        }}
+        onSelectSection={handleSelectNavSection}
         settings={settings}
-        onExportBackup={handleExportBackup}
-        onRestoreBackup={handleRestoreBackup}
         isMobileOpen={isMobileSidebarOpen}
         onToggleMobile={() => setIsMobileSidebarOpen((v) => !v)}
         editingBadge={editingRecord?.kode_berkas ?? null}
-        authUser={authUser}
-        cloudSession={cloudSession}
-        authBusy={authBusy}
-        reloadingCloud={reloadingCloud}
-        onSignIn={handleSignIn}
-        onSignOut={handleSignOut}
-        onReloadCloud={handleReloadCloud}
-        theme={theme}
-        onSetTheme={setTheme}
       />
 
-      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
+      <div className="flex-1 min-w-0 flex flex-col">
+        <TopHeader
+          activeSection={activeSection}
+          onSelectSection={handleSelectNavSection}
+          settings={settings}
+          onExportBackup={handleExportBackup}
+          onRestoreBackup={handleRestoreBackup}
+          isMobileOpen={isMobileSidebarOpen}
+          onToggleMobile={() => setIsMobileSidebarOpen((v) => !v)}
+          editingBadge={editingRecord?.kode_berkas ?? null}
+          authUser={authUser}
+          cloudSession={cloudSession}
+          authBusy={authBusy}
+          reloadingCloud={reloadingCloud}
+          onSignIn={handleSignIn}
+          onSignOut={handleSignOut}
+          onReloadCloud={handleReloadCloud}
+          theme={theme}
+          onSetTheme={setTheme}
+        />
+
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
         {toast && (
           <div
             role="status"
-            className={`no-print mb-5 px-4 py-3 rounded-2xl border text-sm flex items-center justify-between gap-3 shadow-md ${
+            className={`no-print mb-5 px-4 py-3 rounded-xl border text-sm flex items-center justify-between gap-3 ${
               toast.type === 'success'
-                ? 'bg-emerald-50/95 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-700/60 text-emerald-900 dark:text-emerald-100'
-                : 'bg-rose-50/95 dark:bg-rose-950/80 border-rose-200 dark:border-rose-700/60 text-rose-900 dark:text-rose-100'
+                ? 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100'
+                : 'bg-rose-50 dark:bg-rose-950/70 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-100'
             }`}
           >
             <div className="flex items-center gap-2.5">
               {toast.type === 'success' ? (
-                <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
               ) : (
-                <AlertCircle className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
               )}
               <span className="font-medium">{toast.message}</span>
             </div>
@@ -781,7 +793,7 @@ export default function App() {
 
         {loading ? (
           <div className="space-y-4">
-            <div className="h-8 w-64 bg-teal-900/10 dark:bg-teal-400/10 rounded-xl animate-pulse" />
+            <div className="h-7 w-64 bg-slate-200/80 dark:bg-slate-800 rounded-lg animate-pulse" />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <div
@@ -902,7 +914,8 @@ export default function App() {
             )}
           </Suspense>
         )}
-      </main>
+        </main>
+      </div>
 
       {receiptRecord && (
         <Suspense fallback={null}>

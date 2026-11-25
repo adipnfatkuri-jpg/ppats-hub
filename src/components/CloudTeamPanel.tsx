@@ -233,7 +233,7 @@ export const CloudTeamPanel: React.FC<CloudTeamPanelProps> = ({
                   className="w-10 h-10 rounded-full border-2 border-white dark:border-teal-400/40 shadow-sm shrink-0"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+                <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-semibold text-sm shrink-0">
                   {(user.displayName || user.email || 'U').slice(0, 1).toUpperCase()}
                 </div>
               )}

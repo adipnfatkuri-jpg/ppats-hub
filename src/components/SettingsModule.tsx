@@ -31,6 +31,7 @@ import { mergeScannedKtpIntoPpatsSettings } from '../utils/ppatsProfileHelper';
 import { CloudTeamPanel, type CloudTeamPanelProps } from './CloudTeamPanel';
 import { DateInputId } from './DateInputId';
 import { GlossyIcon3D } from './TactileUI';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface SettingsModuleProps {
   settings: OfficeSettings;
@@ -1302,37 +1303,38 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
         </div>
       </div>
 
-      {/* Section 3: Backup & Restore Database */}
+      {/* Section 3: Backup, Restore & Shortcut Aplikasi */}
       <div className="bento-card p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-start gap-3.5">
           <GlossyIcon3D tone="amber" size="sm">
-            <Database className="w-4.5 h-4.5" />
+            <Database className="w-4 h-4" />
           </GlossyIcon3D>
           <div>
-            <h2 className="font-display text-base font-bold text-slate-900 dark:text-teal-50">
-              Backup &amp; Restore Database Kantor (.JSON)
+            <h2 className="font-display text-base font-bold text-[#1E293B] dark:text-white">
+              Backup, Restore &amp; Shortcut Aplikasi
             </h2>
-            <p className="text-xs text-slate-500 dark:text-teal-200/75 mt-0.5">
-              Seluruh data register berkas, pengaturan pejabat PPATS, dan file master template .docx disimpan di IndexedDB browser. Ekspor file .JSON secara berkala untuk pemindahan antar-komputer.
+            <p className="text-xs text-[#64748B] dark:text-slate-400 mt-0.5">
+              Seluruh data register berkas, pengaturan pejabat PPATS, dan file master template .docx disimpan lokal di browser. Ekspor file .JSON secara berkala atau buat pintasan desktop untuk akses cepat.
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <PWAInstallButton variant="settings-button" />
           <button
             type="button"
             onClick={onExportBackup}
-            className="btn-3d btn-3d-light inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap"
+            className="btn-3d btn-3d-light inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold whitespace-nowrap"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-3.5 h-3.5" />
             <span>Export Backup (.JSON)</span>
           </button>
           <button
             type="button"
             onClick={() => restoreInputRef.current?.click()}
-            className="btn-3d btn-3d-teal inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap"
+            className="btn-3d btn-3d-teal inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold whitespace-nowrap"
           >
-            <Upload className="w-4 h-4" />
+            <Upload className="w-3.5 h-3.5" />
             <span>Restore Database (.JSON)</span>
           </button>
           <input

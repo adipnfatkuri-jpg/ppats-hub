@@ -10,26 +10,30 @@ export type GlossyTone =
   | 'violet'
   | 'rose';
 
+/**
+ * Flat-Modern Legal-Tech icon badge tones: muted neutral / subtle forest accent,
+ * zero gradients, zero glossy highlights, zero heavy drop shadows.
+ */
 const TONE_STYLES: Record<GlossyTone, string> = {
-  teal: 'bg-gradient-to-br from-teal-400 via-teal-500 to-emerald-600 text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.75),0_10px_20px_-6px_rgba(20,184,166,0.55)]',
+  teal: 'bg-emerald-50 dark:bg-emerald-950/60 text-[#064E3B] dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60',
   emerald:
-    'bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.75),0_10px_20px_-6px_rgba(16,185,129,0.55)]',
+    'bg-emerald-50 dark:bg-emerald-950/60 text-[#064E3B] dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60',
   amber:
-    'bg-gradient-to-br from-amber-300 via-amber-500 to-orange-500 text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.75),0_10px_20px_-6px_rgba(245,158,11,0.55)]',
-  sky: 'bg-gradient-to-br from-sky-400 via-sky-500 to-cyan-600 text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.75),0_10px_20px_-6px_rgba(14,165,233,0.55)]',
-  cyan: 'bg-gradient-to-br from-cyan-300 via-sky-500 to-teal-500 text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.75),0_10px_20px_-6px_rgba(6,182,212,0.55)]',
+    'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700',
+  sky: 'bg-slate-100 dark:bg-slate-800 text-[#0F4C5C] dark:text-slate-200 border border-slate-200 dark:border-slate-700',
+  cyan: 'bg-slate-100 dark:bg-slate-800 text-[#0F4C5C] dark:text-slate-200 border border-slate-200 dark:border-slate-700',
   indigo:
-    'bg-gradient-to-br from-indigo-400 via-indigo-500 to-violet-600 text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.75),0_10px_20px_-6px_rgba(99,102,241,0.55)]',
+    'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700',
   violet:
-    'bg-gradient-to-br from-violet-400 via-purple-500 to-indigo-600 text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.75),0_10px_20px_-6px_rgba(139,92,246,0.55)]',
-  rose: 'bg-gradient-to-br from-rose-400 via-rose-500 to-pink-600 text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.75),0_10px_20px_-6px_rgba(244,63,94,0.5)]',
+    'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700',
+  rose: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200/70 dark:border-rose-800/60',
 };
 
 const SIZE_STYLES = {
-  xs: 'w-8 h-8 rounded-xl',
-  sm: 'w-10 h-10 rounded-2xl',
-  md: 'w-12 h-12 rounded-2xl',
-  lg: 'w-16 h-16 rounded-2xl',
+  xs: 'w-8 h-8 rounded-lg',
+  sm: 'w-9 h-9 rounded-lg',
+  md: 'w-10 h-10 rounded-lg',
+  lg: 'w-14 h-14 rounded-xl',
 };
 
 interface GlossyIcon3DProps {
@@ -47,18 +51,12 @@ export const GlossyIcon3D: React.FC<GlossyIcon3DProps> = ({
 }) => {
   return (
     <div
-      className={`relative inline-flex items-center justify-center shrink-0 select-none ${SIZE_STYLES[size]} ${TONE_STYLES[tone]} ${className}`}
+      className={`inline-flex items-center justify-center shrink-0 select-none ${SIZE_STYLES[size]} ${TONE_STYLES[tone]} ${className}`}
     >
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-1.5 top-1 h-1/3 rounded-full bg-white/30 blur-[1px]"
-      />
-      <span className="relative z-10 flex items-center justify-center">{children}</span>
+      <span className="flex items-center justify-center">{children}</span>
     </div>
   );
 };
-
-const AVATAR_TONES: GlossyTone[] = ['teal', 'sky', 'emerald', 'amber', 'indigo', 'cyan'];
 
 function extractInitials(rawName: string): string {
   const cleaned = (rawName || '')
@@ -70,25 +68,16 @@ function extractInitials(rawName: string): string {
   return `${words[0][0] || ''}${words[1][0] || ''}`.toUpperCase();
 }
 
-function hashTone(rawName: string): GlossyTone {
-  let hash = 0;
-  for (let i = 0; i < rawName.length; i += 1) {
-    hash = (hash * 31 + rawName.charCodeAt(i)) >>> 0;
-  }
-  return AVATAR_TONES[hash % AVATAR_TONES.length];
-}
-
 interface PartyAvatar3DProps {
   name: string;
 }
 
 export const PartyAvatar3D: React.FC<PartyAvatar3DProps> = ({ name }) => {
   const initials = extractInitials(name);
-  const tone = hashTone(name || 'PPATS');
   return (
     <span
       aria-hidden="true"
-      className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-[11px] font-bold tracking-tight shrink-0 select-none ${TONE_STYLES[tone]}`}
+      className="inline-flex items-center justify-center w-8 h-8 rounded-full text-[11px] font-semibold tracking-tight shrink-0 select-none bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
     >
       {initials}
     </span>

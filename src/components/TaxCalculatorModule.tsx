@@ -448,17 +448,17 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
         <div
           role="tablist"
           aria-label="Mode jalur perhitungan pajak"
-          className="inline-flex items-center gap-1 p-1.5 bg-[#EAF3F1] dark:bg-[#081F22] rounded-2xl border border-teal-900/8 dark:border-teal-400/15 shadow-inner w-fit"
+          className="inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 w-fit"
         >
           <button
             type="button"
             role="tab"
             aria-selected={mode === 'standalone'}
             onClick={() => handleModeChange('standalone')}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 whitespace-nowrap ${
+            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap ${
               mode === 'standalone'
-                ? 'bg-gradient-to-b from-teal-400 to-teal-600 text-white border-b-2 border-teal-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_6px_14px_-4px_rgba(13,148,136,0.5)]'
-                : 'text-slate-600 dark:text-teal-200/75 hover:text-teal-900 dark:hover:text-white'
+                ? 'bg-[#064E3B] dark:bg-emerald-700 text-white'
+                : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white'
             }`}
           >
             Simulasi Mandiri (Baru)
@@ -469,10 +469,10 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
             aria-selected={mode === 'linked'}
             onClick={() => handleModeChange('linked')}
             disabled={records.length === 0}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 whitespace-nowrap disabled:opacity-50 ${
+            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap disabled:opacity-50 ${
               mode === 'linked'
-                ? 'bg-gradient-to-b from-teal-400 to-teal-600 text-white border-b-2 border-teal-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_6px_14px_-4px_rgba(13,148,136,0.5)]'
-                : 'text-slate-600 dark:text-teal-200/75 hover:text-teal-900 dark:hover:text-white'
+                ? 'bg-[#064E3B] dark:bg-emerald-700 text-white'
+                : 'text-[#64748B] dark:text-slate-300 hover:text-[#1E293B] dark:hover:text-white'
             }`}
           >
             Kaitkan ke Berkas Terdaftar ({records.length})
@@ -546,10 +546,10 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                       key={type}
                       type="button"
                       onClick={() => handleServiceChange(type)}
-                      className={`px-3 py-2.5 rounded-xl border text-xs font-semibold text-left transition-all duration-150 ${
+                      className={`px-3 py-2.5 rounded-lg border text-xs font-semibold text-left transition-colors ${
                         active
-                          ? 'border-teal-500 border-b-4 border-b-teal-700 bg-gradient-to-br from-teal-50 to-emerald-50/80 dark:from-teal-900/70 dark:to-emerald-950/70 text-teal-950 dark:text-teal-100 shadow-sm -translate-y-0.5'
-                          : 'border-teal-900/12 dark:border-teal-400/15 bg-white dark:bg-[#091F22] hover:bg-teal-50/50 dark:hover:bg-teal-900/35 text-slate-700 dark:text-teal-100/85'
+                          ? 'border-[#064E3B] dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-[#064E3B] dark:text-emerald-200'
+                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
                       }`}
                     >
                       {type}
@@ -560,7 +560,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
             </div>
 
             {/* Scan Cepat SPPT PBB & Sertipikat */}
-            <div className="rounded-2xl border border-sky-200/90 dark:border-sky-500/25 bg-gradient-to-br from-sky-50/80 via-white to-teal-50/60 dark:from-sky-950/40 dark:via-[#092024] dark:to-teal-950/35 p-3.5 space-y-2.5">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/60 p-3.5 space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                 <div>
                   <p className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
@@ -716,7 +716,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
 
             {/* Rumus Khusus BPHTB APHB: ((n - m) / n) × Luas × NJOP */}
             {form.layanan === 'APHB' && (
-              <div className="rounded-2xl border border-amber-200/90 dark:border-amber-500/35 bg-gradient-to-br from-amber-50/85 via-white to-teal-50/50 dark:from-amber-950/35 dark:via-[#0A2226] dark:to-teal-950/35 p-4 space-y-3">
+              <div className="rounded-xl border border-amber-200 dark:border-amber-800/60 bg-amber-50/60 dark:bg-amber-950/30 p-4 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-xs font-bold text-amber-950 dark:text-amber-100">
@@ -1121,13 +1121,13 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
               </div>
             </div>
 
-            {/* Raised 3D Sky BPHTB & 3D Amber PPh Final Cards */}
+            {/* Flat Executive BPHTB & PPh Final Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
-              <div className="p-4 rounded-2xl border border-sky-200/90 dark:border-sky-700/60 border-t-2 border-t-white dark:border-t-sky-400/30 border-b-4 border-b-sky-300/80 dark:border-b-sky-950 bg-gradient-to-br from-sky-50 via-white to-cyan-50/70 dark:from-sky-950/75 dark:via-[#0D2936] dark:to-cyan-950/70 shadow-[0_10px_22px_-8px_rgba(14,165,233,0.28)] space-y-2 transition-transform duration-150 hover:-translate-y-0.5">
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/60 space-y-2">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-bold text-sky-900 dark:text-sky-200 leading-snug">
+                  <p className="font-bold text-[#1E293B] dark:text-slate-100 leading-snug">
                     BPHTB Terutang
-                    <span className="block text-[11px] font-medium text-sky-700/80 dark:text-sky-300/75">
+                    <span className="block text-[11px] font-medium text-[#64748B] dark:text-slate-400">
                       5% × NPOPKP
                     </span>
                   </p>
@@ -1135,19 +1135,19 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                     <Receipt className="w-4 h-4" />
                   </GlossyIcon3D>
                 </div>
-                <p className="font-mono text-xl font-bold text-sky-950 dark:text-white tabular-nums">
+                <p className="font-mono text-xl font-bold text-[#1E293B] dark:text-white tabular-nums">
                   {formatRupiah(taxResult.bphtb)}
                 </p>
-                <p className="text-[11px] text-sky-800/90 dark:text-sky-200/80 italic">
+                <p className="text-[11px] text-[#64748B] dark:text-slate-400 italic">
                   {terbilangRupiah(taxResult.bphtb)}
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl border border-amber-200/90 dark:border-amber-700/60 border-t-2 border-t-white dark:border-t-amber-400/30 border-b-4 border-b-amber-300/80 dark:border-b-amber-950 bg-gradient-to-br from-amber-50 via-white to-orange-50/70 dark:from-amber-950/65 dark:via-[#261E0D] dark:to-orange-950/60 shadow-[0_10px_22px_-8px_rgba(245,158,11,0.28)] space-y-2 transition-transform duration-150 hover:-translate-y-0.5">
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/60 space-y-2">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-bold text-amber-900 dark:text-amber-200 leading-snug">
+                  <p className="font-bold text-[#1E293B] dark:text-slate-100 leading-snug">
                     PPh Final
-                    <span className="block text-[11px] font-medium text-amber-700/85 dark:text-amber-300/75">
+                    <span className="block text-[11px] font-medium text-[#64748B] dark:text-slate-400">
                       2,5% × NPOP
                     </span>
                   </p>
@@ -1155,37 +1155,33 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                     <Coins className="w-4 h-4" />
                   </GlossyIcon3D>
                 </div>
-                <p className="font-mono text-xl font-bold text-amber-950 dark:text-white tabular-nums">
+                <p className="font-mono text-xl font-bold text-[#1E293B] dark:text-white tabular-nums">
                   {formatRupiah(taxResult.pph)}
                 </p>
-                <p className="text-[11px] text-amber-800/90 dark:text-amber-200/80 italic">
+                <p className="text-[11px] text-[#64748B] dark:text-slate-400 italic">
                   {terbilangRupiah(taxResult.pph)}
                 </p>
               </div>
             </div>
 
-            {/* Exclusive Deep Teal 3D Highlight Card: Total Estimasi Pajak */}
-            <div className="relative overflow-hidden px-5 py-4 rounded-2xl bg-gradient-to-br from-[#0F3D3E] via-[#124E52] to-[#134E4A] border border-teal-400/30 border-t-teal-300/40 border-b-4 border-b-[#072122] shadow-[0_18px_36px_-10px_rgba(15,61,62,0.55),inset_0_1px_1px_rgba(255,255,255,0.2)]">
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute -top-10 -right-10 w-36 h-36 rounded-full bg-teal-300/25 blur-2xl"
-              />
-              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            {/* Flat Deep Forest Highlight Card: Total Estimasi Pajak */}
+            <div className="px-5 py-4 rounded-xl bg-[#064E3B] dark:bg-[#042F2E] border border-emerald-900/20 dark:border-emerald-800/60">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="flex items-center gap-3">
-                  <GlossyIcon3D tone="emerald" size="xs">
+                  <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 text-emerald-100 flex items-center justify-center shrink-0">
                     <Sparkles className="w-4 h-4" />
-                  </GlossyIcon3D>
+                  </div>
                   <div>
-                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-teal-200/85">
+                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-emerald-200/85">
                       Total Estimasi Pajak
                     </span>
-                    <span className="block text-xs font-medium text-teal-100/90">
+                    <span className="block text-xs font-medium text-emerald-100/90">
                       BPHTB (5%) + PPh Final (2,5%)
                     </span>
                   </div>
                 </div>
                 <div className="sm:text-right">
-                  <span className="font-mono text-2xl font-bold text-white tracking-tight tabular-nums drop-shadow-xs">
+                  <span className="font-mono text-2xl font-bold text-white tracking-tight tabular-nums">
                     {formatRupiah(taxSummary.total_pajak)}
                   </span>
                 </div>
@@ -1193,7 +1189,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
             </div>
 
             {/* Menu Pengajuan BPHTB (SIPAD Boyolali) tepat di bawah Total Estimasi Pajak */}
-            <div className="p-4 rounded-2xl border border-sky-200/80 dark:border-sky-700/50 bg-gradient-to-br from-sky-50/75 to-teal-50/55 dark:from-sky-950/45 dark:to-teal-950/45 space-y-3 text-xs">
+            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/60 space-y-3 text-xs">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <GlossyIcon3D tone="sky" size="sm" className="mt-0.5">
