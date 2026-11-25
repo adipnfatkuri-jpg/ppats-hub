@@ -86,15 +86,15 @@ export const ReportModule: React.FC<ReportModuleProps> = ({
       {/* Header & Controls */}
       <div className="no-print space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-start gap-3.5">
+          <div className="rounded-xl bg-[#FFFBF0]/85 dark:bg-[#0B1F3A]/85 backdrop-blur-sm border border-[#C89B3C]/70 px-4 py-3 shadow-[0_4px_16px_rgba(11,31,58,0.18)] flex items-start gap-3.5 max-w-2xl">
             <GlossyIcon3D tone="emerald" size="md">
               <FileBarChart2 className="w-5 h-5" />
             </GlossyIcon3D>
             <div>
-              <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-teal-50">
+              <h1 className="font-cinzel text-xl sm:text-2xl font-extrabold tracking-tight text-[#0B1F3A] dark:text-[#F4C430]">
                 Laporan Bulanan PPATS
               </h1>
-              <p className="text-sm text-slate-600 dark:text-teal-200/75 mt-1">
+              <p className="text-xs sm:text-sm text-[#4A3520] dark:text-slate-200 mt-0.5 font-medium">
                 Format resmi pelaporan pembuatan akta bulanan untuk Kepala Kantor Pertanahan (BPN) dan Bapenda. Hanya mencakup Akta PPATS (AJB, APHB, Akta Hibah); berkas Non-Akta (Turun Waris, Waris C, Pemecahan, Ukur Ulang, Ralat Data, Pengecekan, Validasi, Analisis Bidang, PKKPR) otomatis dikecualikan.
               </p>
             </div>

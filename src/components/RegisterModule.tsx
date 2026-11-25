@@ -67,15 +67,15 @@ export const RegisterModule: React.FC<RegisterModuleProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start gap-3.5">
+      <div className="rounded-xl bg-[#FFFBF0]/85 dark:bg-[#0B1F3A]/85 backdrop-blur-sm border border-[#C89B3C]/70 px-4 py-3 shadow-[0_4px_16px_rgba(11,31,58,0.18)] flex items-start gap-3.5">
         <GlossyIcon3D tone="teal" size="md">
           <BookOpen className="w-5 h-5" />
         </GlossyIcon3D>
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-teal-50">
+          <h1 className="font-cinzel text-xl sm:text-2xl font-extrabold tracking-tight text-[#0B1F3A] dark:text-[#F4C430]">
             Buku Register Akta &amp; Berkas (Repertorium)
           </h1>
-          <p className="text-sm text-slate-600 dark:text-teal-200/75 mt-1">
+          <p className="text-xs sm:text-sm text-[#4A3520] dark:text-slate-200 mt-0.5 font-medium">
             Catatan kronologis seluruh Akta PPATS dan Berkas Non-Akta (Turun Waris, Waris C, Pemecahan, Ukur Ulang, Ralat Data, Pengecekan, Validasi, Analisis Bidang, PKKPR) beserta NIB, luas bidang, nilai transaksi, serta BPHTB &amp; PPh.
           </p>
         </div>
@@ -84,7 +84,7 @@ export const RegisterModule: React.FC<RegisterModuleProps> = ({
       {/* Filter Bar */}
       <div className="bento-card p-4 flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3 flex-1">
-          <div className="inline-flex items-center gap-1 p-1.5 bg-teal-950/[0.04] dark:bg-teal-950/60 border border-teal-900/10 dark:border-teal-500/15 rounded-2xl shrink-0">
+          <div className="inline-flex items-center gap-1 p-1 bg-[#F3E5C8]/80 dark:bg-[#08192F]/80 border border-[#C8B294] dark:border-[#C89B3C]/40 rounded-xl shrink-0">
             {[
               { id: 'SEMUA' as const, label: 'Semua Berkas' },
               { id: 'AKTA' as const, label: 'Akta PPATS' },
@@ -96,10 +96,10 @@ export const RegisterModule: React.FC<RegisterModuleProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => setFilterKategori(tab.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 whitespace-nowrap ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 whitespace-nowrap ${
                     active
-                      ? 'bg-gradient-to-b from-teal-500 to-teal-600 text-white border-b-[3px] border-teal-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_6px_14px_-4px_rgba(20,184,166,0.5)] -translate-y-0.5'
-                      : 'text-slate-600 dark:text-teal-200/80 hover:text-teal-900 dark:hover:text-white hover:bg-white/70 dark:hover:bg-teal-900/40'
+                      ? 'bg-[#0B1F3A] text-[#F4C430] border border-[#C89B3C] shadow-xs'
+                      : 'text-[#4A3520] dark:text-slate-300 hover:text-[#0B1F3A] dark:hover:text-white hover:bg-white/70 dark:hover:bg-[#132E52]'
                   }`}
                 >
                   {tab.label}

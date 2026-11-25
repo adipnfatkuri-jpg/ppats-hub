@@ -414,11 +414,11 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
     <div className="space-y-6">
       {/* Screen Header & Controls */}
       <div className="no-print flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl sm:text-[26px] font-bold tracking-tight text-slate-900 dark:text-white">
+        <div className="rounded-xl bg-[#FFFBF0]/85 dark:bg-[#0B1F3A]/85 backdrop-blur-sm border border-[#C89B3C]/70 px-4 py-3 shadow-[0_4px_16px_rgba(11,31,58,0.18)] max-w-2xl">
+          <h1 className="font-cinzel text-xl sm:text-[24px] font-extrabold tracking-tight text-[#0B1F3A] dark:text-[#F4C430]">
             Perhitungan Pajak (BPHTB &amp; PPh Final)
           </h1>
-          <p className="text-sm text-slate-600 dark:text-teal-200/75 mt-1">
+          <p className="text-xs sm:text-sm text-[#4A3520] dark:text-slate-200 mt-0.5 font-medium">
             Jalur khusus perhitungan BPHTB (5%) dan PPh Final (2,5%), terpisah dari alur pembuatan berkas akta.
           </p>
         </div>
