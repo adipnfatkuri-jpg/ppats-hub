@@ -67,10 +67,10 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-78763d80'], (function (workbox) { 'use strict';
+define(['./workbox-04f2a698'], (function (workbox) { 'use strict';
 
   workbox.setCacheNameDetails({
-    prefix: "sim-ppats-1795620120894"
+    prefix: "sim-ppats-1795624946705"
   });
   self.skipWaiting();
   workbox.clientsClaim();
@@ -84,7 +84,7 @@ define(['./workbox-78763d80'], (function (workbox) { 'use strict';
     "revision": "d41d8cd98f00b204e9800998ecf8427e"
   }, {
     "url": "/index.html",
-    "revision": "0.hdr8ojsr3p8"
+    "revision": "0.982p7kjg44g"
   }], {
     "ignoreURLParametersMatching": [/^v$/, /^source$/, /^section$/, /^shortcut$/, /^utm_/]
   });
@@ -99,7 +99,7 @@ define(['./workbox-78763d80'], (function (workbox) { 'use strict';
   workbox.registerRoute(({
     url
   }) => url.pathname === "/manifest.json" || url.pathname === "/manifest.webmanifest", new workbox.NetworkFirst({
-    "cacheName": "sim-ppats-manifest-1795620120894",
+    "cacheName": "sim-ppats-manifest-1795624946705",
     "networkTimeoutSeconds": 3,
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 4,
@@ -109,7 +109,7 @@ define(['./workbox-78763d80'], (function (workbox) { 'use strict';
   workbox.registerRoute(({
     request
   }) => request.mode === "navigate", new workbox.NetworkFirst({
-    "cacheName": "sim-ppats-pages-1795620120894",
+    "cacheName": "sim-ppats-pages-1795624946705",
     "networkTimeoutSeconds": 3,
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 10,
@@ -117,14 +117,24 @@ define(['./workbox-78763d80'], (function (workbox) { 'use strict';
     })]
   }), 'GET');
   workbox.registerRoute(({
+    url
+  }) => url.origin === self.location.origin && url.pathname.startsWith("/assets/"), new workbox.CacheFirst({
+    "cacheName": "sim-ppats-bundles-1795624946705",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 60,
+      maxAgeSeconds: 2592000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
+  workbox.registerRoute(({
     url,
     request
-  }) => url.origin === self.location.origin && request.destination === "image" && !url.pathname.startsWith("/assets/"), new workbox.NetworkFirst({
-    "cacheName": "sim-ppats-public-images-1795620120894",
-    "networkTimeoutSeconds": 3,
+  }) => url.origin === self.location.origin && request.destination === "image" && !url.pathname.startsWith("/assets/"), new workbox.StaleWhileRevalidate({
+    "cacheName": "sim-ppats-public-images-1795624946705",
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 30,
-      maxAgeSeconds: 604800
+      maxAgeSeconds: 1209600
     })]
   }), 'GET');
   workbox.registerRoute(/^https:\/\/fonts\.googleapis\.com\/.*/i, new workbox.CacheFirst({

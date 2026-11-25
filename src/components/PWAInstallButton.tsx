@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Check,
+  CheckCircle2,
   Copy,
   Download,
+  ExternalLink,
   MonitorDown,
   PlusSquare,
   RefreshCw,
@@ -13,17 +15,9 @@ import {
 } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
-declare const __APP_BUILD_TIMESTAMP__: string;
-
 interface PWAInstallButtonProps {
   variant?: 'sidebar' | 'mobile-header' | 'header-download' | 'menu-item' | 'settings-button';
   onActionTriggered?: () => void;
-}
-
-function getBuildVersionParam(): string {
-  return typeof __APP_BUILD_TIMESTAMP__ === 'string' && __APP_BUILD_TIMESTAMP__
-    ? __APP_BUILD_TIMESTAMP__
-    : Date.now().toString();
 }
 
 function buildDesktopUrlShortcut(appUrl: string): string {
@@ -34,7 +28,16 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   variant = 'sidebar',
   onActionTriggered,
 }) => {
-  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+  const {
+    isInstallable,
+    isInstalled,
+    isAlreadyInstalledRelated,
+    isIOS,
+    isAndroid,
+    isInIframe,
+    isInstalling,
+    install,
+  } = usePWAInstall();
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const [showDesktopGuide, setShowDesktopGuide] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -57,15 +60,13 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
     return null;
   }
 
-  const getAppUrl = (withCacheBust = false) => {
+  const getAppUrl = () => {
     if (typeof window === 'undefined') return '';
-    return withCacheBust
-      ? `${window.location.origin}/?shortcut=desktop&v=${getBuildVersionParam()}`
-      : `${window.location.origin}/`;
+    return `${window.location.origin}/`;
   };
 
   const handleDownloadDesktopShortcut = () => {
-    const appUrl = getAppUrl(true);
+    const appUrl = getAppUrl();
     if (!appUrl) return;
     const content = buildDesktopUrlShortcut(appUrl);
     const blob = new Blob([content], { type: 'application/internet-shortcut;charset=utf-8' });
@@ -90,17 +91,16 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
       }
       if ('serviceWorker' in navigator) {
         const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map((r) => r.unregister()));
+        await Promise.all(regs.map((r) => r.update().catch(() => undefined)));
       }
     } catch {
       // Lanjutkan muat ulang meski API cache dibatasi
     }
-    const targetUrl = `${window.location.origin}/?v=${Date.now()}`;
-    window.location.replace(targetUrl);
+    window.location.replace(`${window.location.origin}/`);
   };
 
   const handleCopyAppLink = async () => {
-    const appUrl = getAppUrl(false);
+    const appUrl = getAppUrl();
     if (!appUrl) return;
     try {
       await navigator.clipboard.writeText(appUrl);
@@ -111,11 +111,17 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
     }
   };
 
-  const handlePrimaryClick = () => {
+  const handlePrimaryClick = async () => {
     onActionTriggered?.();
     if (isInstallable) {
-      void install();
-      return;
+      const outcome = await install();
+      if (outcome === 'accepted') {
+        setShowDesktopGuide(false);
+        return;
+      }
+      if (outcome === 'dismissed') {
+        return;
+      }
     }
     if (isIOS) {
       setShowIOSGuide(true);
@@ -130,21 +136,29 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         <button
           type="button"
           role="menuitem"
-          onClick={handlePrimaryClick}
-          className="w-full flex items-center gap-2.5 px-3 py-2.5 sm:py-2 min-h-[42px] sm:min-h-0 text-left text-xs font-medium text-[#1E293B] dark:text-slate-200 hover:bg-[#F3E5C8] dark:hover:bg-[#163450] rounded-md transition-colors"
+          onClick={() => void handlePrimaryClick()}
+          disabled={isInstalling}
+          className="w-full flex items-center gap-2.5 px-3 py-2.5 sm:py-2 min-h-[42px] sm:min-h-0 text-left text-xs font-medium text-[#1E293B] dark:text-slate-200 hover:bg-[#F3E5C8] dark:hover:bg-[#163450] rounded-md transition-colors disabled:opacity-60"
         >
           {isIOS ? (
             <Smartphone className="w-3.5 h-3.5 text-[#6B4423] dark:text-[#F4C430] shrink-0" />
+          ) : isInstallable ? (
+            <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
           ) : (
             <MonitorDown className="w-3.5 h-3.5 text-[#6B4423] dark:text-[#F4C430] shrink-0" />
           )}
-          <span>
-            {isInstallable
-              ? 'Download / Install PWA'
-              : isIOS
-                ? 'Install PWA di iPhone / iPad'
-                : 'Download PWA & Shortcut'}
+          <span className="flex-1">
+            {isInstalling
+              ? 'Menginstal Aplikasi...'
+              : isInstallable
+                ? 'Install Aplikasi Langsung'
+                : isIOS
+                  ? 'Install PWA di iPhone / iPad'
+                  : 'Download PWA & Shortcut'}
           </span>
+          {isInstallable && (
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          )}
         </button>
       );
     }
@@ -153,20 +167,25 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
       return (
         <button
           type="button"
-          onClick={handlePrimaryClick}
-          className="btn-3d btn-3d-light min-h-[42px] inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold whitespace-nowrap"
+          onClick={() => void handlePrimaryClick()}
+          disabled={isInstalling}
+          className={`${
+            isInstallable ? 'btn-3d btn-3d-teal' : 'btn-3d btn-3d-light'
+          } min-h-[42px] inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold whitespace-nowrap disabled:opacity-60`}
         >
           {isIOS ? (
-            <Smartphone className="w-3.5 h-3.5 text-[#6B4423] dark:text-[#F4C430] shrink-0" />
+            <Smartphone className="w-3.5 h-3.5 shrink-0" />
           ) : (
-            <Download className="w-3.5 h-3.5 text-[#6B4423] dark:text-[#F4C430] shrink-0" />
+            <Download className="w-3.5 h-3.5 shrink-0" />
           )}
           <span>
-            {isInstallable
-              ? 'Download / Install PWA'
-              : isIOS
-                ? 'Panduan Install iOS'
-                : 'Download PWA & Shortcut'}
+            {isInstalling
+              ? 'Menginstal...'
+              : isInstallable
+                ? 'Install Aplikasi Sekarang'
+                : isIOS
+                  ? 'Panduan Install iOS'
+                  : 'Download PWA & Shortcut'}
           </span>
         </button>
       );
@@ -176,14 +195,39 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
       return (
         <button
           type="button"
-          onClick={handlePrimaryClick}
-          aria-label="Download dan Install aplikasi PWA SIM-PPATS"
-          className="inline-flex items-center justify-center gap-1 sm:gap-1.5 h-9 px-2.5 sm:px-3.5 rounded-full border border-[#C89B3C]/90 bg-[#0B1F3A]/92 dark:bg-[#143054]/92 hover:bg-[#142F52] dark:hover:bg-[#1B3E6B] text-[#F4C430] text-[11px] sm:text-xs font-bold shadow-[0_2px_10px_rgba(11,31,58,0.22)] whitespace-nowrap transition-colors shrink-0"
-          title="Download / Install Aplikasi PWA & Shortcut Desktop"
+          onClick={() => void handlePrimaryClick()}
+          disabled={isInstalling}
+          aria-label={
+            isInstallable
+              ? 'Install aplikasi SIM-PPATS langsung ke perangkat'
+              : 'Download dan Install aplikasi PWA SIM-PPATS'
+          }
+          className={`relative inline-flex items-center justify-center gap-1 sm:gap-1.5 h-9 px-2.5 sm:px-3.5 rounded-full border text-[11px] sm:text-xs font-bold shadow-[0_2px_10px_rgba(11,31,58,0.22)] whitespace-nowrap transition-colors shrink-0 disabled:opacity-60 ${
+            isInstallable
+              ? 'border-emerald-400/90 bg-emerald-700 hover:bg-emerald-600 text-white'
+              : 'border-[#C89B3C]/90 bg-[#0B1F3A]/92 dark:bg-[#143054]/92 hover:bg-[#142F52] dark:hover:bg-[#1B3E6B] text-[#F4C430]'
+          }`}
+          title={
+            isInstallable
+              ? 'Klik untuk langsung menginstal aplikasi SIM-PPATS ke HP / Desktop'
+              : 'Download / Install Aplikasi PWA & Shortcut Desktop'
+          }
         >
-          <Download className="w-3.5 h-3.5 text-[#F4C430] shrink-0" />
-          <span className="hidden sm:inline">Download PWA</span>
-          <span className="sm:hidden">PWA</span>
+          <Download
+            className={`w-3.5 h-3.5 shrink-0 ${isInstallable ? 'text-white' : 'text-[#F4C430]'}`}
+          />
+          <span className="hidden sm:inline">
+            {isInstalling ? 'Menginstal...' : isInstallable ? 'Install Aplikasi' : 'Download PWA'}
+          </span>
+          <span className="sm:hidden">
+            {isInstalling ? '...' : isInstallable ? 'Install' : 'PWA'}
+          </span>
+          {isInstallable && (
+            <span
+              aria-hidden="true"
+              className="hidden sm:inline-block w-1.5 h-1.5 rounded-full bg-emerald-200 animate-ping shrink-0"
+            />
+          )}
         </button>
       );
     }
@@ -191,8 +235,9 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
     return (
       <button
         type="button"
-        onClick={handlePrimaryClick}
-        className="btn-3d btn-3d-sidebar w-full flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] text-xs font-semibold"
+        onClick={() => void handlePrimaryClick()}
+        disabled={isInstalling}
+        className="btn-3d btn-3d-sidebar w-full flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] text-xs font-semibold disabled:opacity-60"
         title="Pasang SIM-PPATS sebagai aplikasi mandiri & shortcut di desktop/ponsel"
       >
         {isIOS ? (
@@ -201,11 +246,13 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           <Download className="w-3.5 h-3.5 shrink-0" />
         )}
         <span>
-          {isInstallable
-            ? 'Download / Install PWA'
-            : isIOS
-              ? 'Install di iPhone / iPad'
-              : 'Download PWA & Shortcut'}
+          {isInstalling
+            ? 'Menginstal...'
+            : isInstallable
+              ? 'Install Aplikasi Langsung'
+              : isIOS
+                ? 'Install di iPhone / iPad'
+                : 'Download PWA & Shortcut'}
         </span>
       </button>
     );
@@ -228,24 +275,24 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                   <img
-                    src="/apple-touch-icon.png"
+                    src="/pwa-192x192.png"
                     alt="Ikon SIM-PPATS"
-                    className="w-10 h-10 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0"
+                    className="w-10 h-10 rounded-lg border border-[#C89B3C]/60"
                   />
                   <div>
-                    <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                      Install SIM-PPATS di iOS
+                    <h3 className="font-cinzel text-base font-extrabold text-[#0B1F3A] dark:text-[#F4C430]">
+                      Install SIM-PPATS
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Tambahkan ke Layar Utama iPhone / iPad
+                      Panduan iPhone &amp; iPad (Safari)
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowIOSGuide(false)}
-                  aria-label="Tutup panduan install iOS"
-                  className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                  aria-label="Tutup panduan instalasi"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -329,79 +376,153 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                       id="desktop-shortcut-title"
                       className="font-cinzel text-base font-extrabold text-[#0B1F3A] dark:text-[#F4C430]"
                     >
-                      Download PWA &amp; Shortcut
+                      Download &amp; Install Aplikasi
                     </h3>
-                    <p className="text-xs text-[#5C452B] dark:text-slate-300">
-                      Pasang SIM-PPATS di layar utama HP atau Desktop Laptop
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                      Pasang SIM-PPATS di Layar Utama HP atau Desktop
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowDesktopGuide(false)}
-                  aria-label="Tutup panduan shortcut dan PWA"
-                  className="p-2 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 shrink-0"
+                  aria-label="Tutup"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Opsi 1: Install Aplikasi PWA di HP Android & Laptop Chrome/Edge */}
-              <div className="rounded-xl border border-[#C8B294] dark:border-[#264869] bg-[#FFFDF9] dark:bg-[#0E2236] p-3.5 space-y-2">
-                <p className="text-xs font-bold text-[#0B1F3A] dark:text-[#F4C430]">
-                  Cara 1 — Install Aplikasi PWA (HP Android &amp; Desktop)
-                </p>
-                <ol className="space-y-1.5 text-xs text-slate-700 dark:text-slate-200 list-decimal list-inside leading-relaxed">
-                  <li>
-                    Buka link aplikasi langsung di tab <strong>Google Chrome</strong> atau{' '}
-                    <strong>Microsoft Edge</strong> (bukan di dalam preview).
-                  </li>
-                  <li>
-                    <strong>Di HP Android:</strong> Ketuk menu titik tiga (<span className="font-mono">⋮</span>) di pojok kanan atas → pilih <strong>Instal aplikasi / Tambahkan ke Layar Utama</strong>.
-                  </li>
-                  <li>
-                    <strong>Di Laptop / PC:</strong> Klik ikon <strong>Install</strong> di ujung kanan kolom alamat, atau menu (<span className="font-mono">⋮</span>) → <strong>Simpan &amp; Bagikan</strong> → <strong>Instal SIM-PPATS</strong>.
-                  </li>
-                </ol>
-              </div>
-
-              {/* Opsi 2: Unduh File Shortcut Desktop (.url) untuk Windows */}
-              <div className="rounded-xl border border-[#C8B294] dark:border-[#264869] bg-[#FFFDF9] dark:bg-[#0E2236] p-3.5 space-y-2.5">
-                <div>
-                  <p className="text-xs font-bold text-[#0B1F3A] dark:text-[#F4C430]">
-                    Cara 2 — Unduh File Shortcut Desktop Windows (.url)
+              {/* Jika browser siap install langsung saat modal terbuka */}
+              {isInstallable && (
+                <div className="rounded-xl border-2 border-emerald-500/80 bg-emerald-50/90 dark:bg-emerald-950/40 p-3.5 space-y-2.5">
+                  <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                    Siap Install Otomatis (1 Klik)
                   </p>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
-                    Unduh file <span className="font-mono font-semibold">SIM-PPATS.url</span> lalu pindahkan ke Desktop laptop Anda untuk membuka dalam 1 klik ganda.
+                  <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                    Browser Anda siap mengunduh &amp; memasang SIM-PPATS langsung ke perangkat.
                   </p>
+                  <button
+                    type="button"
+                    disabled={isInstalling}
+                    onClick={async () => {
+                      const res = await install();
+                      if (res === 'accepted') setShowDesktopGuide(false);
+                    }}
+                    className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-md transition-colors disabled:opacity-60"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>{isInstalling ? 'Menginstal...' : 'Install Aplikasi Sekarang'}</span>
+                  </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              )}
+
+              {/* Jika aplikasi sudah terpasang di HP Android */}
+              {!isInstallable && isAlreadyInstalledRelated && (
+                <div className="rounded-xl border border-emerald-400/70 bg-emerald-50/80 dark:bg-emerald-950/35 p-3.5 flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                    <p className="font-bold">SIM-PPATS Sudah Terpasang</p>
+                    <p className="mt-0.5 opacity-90">
+                      Aplikasi sudah ada di Layar Utama / daftar aplikasi perangkat Anda. Buka langsung dari ikon SIM-PPATS, atau hapus versi lama terlebih dahulu jika ingin menginstal ulang.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Jika dibuka di dalam iframe / preview */}
+              {!isInstallable && isInIframe && (
+                <div className="rounded-xl border border-amber-400/80 bg-amber-50/85 dark:bg-amber-950/35 p-3.5 space-y-2.5">
+                  <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                    Buka Langsung di Browser untuk Install 1 Klik
+                  </p>
+                  <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                    Instalasi otomatis diblokir saat aplikasi dibuka di dalam jendela preview. Salin link berikut lalu buka langsung di tab Google Chrome atau Edge.
+                  </p>
+                  <a
+                    href={getAppUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-3d btn-3d-teal w-full min-h-[42px] inline-flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Buka Tab Baru untuk Install</span>
+                  </a>
+                </div>
+              )}
+
+              {/* Opsi 1: Install PWA di Android Chrome / Desktop */}
+              {!isInstallable && !isInIframe && (
+                <div className="rounded-xl border border-[#C89B3C]/50 dark:border-[#C89B3C]/40 bg-[#FFFDF9] dark:bg-[#0D213B]/80 p-3.5 space-y-2">
+                  <p className="text-xs font-bold text-[#0B1F3A] dark:text-[#F4C430]">
+                    {isAndroid
+                      ? 'Cara Install di HP Android (Chrome)'
+                      : 'Cara Install Aplikasi PWA (Chrome / Edge)'}
+                  </p>
+                  <ol className="space-y-1.5 text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
+                    {isAndroid ? (
+                      <>
+                        <li>
+                          1. Ketuk menu titik tiga (<strong className="text-slate-900 dark:text-white">⋮</strong>) di pojok kanan atas Chrome.
+                        </li>
+                        <li>
+                          2. Pilih{' '}
+                          <strong className="text-slate-900 dark:text-white">
+                            Tambahkan ke layar utama → Instal aplikasi
+                          </strong>.
+                        </li>
+                        <li className="text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+                          Catatan: Jika tombol install langsung belum muncul, biasanya karena aplikasi sudah terpasang atau popup sempat ditutup sebelumnya.
+                        </li>
+                      </>
+                    ) : (
+                      <>
+                        <li>
+                          1. Di <strong className="text-slate-900 dark:text-white">HP Android</strong>: Ketuk menu titik tiga (<strong>⋮</strong>) → pilih{' '}
+                          <strong className="text-slate-900 dark:text-white">
+                            Instal aplikasi / Tambahkan ke Layar Utama
+                          </strong>.
+                        </li>
+                        <li>
+                          2. Di <strong className="text-slate-900 dark:text-white">Laptop / PC</strong>: Klik ikon{' '}
+                          <strong className="text-slate-900 dark:text-white">Install</strong> di ujung kanan kolom alamat, atau menu (<strong>⋮</strong>) →{' '}
+                          <strong className="text-slate-900 dark:text-white">Simpan &amp; Bagikan → Instal SIM-PPATS</strong>.
+                        </li>
+                      </>
+                    )}
+                  </ol>
+                </div>
+              )}
+
+              {/* Opsi 2: Unduh File Shortcut Desktop (.url) */}
+              <div className="rounded-xl border border-[#C89B3C]/50 dark:border-[#C89B3C]/40 bg-[#FFFDF9] dark:bg-[#0D213B]/80 p-3.5 space-y-2.5">
+                <p className="text-xs font-bold text-[#0B1F3A] dark:text-[#F4C430]">
+                  Shortcut Desktop Windows (.url) &amp; Link
+                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Unduh file <code className="font-mono text-[11px]">SIM-PPATS.url</code> untuk dipasang di Desktop komputer/laptop.
+                </p>
+                <div className="grid grid-cols-1 gap-2">
                   <button
                     type="button"
                     onClick={handleDownloadDesktopShortcut}
-                    className="btn-3d btn-3d-teal min-h-[42px] inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold"
+                    className="btn-3d btn-3d-teal w-full min-h-[42px] inline-flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold"
                   >
                     {downloadedShortcut ? (
-                      <Check className="w-3.5 h-3.5 shrink-0" />
+                      <Check className="w-4 h-4" />
                     ) : (
-                      <Download className="w-3.5 h-3.5 shrink-0" />
+                      <Download className="w-4 h-4" />
                     )}
                     <span>
-                      {downloadedShortcut
-                        ? 'SIM-PPATS.url Diunduh'
-                        : 'Unduh Shortcut (.url)'}
+                      {downloadedShortcut ? 'SIM-PPATS.url Terunduh!' : 'Unduh Shortcut (.url)'}
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => void handleCopyAppLink()}
-                    className="btn-3d btn-3d-light min-h-[42px] inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold"
+                    className="btn-3d btn-3d-light w-full min-h-[42px] inline-flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold"
                   >
-                    {copiedLink ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5 shrink-0" />
-                    )}
+                    {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                     <span>{copiedLink ? 'Link Tersalin' : 'Salin Link Aplikasi'}</span>
                   </button>
                 </div>
@@ -411,10 +532,10 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               <div className="rounded-xl border border-amber-300/80 dark:border-amber-700/60 bg-amber-50/80 dark:bg-amber-950/30 p-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-slate-900 dark:text-white">
-                    Shortcut Masih Versi Lama?
+                    Perbarui Versi PWA
                   </p>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
-                    Bersihkan cache PWA lama lalu muat versi terbaru.
+                    Segarkan cache agar prompt instalasi &amp; fitur terbaru aktif.
                   </p>
                 </div>
                 <button
@@ -447,5 +568,58 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
       {iosModal}
       {desktopModal}
     </>
+  );
+};
+
+/**
+ * Floating 1-tap PWA Install Banner.
+ * Muncul otomatis HANYA saat browser (Chrome Android / Desktop / Edge) melaporkan
+ * `beforeinstallprompt` siap untuk instalasi langsung 1 klik.
+ */
+export const PWAInstallBanner: React.FC = () => {
+  const { isInstallable, isInstalled, isInstalling, install } = usePWAInstall();
+  const [dismissed, setDismissed] = useState(false);
+
+  if (isInstalled || !isInstallable || dismissed) {
+    return null;
+  }
+
+  return (
+    <div
+      role="region"
+      aria-label="Pasang Aplikasi SIM-PPATS"
+      className="no-print fixed left-3 right-3 sm:left-auto sm:right-5 bottom-[76px] lg:bottom-5 z-40 sm:max-w-sm rounded-2xl border-2 border-[#C89B3C] bg-[#0B1F3A]/96 backdrop-blur-md text-white shadow-[0_12px_32px_rgba(0,0,0,0.45)] p-3 flex items-center gap-3"
+    >
+      <img
+        src="/pwa-192x192.png"
+        alt="SIM-PPATS"
+        className="w-10 h-10 rounded-xl border border-[#C89B3C]/70 shrink-0"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="font-cinzel text-xs font-extrabold text-[#F4C430] truncate">
+          Install SIM-PPATS
+        </p>
+        <p className="text-[11px] text-slate-200 leading-tight mt-0.5">
+          Pasang langsung ke HP / Desktop untuk akses cepat &amp; offline.
+        </p>
+      </div>
+      <button
+        type="button"
+        disabled={isInstalling}
+        onClick={() => void install()}
+        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-[#062216] text-xs font-extrabold whitespace-nowrap shadow-sm transition-all shrink-0 disabled:opacity-60"
+      >
+        <Download className="w-3.5 h-3.5 stroke-[2.5]" />
+        <span>{isInstalling ? '...' : 'Install'}</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => setDismissed(true)}
+        aria-label="Tutup banner instalasi"
+        className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </div>
   );
 };

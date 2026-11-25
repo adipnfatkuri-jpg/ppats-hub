@@ -80,7 +80,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/|assets/|src/|sw\\.js|workbox-|manifest\\.json|favicon\\.ico|.*\\.(?:png|jpg|jpeg|webp|svg|ico|js|css|json|woff2?)$).*)",
       "destination": "/index.html"
     }
   ]

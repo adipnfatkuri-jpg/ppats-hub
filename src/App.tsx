@@ -53,6 +53,7 @@ import {
 import { MobileBottomNav, NavSection, Sidebar, TopHeader } from './components/Sidebar';
 import { DashboardModule } from './components/DashboardModule';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { PWAInstallBanner } from './components/PWAInstallButton';
 import { useTheme } from './hooks/useTheme';
 
 const WizardModule = lazy(() =>
@@ -949,6 +950,7 @@ export default function App() {
         </Suspense>
       )}
       <OfflineIndicator />
+      <PWAInstallBanner />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import './index.css';
 declare global {
   interface Window {
     __simPpatsDeferredPrompt?: Event | null;
+    __simPpatsAppInstalled?: boolean;
   }
 }
 
@@ -33,10 +34,20 @@ async function purgeStaleCachesOnBuildChange(): Promise<void> {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('beforeinstallprompt', (event) => {
-    event.preventDefault();
-    window.__simPpatsDeferredPrompt = event;
-  });
+  // Bersihkan parameter ?v= sisa refresh agar URL selalu bersih sesuai start_url '/'
+  try {
+    const currentUrl = new URL(window.location.href);
+    if (currentUrl.searchParams.has('v')) {
+      currentUrl.searchParams.delete('v');
+      const cleanPath =
+        currentUrl.pathname +
+        (currentUrl.searchParams.toString() ? `?${currentUrl.searchParams.toString()}` : '') +
+        currentUrl.hash;
+      window.history.replaceState(null, '', cleanPath);
+    }
+  } catch {
+    // Abaikan jika history API dibatasi
+  }
 
   void purgeStaleCachesOnBuildChange();
 

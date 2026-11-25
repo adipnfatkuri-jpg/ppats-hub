@@ -21,19 +21,7 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         manifestFilename: 'manifest.json',
-        includeAssets: [
-          'icon.svg',
-          'apple-touch-icon.png',
-          'pwa-192x192.png',
-          'pwa-512x512.png',
-          'pwa-maskable-512x512.png',
-          'bg-grandline.jpg',
-          'luffy-chibi.png',
-          'nami-chibi.png',
-          'zoro-chibi.png',
-          'sanji-chibi.png',
-          'chopper-chibi.png',
-        ],
+        includeAssets: [],
         manifest: {
           id: '/',
           name: 'SIM-PPATS — Sistem Informasi Manajemen Kantor PPATS',
@@ -47,7 +35,7 @@ export default defineConfig(() => {
           display_override: ['window-controls-overlay', 'standalone'],
           orientation: 'any',
           categories: ['business', 'productivity'],
-          start_url: `/?source=pwa&v=${buildTimestamp}`,
+          start_url: '/',
           scope: '/',
           // Custom build timestamp metadata to force browsers & desktop shortcuts to detect new deployments
           ...({
@@ -56,19 +44,19 @@ export default defineConfig(() => {
           } as Record<string, unknown>),
           icons: [
             {
-              src: `/pwa-192x192.png?v=${buildTimestamp}`,
+              src: '/pwa-192x192.png',
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: `/pwa-512x512.png?v=${buildTimestamp}`,
+              src: '/pwa-512x512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: `/pwa-maskable-512x512.png?v=${buildTimestamp}`,
+              src: '/pwa-maskable-512x512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',
@@ -79,10 +67,10 @@ export default defineConfig(() => {
               name: 'Buat Berkas Baru',
               short_name: 'Berkas Baru',
               description: 'Buka Wizard 4 Langkah untuk membuat akta atau berkas non-akta baru.',
-              url: `/?section=wizard&v=${buildTimestamp}`,
+              url: '/?section=wizard',
               icons: [
                 {
-                  src: `/pwa-192x192.png?v=${buildTimestamp}`,
+                  src: '/pwa-192x192.png',
                   sizes: '192x192',
                   type: 'image/png',
                 },
@@ -92,10 +80,10 @@ export default defineConfig(() => {
               name: 'Perhitungan Pajak',
               short_name: 'Pajak BPHTB',
               description: 'Hitung BPHTB & PPh Final untuk berkas pertanahan.',
-              url: `/?section=tax&v=${buildTimestamp}`,
+              url: '/?section=tax',
               icons: [
                 {
-                  src: `/pwa-192x192.png?v=${buildTimestamp}`,
+                  src: '/pwa-192x192.png',
                   sizes: '192x192',
                   type: 'image/png',
                 },
@@ -105,10 +93,10 @@ export default defineConfig(() => {
               name: 'Buku Register Akta',
               short_name: 'Repertorium',
               description: 'Lihat Buku Register Akta & Berkas kronologis.',
-              url: `/?section=register&v=${buildTimestamp}`,
+              url: '/?section=register',
               icons: [
                 {
-                  src: `/pwa-192x192.png?v=${buildTimestamp}`,
+                  src: '/pwa-192x192.png',
                   sizes: '192x192',
                   type: 'image/png',
                 },
@@ -118,10 +106,10 @@ export default defineConfig(() => {
               name: 'Laporan Bulanan PPATS',
               short_name: 'Laporan',
               description: 'Cetak dan ekspor Laporan Bulanan PPATS ke BPN & Bapenda.',
-              url: `/?section=report&v=${buildTimestamp}`,
+              url: '/?section=report',
               icons: [
                 {
-                  src: `/pwa-192x192.png?v=${buildTimestamp}`,
+                  src: '/pwa-192x192.png',
                   sizes: '192x192',
                   type: 'image/png',
                 },
@@ -131,8 +119,9 @@ export default defineConfig(() => {
         },
         workbox: {
           cacheId: `sim-ppats-${buildTimestamp}`,
-          globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,webp,svg,woff,woff2}'],
-          globIgnores: ['assets/aistudio/**'],
+          // Keep install-time precache tiny (<100KB) so Android Chrome activates SW & fires beforeinstallprompt immediately
+          globPatterns: ['index.html', 'manifest.json', 'icon.svg', 'pwa-192x192.png'],
+          globIgnores: ['assets/aistudio/**', 'src/**'],
           ignoreURLParametersMatching: [/^v$/, /^source$/, /^section$/, /^shortcut$/, /^utm_/],
           navigateFallback: '/index.html',
           navigateFallbackDenylist: [/^\/api\//, /^\/__\//],
@@ -171,17 +160,31 @@ export default defineConfig(() => {
               },
             },
             {
+              urlPattern: ({ url }) =>
+                url.origin === self.location.origin && url.pathname.startsWith('/assets/'),
+              handler: 'CacheFirst',
+              options: {
+                cacheName: `sim-ppats-bundles-${buildTimestamp}`,
+                expiration: {
+                  maxEntries: 60,
+                  maxAgeSeconds: 60 * 60 * 24 * 30,
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+            {
               urlPattern: ({ url, request }) =>
                 url.origin === self.location.origin &&
                 request.destination === 'image' &&
                 !url.pathname.startsWith('/assets/'),
-              handler: 'NetworkFirst',
+              handler: 'StaleWhileRevalidate',
               options: {
                 cacheName: `sim-ppats-public-images-${buildTimestamp}`,
-                networkTimeoutSeconds: 3,
                 expiration: {
                   maxEntries: 30,
-                  maxAgeSeconds: 60 * 60 * 24 * 7,
+                  maxAgeSeconds: 60 * 60 * 24 * 14,
                 },
               },
             },
@@ -221,27 +224,18 @@ export default defineConfig(() => {
           suppressWarnings: true,
         },
       }),
-      // Appends build timestamp query param to manifest & icon links in index.html
-      // so browsers, Vercel CDN, and desktop shortcuts always fetch the latest manifest & assets.
+      // Injects build timestamp meta tag into index.html while keeping clean /manifest.json URL
+      // so VitePWA, Vercel headers (no-cache), and Chrome WebAPK always parse valid manifest JSON.
       {
         name: 'bust-pwa-manifest-and-icons',
         enforce: 'post',
         transformIndexHtml: {
           order: 'post',
           handler(html: string): string {
-            return html
-              .replace(
-                /href="\/manifest\.json(?:\?[^"]*)?"/g,
-                `href="/manifest.json?v=${buildTimestamp}"`
-              )
-              .replace(
-                /href="\/(apple-touch-icon\.png|icon\.svg|pwa-192x192\.png)(?:\?[^"]*)?"/g,
-                `href="/$1?v=${buildTimestamp}"`
-              )
-              .replace(
-                /<\/head>/i,
-                `    <meta name="app-build-timestamp" content="${buildTimestamp}" />\n  </head>`
-              );
+            return html.replace(
+              /<\/head>/i,
+              `    <meta name="app-build-timestamp" content="${buildTimestamp}" />\n  </head>`
+            );
           },
         },
       },
