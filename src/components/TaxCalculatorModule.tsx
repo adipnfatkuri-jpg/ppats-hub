@@ -413,51 +413,59 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
   return (
     <div className="space-y-6">
       {/* Screen Header & Controls */}
-      <div className="no-print flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="rounded-xl bg-[#FFFBF0]/85 dark:bg-[#0B1F3A]/85 backdrop-blur-sm border border-[#C89B3C]/70 px-4 py-3 shadow-[0_4px_16px_rgba(11,31,58,0.18)] max-w-2xl">
-          <h1 className="font-cinzel text-xl sm:text-[24px] font-extrabold tracking-tight text-[#0B1F3A] dark:text-[#F4C430]">
+      <div className="no-print flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
+        <div className="relative rounded-xl bg-[#FFFBF0]/85 dark:bg-[#0B1F3A]/85 backdrop-blur-sm border border-[#C89B3C]/70 px-4 py-3 pr-16 sm:pr-24 shadow-[0_4px_16px_rgba(11,31,58,0.18)] max-w-2xl">
+          <h1 className="font-cinzel text-lg sm:text-[24px] font-extrabold tracking-tight text-[#0B1F3A] dark:text-[#F4C430] leading-snug">
             Perhitungan Pajak (BPHTB &amp; PPh Final)
           </h1>
           <p className="text-xs sm:text-sm text-[#4A3520] dark:text-slate-200 mt-0.5 font-medium">
             Jalur khusus perhitungan BPHTB (5%) dan PPh Final (2,5%), terpisah dari alur pembuatan berkas akta.
           </p>
+          {/* Decorative Sanji Chibi Sticker (non-blocking) */}
+          <img
+            src="/sanji-chibi.png"
+            alt=""
+            aria-hidden="true"
+            referrerPolicy="no-referrer"
+            className="pointer-events-none select-none absolute -bottom-2 right-1.5 sm:right-2.5 z-10 w-[56px] sm:w-[76px] h-auto drop-shadow-[0_4px_8px_rgba(11,31,58,0.38)]"
+          />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
           <button
             type="button"
             onClick={handleResetStandalone}
-            className="btn-3d btn-3d-light inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
+            className="btn-3d btn-3d-light min-h-[42px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3.5 h-3.5 shrink-0" />
             <span>Reset Simulasi</span>
           </button>
           <button
             type="button"
             onClick={() => window.print()}
-            className="btn-3d btn-3d-light inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
+            className="btn-3d btn-3d-light min-h-[42px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
           >
-            <Printer className="w-3.5 h-3.5" />
+            <Printer className="w-3.5 h-3.5 shrink-0" />
             <span>Cetak Rincian Pajak</span>
           </button>
         </div>
       </div>
 
-      {/* Mode Switcher Bar */}
-      <div className="no-print bento-card p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      {/* Mode Switcher Bar — Responsive full-width stack on mobile, inline pill on sm+ */}
+      <div className="no-print bento-card p-3.5 sm:p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div
           role="tablist"
           aria-label="Mode jalur perhitungan pajak"
-          className="inline-flex items-center gap-1 p-1 bg-[#F3ECE0] dark:bg-[#132C44] rounded-lg border border-[#E2D5C1] dark:border-[#244564] w-fit"
+          className="grid grid-cols-1 sm:inline-flex items-stretch sm:items-center gap-1.5 sm:gap-1 p-1 bg-[#F3ECE0] dark:bg-[#132C44] rounded-xl sm:rounded-lg border border-[#E2D5C1] dark:border-[#244564] w-full sm:w-fit"
         >
           <button
             type="button"
             role="tab"
             aria-selected={mode === 'standalone'}
             onClick={() => handleModeChange('standalone')}
-            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap ${
+            className={`min-h-[42px] sm:min-h-0 px-3.5 py-2 sm:py-1.5 rounded-lg sm:rounded-md text-xs font-semibold transition-colors text-center ${
               mode === 'standalone'
-                ? 'bg-[#0F2942] dark:bg-[#1D4A73] text-[#F8FAFC]'
+                ? 'bg-[#0B1F3A] dark:bg-[#1D4A73] text-[#F4C430] sm:text-[#F8FAFC] shadow-xs'
                 : 'text-[#6B5E4C] dark:text-slate-300 hover:text-[#0F2942] dark:hover:text-white'
             }`}
           >
@@ -469,9 +477,9 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
             aria-selected={mode === 'linked'}
             onClick={() => handleModeChange('linked')}
             disabled={records.length === 0}
-            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap disabled:opacity-50 ${
+            className={`min-h-[42px] sm:min-h-0 px-3.5 py-2 sm:py-1.5 rounded-lg sm:rounded-md text-xs font-semibold transition-colors text-center disabled:opacity-50 ${
               mode === 'linked'
-                ? 'bg-[#0F2942] dark:bg-[#1D4A73] text-[#F8FAFC]'
+                ? 'bg-[#0B1F3A] dark:bg-[#1D4A73] text-[#F4C430] sm:text-[#F8FAFC] shadow-xs'
                 : 'text-[#6B5E4C] dark:text-slate-300 hover:text-[#0F2942] dark:hover:text-white'
             }`}
           >

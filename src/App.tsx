@@ -50,7 +50,7 @@ import {
   type OfficeMemberInfo,
   type OfficeRole,
 } from './utils/cloudSync';
-import { NavSection, Sidebar, TopHeader } from './components/Sidebar';
+import { MobileBottomNav, NavSection, Sidebar, TopHeader } from './components/Sidebar';
 import { DashboardModule } from './components/DashboardModule';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { useTheme } from './hooks/useTheme';
@@ -777,7 +777,7 @@ export default function App() {
           onSetTheme={setTheme}
         />
 
-        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 min-w-0 px-3.5 pt-3 pb-24 sm:p-6 sm:pb-24 lg:p-8">
         {toast && (
           <div
             role="status"
@@ -931,6 +931,13 @@ export default function App() {
         )}
         </main>
       </div>
+
+      <MobileBottomNav
+        activeSection={activeSection}
+        onSelectSection={handleSelectNavSection}
+        onOpenDrawer={() => setIsMobileSidebarOpen((v) => !v)}
+        isDrawerOpen={isMobileSidebarOpen}
+      />
 
       {receiptRecord && (
         <Suspense fallback={null}>

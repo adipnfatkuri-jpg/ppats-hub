@@ -26,9 +26,9 @@ export const OfflineIndicator: React.FC = () => {
       <div
         role="status"
         aria-live="polite"
-        className="no-print fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-xl bg-amber-600 px-3.5 py-2 text-xs font-semibold text-white shadow-lg border border-amber-500"
+        className="no-print fixed bottom-20 lg:bottom-4 left-3 right-3 sm:right-auto sm:left-4 z-50 flex items-center gap-2 rounded-xl bg-amber-600 px-3.5 py-2.5 text-xs font-semibold text-white shadow-lg border border-amber-500"
       >
-        <WifiOff className="w-3.5 h-3.5 shrink-0" />
+        <WifiOff className="w-4 h-4 shrink-0" />
         <span>Mode Offline — Data lokal tetap dapat diakses.</span>
       </div>
     );
@@ -39,9 +39,9 @@ export const OfflineIndicator: React.FC = () => {
       <div
         role="status"
         aria-live="polite"
-        className="no-print fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-lg border border-emerald-500"
+        className="no-print fixed bottom-20 lg:bottom-4 left-3 right-3 sm:right-auto sm:left-4 z-50 flex items-center gap-2 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-semibold text-white shadow-lg border border-emerald-500"
       >
-        <Wifi className="w-3.5 h-3.5 shrink-0" />
+        <Wifi className="w-4 h-4 shrink-0" />
         <span>Koneksi kembali online.</span>
       </div>
     );

@@ -111,7 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Left Navigation Sidebar — Deep Marine Navy (#0B1F3A) with 3px Gold-Wood border (#C89B3C) */}
       <aside
         aria-label="Navigasi Utama SIM-PPATS"
-        className={`no-print fixed lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto inset-y-0 left-0 z-40 w-64 shrink-0 bg-[#0B1F3A] dark:bg-[#071529] text-[#F8FAFC] flex flex-col border-r-[3px] border-[#C89B3C] shadow-[4px_0_20px_rgba(7,21,41,0.35)] transition-transform duration-150 overflow-hidden ${
+        className={`no-print fixed lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto inset-y-0 left-0 z-40 w-[276px] max-w-[85vw] lg:w-64 shrink-0 bg-[#0B1F3A] dark:bg-[#071529] text-[#F8FAFC] flex flex-col border-r-[3px] border-[#C89B3C] shadow-[4px_0_20px_rgba(7,21,41,0.35)] transition-transform duration-150 overflow-hidden pt-safe pb-safe ${
           isMobileOpen
             ? 'translate-x-0 visible'
             : '-translate-x-full invisible lg:visible lg:translate-x-0'
@@ -193,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation Links (clean ivory text with subtle gold active highlight) */}
-        <nav className="relative z-10 flex-1 px-3 py-4 sm:pb-44 space-y-1 overflow-y-auto">
+        <nav className="relative z-10 flex-1 px-3 py-4 pb-36 sm:pb-44 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
@@ -211,7 +211,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   if (isMobileOpen) onToggleMobile();
                 }}
                 aria-current={isActive ? 'page' : undefined}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 text-left whitespace-nowrap border-l-[3px] ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 min-h-[44px] lg:min-h-0 rounded-lg text-sm transition-colors duration-150 text-left whitespace-nowrap border-l-[3px] ${
                   isActive
                     ? 'border-[#F4C430] bg-[#C89B3C]/20 text-[#F8FAFC] font-semibold shadow-[inset_0_0_0_1px_rgba(244,196,48,0.2)]'
                     : 'border-transparent text-[#F8FAFC]/82 font-medium hover:bg-white/10 hover:text-[#FFFFFF]'
@@ -228,13 +228,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        {/* Decorative Luffy Chibi Sticker (bottom-left sidebar above official's name, non-blocking) */}
+        {/* Decorative Luffy Chibi Sticker (bottom-left sidebar above official's name, visible on mobile drawer & desktop) */}
         <img
           src="/luffy-chibi.png"
           alt=""
           aria-hidden="true"
           referrerPolicy="no-referrer"
-          className="hidden sm:block pointer-events-none select-none absolute left-3 bottom-[68px] z-10 w-[120px] h-auto drop-shadow-[0_6px_12px_rgba(0,0,0,0.45)]"
+          className="pointer-events-none select-none absolute left-3 bottom-[68px] z-10 w-[108px] sm:w-[120px] h-auto drop-shadow-[0_6px_12px_rgba(0,0,0,0.45)]"
         />
 
         {/* Minimal Quiet Office Identity Footer */}
@@ -327,20 +327,21 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     .toUpperCase();
 
   return (
-    <header className="no-print sticky top-0 z-30 h-16 bg-transparent px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 shrink-0">
+    <header className="no-print sticky top-0 z-30 pt-safe bg-[#0B1F3A]/20 lg:bg-transparent backdrop-blur-[4px] lg:backdrop-blur-none shrink-0">
+      <div className="h-14 lg:h-16 px-2.5 sm:px-6 lg:px-8 flex items-center justify-between gap-1.5 sm:gap-3">
       {/* Left: Mobile drawer trigger + Frosted Parchment Contextual Breadcrumb (leaves Grand Line sky visible) */}
-      <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
         <button
           type="button"
           onClick={onToggleMobile}
           aria-label={isMobileOpen ? 'Tutup menu navigasi' : 'Buka menu navigasi'}
-          className="lg:hidden p-2 -ml-1 rounded-lg border-2 border-[#6B4423] dark:border-[#C89B3C] bg-[#FBF3E0]/92 dark:bg-[#0B1F3A]/90 text-[#3E2712] dark:text-[#F4C430] hover:bg-[#F3E5C8] dark:hover:bg-[#163450] shadow-sm transition-colors shrink-0"
+          className="lg:hidden inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl border-2 border-[#6B4423] dark:border-[#C89B3C] bg-[#FBF3E0]/95 dark:bg-[#0B1F3A]/92 text-[#3E2712] dark:text-[#F4C430] hover:bg-[#F3E5C8] dark:hover:bg-[#163450] shadow-sm transition-colors shrink-0"
         >
           {isMobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
         </button>
 
-        <div className="flex items-center gap-2 min-w-0 text-xs sm:text-sm px-3.5 py-1.5 rounded-full bg-[#FFFBF0]/88 dark:bg-[#0B1F3A]/85 backdrop-blur-sm border border-[#C89B3C]/80 shadow-[0_2px_10px_rgba(11,31,58,0.18)]">
-          <span className="lg:hidden font-cinzel font-extrabold text-[#6B4423] dark:text-[#F4C430] tracking-wider whitespace-nowrap">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 overflow-hidden text-[11px] sm:text-sm px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-[#FFFBF0]/92 dark:bg-[#0B1F3A]/88 backdrop-blur-sm border border-[#C89B3C]/80 shadow-[0_2px_10px_rgba(11,31,58,0.18)]">
+          <span className="lg:hidden font-cinzel font-extrabold text-[#6B4423] dark:text-[#F4C430] tracking-wide truncate">
             SIM-PPATS
           </span>
           <span className="hidden lg:inline text-[#6B4423] dark:text-[#F4C430]/90 font-semibold truncate max-w-[180px]">
@@ -353,8 +354,10 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Compact Utility Menu, Dark/Light Mode Toggle, and Metallic Gold Login Google */}
-      <div className="flex items-center gap-2.5 shrink-0">
+      {/* Right: Download PWA Button, Utility Menu, Dark/Light Mode Toggle, and Metallic Gold Login Google */}
+      <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
+        <PWAInstallButton variant="header-download" />
+
         {/* Compact Utilities Dropdown (Backup, Restore, Shortcut/Install) */}
         <div ref={utilityRef} className="relative">
           <button
@@ -366,7 +369,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             aria-haspopup="menu"
             aria-expanded={utilityOpen}
             aria-label="Menu Utilitas Backup, Restore, dan Shortcut"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-[#C89B3C]/85 bg-[#FFFBF0]/92 dark:bg-[#0B1F3A]/88 backdrop-blur-sm hover:bg-[#FBF3E0] dark:hover:bg-[#142F52] text-[#0B1F3A] dark:text-[#F8FAFC] text-xs font-semibold shadow-[0_2px_10px_rgba(11,31,58,0.18)] transition-colors whitespace-nowrap"
+            className="inline-flex items-center justify-center gap-1.5 w-9 h-9 sm:w-auto sm:h-9 px-0 sm:px-3 rounded-full border border-[#C89B3C]/85 bg-[#FFFBF0]/92 dark:bg-[#0B1F3A]/88 backdrop-blur-sm hover:bg-[#FBF3E0] dark:hover:bg-[#142F52] text-[#0B1F3A] dark:text-[#F8FAFC] text-xs font-semibold shadow-[0_2px_10px_rgba(11,31,58,0.18)] transition-colors whitespace-nowrap"
           >
             <SlidersHorizontal className="w-3.5 h-3.5 text-[#6B4423] dark:text-[#F4C430] shrink-0" />
             <span className="hidden sm:inline">Utilitas</span>
@@ -447,7 +450,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             type="button"
             onClick={onSignIn}
             disabled={authBusy}
-            className="btn-gold-metallic inline-flex items-center gap-1.5 h-9 px-4 text-xs tracking-tight whitespace-nowrap disabled:opacity-60"
+            className="btn-gold-metallic inline-flex items-center gap-1 sm:gap-1.5 h-9 px-2.5 sm:px-4 text-[11px] sm:text-xs tracking-tight whitespace-nowrap disabled:opacity-60"
           >
             <LogIn className="w-3.5 h-3.5 text-[#111827] stroke-[2.5] shrink-0" />
             <span className="hidden sm:inline">
@@ -567,6 +570,125 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           </div>
         )}
       </div>
+      </div>
     </header>
+  );
+};
+
+interface MobileBottomNavProps {
+  activeSection: NavSection;
+  onSelectSection: (section: NavSection) => void;
+  onOpenDrawer: () => void;
+  isDrawerOpen: boolean;
+}
+
+export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
+  activeSection,
+  onSelectSection,
+  onOpenDrawer,
+  isDrawerOpen,
+}) => {
+  const isMoreActive =
+    isDrawerOpen ||
+    activeSection === 'report' ||
+    activeSection === 'non_akta_rekap' ||
+    activeSection === 'settings';
+
+  return (
+    <nav
+      aria-label="Navigasi Cepat Mobile SIM-PPATS"
+      className="no-print lg:hidden fixed bottom-0 inset-x-0 z-30 bg-[#0B1F3A]/95 dark:bg-[#071529]/95 backdrop-blur-md border-t-2 border-[#C89B3C] pb-safe shadow-[0_-6px_20px_rgba(7,21,41,0.38)]"
+    >
+      <div className="grid grid-cols-5 items-center h-[58px] px-1">
+        <button
+          type="button"
+          onClick={() => onSelectSection('dashboard')}
+          aria-current={activeSection === 'dashboard' ? 'page' : undefined}
+          className={`flex flex-col items-center justify-center min-h-[48px] rounded-lg transition-colors ${
+            activeSection === 'dashboard'
+              ? 'text-[#F4C430]'
+              : 'text-[#F8FAFC]/75 active:text-white'
+          }`}
+        >
+          <LayoutDashboard className="w-5 h-5 shrink-0" />
+          <span className="text-[10px] font-semibold tracking-tight mt-0.5 whitespace-nowrap">
+            Beranda
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onSelectSection('tax')}
+          aria-current={activeSection === 'tax' ? 'page' : undefined}
+          className={`flex flex-col items-center justify-center min-h-[48px] rounded-lg transition-colors ${
+            activeSection === 'tax'
+              ? 'text-[#F4C430]'
+              : 'text-[#F8FAFC]/75 active:text-white'
+          }`}
+        >
+          <Calculator className="w-5 h-5 shrink-0" />
+          <span className="text-[10px] font-semibold tracking-tight mt-0.5 whitespace-nowrap">
+            Pajak
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onSelectSection('wizard')}
+          aria-current={activeSection === 'wizard' ? 'page' : undefined}
+          className="flex flex-col items-center justify-center min-h-[48px] -mt-2"
+        >
+          <span
+            className={`inline-flex items-center justify-center w-11 h-11 rounded-full border-2 shadow-md transition-transform active:scale-95 ${
+              activeSection === 'wizard'
+                ? 'bg-[#DC2626] border-[#F4C430] text-white'
+                : 'bg-[#B91C1C] border-[#C89B3C] text-white'
+            }`}
+          >
+            <FilePlus2 className="w-5 h-5 shrink-0" />
+          </span>
+          <span
+            className={`text-[10px] font-bold tracking-tight mt-0.5 whitespace-nowrap ${
+              activeSection === 'wizard' ? 'text-[#F4C430]' : 'text-[#F8FAFC]'
+            }`}
+          >
+            Berkas
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onSelectSection('register')}
+          aria-current={activeSection === 'register' ? 'page' : undefined}
+          className={`flex flex-col items-center justify-center min-h-[48px] rounded-lg transition-colors ${
+            activeSection === 'register'
+              ? 'text-[#F4C430]'
+              : 'text-[#F8FAFC]/75 active:text-white'
+          }`}
+        >
+          <BookOpenCheck className="w-5 h-5 shrink-0" />
+          <span className="text-[10px] font-semibold tracking-tight mt-0.5 whitespace-nowrap">
+            Register
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenDrawer}
+          aria-expanded={isDrawerOpen}
+          aria-label="Buka menu lainnya"
+          className={`flex flex-col items-center justify-center min-h-[48px] rounded-lg transition-colors ${
+            isMoreActive
+              ? 'text-[#F4C430]'
+              : 'text-[#F8FAFC]/75 active:text-white'
+          }`}
+        >
+          <Menu className="w-5 h-5 shrink-0" />
+          <span className="text-[10px] font-semibold tracking-tight mt-0.5 whitespace-nowrap">
+            Lainnya
+          </span>
+        </button>
+      </div>
+    </nav>
   );
 };

@@ -325,49 +325,49 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
   return (
     <div className="space-y-6 pb-4">
       {/* Page Header — Translucent Parchment Title Plate over Grand Line Sky + Luffy Crimson CTA */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="rounded-xl bg-[#FFFBF0]/82 dark:bg-[#0B1F3A]/82 backdrop-blur-sm border border-[#C89B3C]/70 px-4 py-3 shadow-[0_4px_16px_rgba(11,31,58,0.18)] max-w-2xl">
-          <h1 className="font-cinzel text-xl sm:text-[25px] font-extrabold tracking-tight text-[#0B1F3A] dark:text-[#F4C430]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="rounded-xl bg-[#FFFBF0]/85 dark:bg-[#0B1F3A]/85 backdrop-blur-sm border border-[#C89B3C]/70 px-3.5 py-2.5 sm:px-4 sm:py-3 shadow-[0_4px_16px_rgba(11,31,58,0.18)] max-w-2xl">
+          <h1 className="font-cinzel text-lg sm:text-[25px] font-extrabold tracking-tight text-[#0B1F3A] dark:text-[#F4C430] leading-snug">
             Dashboard &amp; Tracking Progres Berkas
           </h1>
-          <p className="text-xs sm:text-sm text-[#4A3520] dark:text-slate-200 mt-0.5 font-medium">
+          <p className="text-xs sm:text-sm text-[#4A3520] dark:text-slate-200 mt-0.5 font-medium leading-relaxed">
             Pemantauan berkas loket PPATS, validasi pajak daerah, penandatanganan akta, hingga proses balik nama BPN.
           </p>
         </div>
         <button
           type="button"
           onClick={onCreateNew}
-          className="btn-3d btn-grandline-crimson inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold whitespace-nowrap shrink-0"
+          className="btn-3d btn-grandline-crimson w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold whitespace-nowrap shrink-0"
         >
           <FilePlus2 className="w-4 h-4 shrink-0" />
           <span>+ Buat Berkas Baru</span>
         </button>
       </div>
 
-      {/* 4 Wanted Poster / Wooden Parchment KPI Cards + Decorative Nami Sticker on Card 1 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 pt-2">
+      {/* 4 Wanted Poster / Wooden Parchment KPI Cards — 2x2 Grid on Mobile, 4-Column on Desktop */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5 pt-1 sm:pt-2">
         {/* Card 1: Total Berkas + Nami perched on top-right corner */}
-        <div className="wanted-poster-card overflow-visible p-5 flex items-start justify-between gap-3">
-          {/* Decorative Nami Chibi Sticker (top-right corner, non-blocking) */}
+        <div className="wanted-poster-card overflow-visible p-4 sm:p-5 flex items-start justify-between gap-2 sm:gap-3">
+          {/* Decorative Nami Chibi Sticker (top-right corner, non-blocking on mobile & desktop) */}
           <img
             src="/nami-chibi.png"
             alt=""
             aria-hidden="true"
             referrerPolicy="no-referrer"
-            className="hidden sm:block pointer-events-none select-none absolute -top-8 -right-3.5 z-10 w-[62px] lg:w-[66px] h-auto drop-shadow-[0_4px_8px_rgba(30,20,10,0.4)]"
+            className="pointer-events-none select-none absolute -top-5 -right-2 sm:-top-8 sm:-right-3.5 z-10 w-[44px] sm:w-[62px] lg:w-[66px] h-auto drop-shadow-[0_4px_8px_rgba(30,20,10,0.4)]"
           />
-          <div className="relative z-10 min-w-0 pr-5">
-            <p className="text-[11.5px] font-bold uppercase tracking-normal text-[#6B4423] dark:text-[#F4C430] whitespace-nowrap">
+          <div className="relative z-10 min-w-0 sm:pr-5">
+            <p className="text-[10.5px] sm:text-[11.5px] font-bold uppercase tracking-normal text-[#6B4423] dark:text-[#F4C430] truncate">
               Total Berkas ({kpis.activeLabel})
             </p>
-            <p className="font-cinzel text-3xl sm:text-[34px] font-extrabold text-[#2B180A] dark:text-[#FEF3C7] mt-1.5 tabular-nums tracking-tight leading-none">
+            <p className="font-cinzel text-2xl sm:text-[34px] font-extrabold text-[#2B180A] dark:text-[#FEF3C7] mt-1 sm:mt-1.5 tabular-nums tracking-tight leading-none">
               {kpis.berkasBulanIni}
             </p>
-            <p className="text-xs font-medium text-[#6B4E31] dark:text-slate-300 mt-2 tabular-nums">
-              Dari total {records.length} berkas terdaftar
+            <p className="text-[11px] sm:text-xs font-medium text-[#6B4E31] dark:text-slate-300 mt-1.5 sm:mt-2 tabular-nums leading-tight">
+              Dari total {records.length} berkas
             </p>
           </div>
-          <div className="relative z-10 self-end">
+          <div className="hidden sm:block relative z-10 self-end">
             <GlossyIcon3D tone="teal" size="sm">
               <FolderOpen className="w-4 h-4" />
             </GlossyIcon3D>
@@ -375,19 +375,19 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
         </div>
 
         {/* Card 2: Jumlah Akta Terbit */}
-        <div className="wanted-poster-card p-5 flex items-start justify-between gap-3">
+        <div className="wanted-poster-card p-4 sm:p-5 flex items-start justify-between gap-2 sm:gap-3">
           <div className="relative z-10 min-w-0">
-            <p className="text-xs font-bold uppercase tracking-wide text-[#6B4423] dark:text-[#F4C430]">
-              Jumlah Akta Terbit
+            <p className="text-[10.5px] sm:text-xs font-bold uppercase tracking-wide text-[#6B4423] dark:text-[#F4C430] truncate">
+              Akta Terbit
             </p>
-            <p className="font-cinzel text-3xl sm:text-[34px] font-extrabold text-[#2B180A] dark:text-[#FEF3C7] mt-1.5 tabular-nums tracking-tight leading-none">
+            <p className="font-cinzel text-2xl sm:text-[34px] font-extrabold text-[#2B180A] dark:text-[#FEF3C7] mt-1 sm:mt-1.5 tabular-nums tracking-tight leading-none">
               {kpis.aktaTerbit}
             </p>
-            <p className="text-xs font-medium text-[#6B4E31] dark:text-slate-300 mt-2">
-              Khusus Akta PPATS (non Non-Akta)
+            <p className="text-[11px] sm:text-xs font-medium text-[#6B4E31] dark:text-slate-300 mt-1.5 sm:mt-2 leading-tight">
+              Khusus Akta PPATS
             </p>
           </div>
-          <div className="relative z-10">
+          <div className="hidden sm:block relative z-10">
             <GlossyIcon3D tone="emerald" size="md">
               <FileCheck2 className="w-4.5 h-4.5" />
             </GlossyIcon3D>
@@ -395,22 +395,22 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
         </div>
 
         {/* Card 3: Highlighted Bounty Valuation KPI Card */}
-        <div className="wanted-poster-card bounty-kpi-card p-5 flex items-start justify-between gap-2.5">
+        <div className="wanted-poster-card bounty-kpi-card p-4 sm:p-5 flex items-start justify-between gap-2 sm:gap-2.5">
           <div className="relative z-10 min-w-0 flex-1">
-            <p className="text-xs font-bold uppercase tracking-wide text-[#92400E] dark:text-[#F4C430]">
-              Total Nilai Transaksi
+            <p className="text-[10.5px] sm:text-xs font-bold uppercase tracking-wide text-[#92400E] dark:text-[#F4C430] truncate">
+              Nilai Transaksi
             </p>
             <p
-              className="font-cinzel text-lg 2xl:text-xl font-extrabold text-[#2B180A] dark:text-[#FDE68A] mt-2.5 tabular-nums tracking-tight whitespace-nowrap leading-tight"
+              className="font-cinzel text-sm sm:text-lg 2xl:text-xl font-extrabold text-[#2B180A] dark:text-[#FDE68A] mt-1.5 sm:mt-2.5 tabular-nums tracking-tight truncate sm:whitespace-nowrap leading-tight"
               title={formatRupiah(kpis.totalNilaiTransaksi)}
             >
               {formatRupiah(kpis.totalNilaiTransaksi)}
             </p>
-            <p className="text-xs font-medium text-[#6B4E31] dark:text-slate-300 mt-2">
-              Akumulasi nilai peralihan hak
+            <p className="text-[11px] sm:text-xs font-medium text-[#6B4E31] dark:text-slate-300 mt-1.5 sm:mt-2 leading-tight">
+              Akumulasi peralihan hak
             </p>
           </div>
-          <div className="relative z-10">
+          <div className="hidden sm:block relative z-10">
             <GlossyIcon3D tone="amber" size="md">
               <Wallet className="w-4.5 h-4.5" />
             </GlossyIcon3D>
@@ -418,19 +418,19 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
         </div>
 
         {/* Card 4: Sedang Proses di BPN */}
-        <div className="wanted-poster-card p-5 flex items-start justify-between gap-3">
+        <div className="wanted-poster-card p-4 sm:p-5 flex items-start justify-between gap-2 sm:gap-3">
           <div className="relative z-10 min-w-0">
-            <p className="text-xs font-bold uppercase tracking-wide text-[#6B4423] dark:text-[#F4C430]">
-              Sedang Proses di BPN
+            <p className="text-[10.5px] sm:text-xs font-bold uppercase tracking-wide text-[#6B4423] dark:text-[#F4C430] truncate">
+              Proses di BPN
             </p>
-            <p className="font-cinzel text-3xl sm:text-[34px] font-extrabold text-[#1E3A8A] dark:text-sky-300 mt-1.5 tabular-nums tracking-tight leading-none">
+            <p className="font-cinzel text-2xl sm:text-[34px] font-extrabold text-[#1E3A8A] dark:text-sky-300 mt-1 sm:mt-1.5 tabular-nums tracking-tight leading-none">
               {kpis.prosesBpn}
             </p>
-            <p className="text-xs font-medium text-[#6B4E31] dark:text-slate-300 mt-2">
-              Menunggu sertipikat balik nama
+            <p className="text-[11px] sm:text-xs font-medium text-[#6B4E31] dark:text-slate-300 mt-1.5 sm:mt-2 leading-tight">
+              Menunggu balik nama
             </p>
           </div>
-          <div className="relative z-10">
+          <div className="hidden sm:block relative z-10">
             <GlossyIcon3D tone="indigo" size="md">
               <Building2 className="w-4.5 h-4.5" />
             </GlossyIcon3D>
@@ -469,7 +469,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
             <div
               role="tablist"
               aria-label="Filter status berkas"
-              className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 px-0.5"
+              className="flex items-center gap-2 overflow-x-auto no-scrollbar snap-x py-1 px-0.5"
             >
               {(['SEMUA', ...STATUS_OPTIONS] as const).map((st) => {
                 const active = statusFilter === st;
@@ -482,7 +482,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
                     role="tab"
                     aria-selected={active}
                     onClick={() => setStatusFilter(st)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all whitespace-nowrap shrink-0 border ${pillStyle.pill}`}
+                    className={`snap-start inline-flex items-center gap-1.5 min-h-[38px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-full text-xs transition-all whitespace-nowrap shrink-0 border ${pillStyle.pill}`}
                   >
                     <span>{st === 'SEMUA' ? 'Semua Status' : st}</span>
                     <span
@@ -514,10 +514,132 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="border-b-2 border-[#C8B294]/80 dark:border-[#C89B3C]/40 bg-[#EFE3CC]/95 dark:bg-[#08192F]/90 text-[11px] font-bold uppercase tracking-wider text-[#3E2712] dark:text-[#F4C430]">
+            <>
+              {/* Mobile-First Touch Card List (< md) — Zero horizontal scrolling on phones */}
+              <div className="md:hidden divide-y divide-[#C8D8EC]/80 dark:divide-[#1E3A54] bg-[#EFF6FF]/85 dark:bg-[#0E2644]/85">
+                {filteredRecords.map((rec) => {
+                  const isAkta = isAktaService(rec.layanan);
+                  const partySummary = extractDashboardParties(rec);
+                  const currentStatus = normalizeBerkasStatus(rec.status);
+                  const st = statusStyle(currentStatus);
+                  const StIcon = st.Icon;
+                  const isMenuOpen = openActionMenu?.record.id === rec.id;
+
+                  return (
+                    <article
+                      key={rec.id}
+                      className="p-3.5 space-y-3 active:bg-white/95 dark:active:bg-[#15355B]/95 transition-colors"
+                    >
+                      {/* Row 1: Kode, Layanan, and Nilai Transaksi */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono text-xs font-extrabold text-[#0B1F3A] dark:text-[#F8FAFC] tabular-nums">
+                              {rec.kode_berkas}
+                            </span>
+                            <span className="text-[11px] font-bold text-[#6B4423] dark:text-[#F4C430]">
+                              · {rec.layanan}
+                            </span>
+                          </div>
+                          <p className="font-mono text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums truncate">
+                            {isAkta
+                              ? rec.akta.nomor_akta || 'Belum bernomor'
+                              : 'Non-Akta (F4)'}{' '}
+                            ·{' '}
+                            {rec.akta.tanggal_akta
+                              ? formatTanggalDDMMYYYY(rec.akta.tanggal_akta)
+                              : 'Belum bertanggal'}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs font-extrabold text-[#0B1F3A] dark:text-[#FDE68A] tabular-nums whitespace-nowrap">
+                            {formatRupiah(rec.pajak.nilai_kesepakatan)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Row 2: Parties & Land Object */}
+                      <div className="flex items-start gap-2.5">
+                        <PartyAvatar3D name={partySummary.avatarName} />
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <p className="text-xs font-bold text-[#0F172A] dark:text-slate-100 truncate">
+                            {partySummary.pihakPertamaText}
+                            {partySummary.pihakPenerimaText &&
+                            partySummary.pihakPenerimaText !== '-' ? (
+                              <span className="font-medium text-[#475569] dark:text-slate-300">
+                                {' '}
+                                → {partySummary.pihakPenerimaText}
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className="text-[11px] text-[#475569] dark:text-slate-300 truncate tabular-nums">
+                            {rec.tanah.jenis_hak} · {rec.tanah.desa} ·{' '}
+                            {formatNumberId(rec.tanah.luas_m2)} m²
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Row 3: 44px Touch Status Selector + Edit + More Actions */}
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <div
+                          className={`flex-1 min-w-0 min-h-[44px] inline-flex items-center gap-1.5 rounded-lg px-2.5 ${st.bg} ${st.text}`}
+                        >
+                          <StIcon className="w-3.5 h-3.5 shrink-0 opacity-85" />
+                          <select
+                            value={currentStatus}
+                            aria-label={`Ubah status berkas ${rec.kode_berkas}`}
+                            onChange={(e) =>
+                              onChangeStatus(rec.id, e.target.value as BerkasStatus)
+                            }
+                            className="w-full min-w-0 bg-transparent text-xs font-semibold focus:outline-none cursor-pointer py-2"
+                          >
+                            {STATUS_OPTIONS.map((opt) => (
+                              <option
+                                key={opt}
+                                value={opt}
+                                className="bg-[#FFFDF9] dark:bg-[#0E2236] text-[#1E293B] dark:text-[#F8FAFC]"
+                              >
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => onEditRecord(rec)}
+                          aria-label={`Edit berkas ${rec.kode_berkas}`}
+                          className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3.5 rounded-lg border border-[#BFA47C] dark:border-[#2C5174] bg-white dark:bg-[#132C44] active:bg-[#FBF3E0] dark:active:bg-[#1A3957] text-xs font-bold text-[#0B1F3A] dark:text-slate-100 shrink-0"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-[#6B4423] dark:text-[#F4C430]" />
+                          <span>Edit</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleRowMenu(e, rec)}
+                          aria-haspopup="menu"
+                          aria-expanded={isMenuOpen}
+                          aria-label={`Aksi lainnya untuk ${rec.kode_berkas}`}
+                          className={`inline-flex items-center justify-center w-11 h-11 rounded-lg border shrink-0 transition-colors ${
+                            isMenuOpen
+                              ? 'border-[#C89B3C] bg-[#FBF3E0] dark:bg-[#1A3957] text-[#0B1F3A] dark:text-[#F4C430]'
+                              : 'border-[#BFA47C] dark:border-[#2C5174] bg-white dark:bg-[#132C44] text-[#4A3520] dark:text-slate-200'
+                          }`}
+                        >
+                          <MoreVertical className="w-4.5 h-4.5" />
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+
+              {/* Desktop & Tablet Table View (md+) — Preserved 100% */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b-2 border-[#C8B294]/80 dark:border-[#C89B3C]/40 bg-[#EFE3CC]/95 dark:bg-[#08192F]/90 text-[11px] font-bold uppercase tracking-wider text-[#3E2712] dark:text-[#F4C430]">
                     <th className="py-3.5 pl-4 pr-2 whitespace-nowrap">Kode &amp; No. Akta</th>
                     <th className="py-3.5 px-2 whitespace-nowrap">Layanan &amp; Tgl</th>
                     <th className="py-3.5 px-2 whitespace-nowrap">Pihak / Pemohon</th>
@@ -671,24 +793,25 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
                   })}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
 
           {/* Subtle Bottom Bar creating safe breathing clearance for Zoro sticker */}
-          <div className="px-4 py-2.5 bg-[#EFE3CC]/85 dark:bg-[#08192F]/85 border-t border-[#C8B294]/70 dark:border-[#C89B3C]/35 text-[11px] font-medium text-[#5C452B] dark:text-slate-300 flex items-center justify-between pr-4 md:pr-28">
+          <div className="px-4 py-3 sm:py-2.5 bg-[#EFE3CC]/85 dark:bg-[#08192F]/85 border-t border-[#C8B294]/70 dark:border-[#C89B3C]/35 text-[11px] font-medium text-[#5C452B] dark:text-slate-300 flex items-center justify-between pr-16 md:pr-28">
             <span className="tabular-nums">
               Menampilkan {filteredRecords.length} dari {records.length} berkas terdaftar
             </span>
           </div>
         </div>
 
-        {/* Decorative Zoro Chibi Sticker (bottom-right corner of table container, slightly outside corner so it never blocks Aksi) */}
+        {/* Decorative Zoro Chibi Sticker (bottom-right corner of tracking container, never blocks Aksi) */}
         <img
           src="/zoro-chibi.png"
           alt=""
           aria-hidden="true"
           referrerPolicy="no-referrer"
-          className="hidden xl:block pointer-events-none select-none absolute -bottom-7 -right-7 z-10 w-[100px] h-auto drop-shadow-[0_6px_12px_rgba(11,31,58,0.45)]"
+          className="pointer-events-none select-none absolute -bottom-2.5 right-1 xl:-bottom-7 xl:-right-7 z-10 w-[56px] sm:w-[74px] xl:w-[100px] h-auto drop-shadow-[0_6px_12px_rgba(11,31,58,0.45)]"
         />
       </div>
 
@@ -714,7 +837,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
               setOpenActionMenu(null);
               void handleDuplicateClick(target);
             }}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 text-left text-xs font-medium text-[#1E293B] dark:text-slate-200 hover:bg-[#F7F2E7] dark:hover:bg-[#163450] rounded-md transition-colors disabled:opacity-60"
+            className="w-full flex items-center gap-2.5 px-2.5 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-left text-xs font-medium text-[#1E293B] dark:text-slate-200 hover:bg-[#F7F2E7] dark:hover:bg-[#163450] rounded-md transition-colors disabled:opacity-60"
           >
             {duplicatingId === openActionMenu.record.id ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-[#786B59] shrink-0" />
@@ -732,7 +855,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
               setOpenActionMenu(null);
               onCalculateTax(target);
             }}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 text-left text-xs font-medium text-[#1E293B] dark:text-slate-200 hover:bg-[#F7F2E7] dark:hover:bg-[#163450] rounded-md transition-colors"
+            className="w-full flex items-center gap-2.5 px-2.5 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-left text-xs font-medium text-[#1E293B] dark:text-slate-200 hover:bg-[#F7F2E7] dark:hover:bg-[#163450] rounded-md transition-colors"
           >
             <Calculator className="w-3.5 h-3.5 text-[#786B59] dark:text-slate-400 shrink-0" />
             <span>Perhitungan Pajak</span>
@@ -746,7 +869,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
               setOpenActionMenu(null);
               onPrintReceipt(target);
             }}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 text-left text-xs font-medium text-[#1E293B] dark:text-slate-200 hover:bg-[#F7F2E7] dark:hover:bg-[#163450] rounded-md transition-colors"
+            className="w-full flex items-center gap-2.5 px-2.5 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-left text-xs font-medium text-[#1E293B] dark:text-slate-200 hover:bg-[#F7F2E7] dark:hover:bg-[#163450] rounded-md transition-colors"
           >
             <Printer className="w-3.5 h-3.5 text-[#786B59] dark:text-slate-400 shrink-0" />
             <span>Cetak Kwitansi</span>
@@ -762,7 +885,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
               setOpenActionMenu(null);
               onDeleteRecord(targetId);
             }}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 text-left text-xs font-medium text-[#B91C1C] dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-md transition-colors"
+            className="w-full flex items-center gap-2.5 px-2.5 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-left text-xs font-medium text-[#B91C1C] dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-md transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5 shrink-0" />
             <span>Hapus Berkas</span>

@@ -169,116 +169,201 @@ export const RegisterModule: React.FC<RegisterModuleProps> = ({
             Belum ada catatan akta yang cocok dengan pencarian atau filter.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-teal-900/10 dark:border-teal-500/20 bg-teal-50/50 dark:bg-teal-950/60 font-semibold text-teal-950/80 dark:text-teal-100">
-                  <th className="py-3.5 px-2.5 whitespace-nowrap">No</th>
-                  <th className="py-3.5 px-2.5 whitespace-nowrap">No. &amp; Tgl Akta</th>
-                  <th className="py-3.5 px-2.5 whitespace-nowrap">Jenis</th>
-                  <th className="py-3.5 px-2.5">Pihak I</th>
-                  <th className="py-3.5 px-2.5">Pihak II</th>
-                  <th className="py-3.5 px-2.5">Hak &amp; NIB</th>
-                  <th className="py-3.5 px-2.5">Letak Tanah</th>
-                  <th className="py-3.5 px-2.5 text-right whitespace-nowrap">Luas</th>
-                  <th className="py-3.5 px-2.5 text-right whitespace-nowrap">Nilai Transaksi</th>
-                  <th className="py-3.5 px-2.5 text-right whitespace-nowrap">BPHTB &amp; PPh</th>
-                  <th className="py-3.5 px-2.5 whitespace-nowrap">Status</th>
-                  <th className="py-3.5 px-2.5 text-right whitespace-nowrap">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-teal-900/5 dark:divide-teal-500/10">
-                {filtered.map((r) => {
-                  const p1 =
-                    r.para_pihak
-                      .filter((p) => p.peran === 'Pihak I')
-                      .map((p) => p.nama)
-                      .join(', ') || '-';
-                  const p2 =
-                    r.para_pihak
-                      .filter((p) => p.peran === 'Pihak II')
-                      .map((p) => p.nama)
-                      .join(', ') || '-';
-                  const tgl = r.akta.tanggal_akta
-                    ? formatTanggalDDMMYYYY(r.akta.tanggal_akta)
-                    : 'Belum bertanggal';
+          <>
+            {/* Mobile-First Card View (< md) */}
+            <div className="md:hidden divide-y divide-[#C8B294]/60 dark:divide-[#1E3A54]">
+              {filtered.map((r) => {
+                const p1 =
+                  r.para_pihak
+                    .filter((p) => p.peran === 'Pihak I')
+                    .map((p) => p.nama)
+                    .join(', ') || '-';
+                const p2 =
+                  r.para_pihak
+                    .filter((p) => p.peran === 'Pihak II')
+                    .map((p) => p.nama)
+                    .join(', ') || '-';
+                const tgl = r.akta.tanggal_akta
+                  ? formatTanggalDDMMYYYY(r.akta.tanggal_akta)
+                  : 'Belum bertanggal';
 
-                  return (
-                    <tr
-                      key={r.id}
-                      className="hover:bg-teal-50/50 dark:hover:bg-teal-900/25 transition-colors"
-                    >
-                      <td className="py-3.5 px-2.5 font-mono font-semibold text-teal-900 dark:text-teal-200 tabular-nums">
-                        {String(r.no_urut).padStart(3, '0')}
-                      </td>
-                      <td className="py-3.5 px-2.5 whitespace-nowrap">
-                        <div className="font-mono font-semibold text-slate-900 dark:text-teal-50">
+                return (
+                  <article key={r.id} className="p-3.5 space-y-2.5 bg-[#EFF6FF]/80 dark:bg-[#0E2644]/80">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-xs font-extrabold text-[#0B1F3A] dark:text-[#F4C430] tabular-nums">
+                            #{String(r.no_urut).padStart(3, '0')}
+                          </span>
+                          <span className="text-xs font-bold text-[#0F172A] dark:text-white">
+                            {r.layanan}
+                          </span>
+                        </div>
+                        <p className="font-mono text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums truncate">
                           {isAktaService(r.layanan)
                             ? r.akta.nomor_akta || '-'
-                            : 'Non-Akta (F4)'}
-                        </div>
-                        <div className="font-mono text-[11px] text-slate-500 dark:text-teal-300/70 mt-0.5 tabular-nums">
-                          {tgl}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-2.5 font-semibold text-slate-900 dark:text-teal-100 whitespace-nowrap">
-                        {r.layanan}
-                      </td>
-                      <td className="py-3.5 px-2.5 text-slate-800 dark:text-teal-100 max-w-[140px]" title={p1}>
-                        <div className="flex items-center gap-2 min-w-0">
-                          <PartyAvatar3D name={p1} />
-                          <span className="truncate font-medium">{p1}</span>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-2.5 text-slate-800 dark:text-teal-100/90 max-w-[115px] truncate" title={p2}>
-                        {p2}
-                      </td>
-                      <td className="py-3.5 px-2.5 max-w-[155px]">
-                        <div className="text-slate-900 dark:text-teal-50 font-medium truncate" title={`${r.tanah.jenis_hak} ${r.tanah.nomor_hak_lama}`}>
-                          {r.tanah.jenis_sertipikat === 'digital' || !r.tanah.nomor_hak_lama
-                            ? `${r.tanah.jenis_hak} (Digital)`
-                            : `${r.tanah.jenis_hak} No. ${r.tanah.nomor_hak_lama}`}
-                        </div>
-                        <div className="font-mono text-[11px] text-slate-500 dark:text-teal-300/70 mt-0.5 truncate">
-                          {r.tanah.jenis_sertipikat === 'digital' || !r.tanah.nomor_hak_lama ? 'NIBel' : 'NIB'}: {r.tanah.nib || '-'}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-2.5 text-slate-700 dark:text-teal-200/80 max-w-[110px] truncate" title={`${r.tanah.desa}, ${r.tanah.kecamatan}`}>
-                        {r.tanah.desa}, {r.tanah.kecamatan}
-                      </td>
-                      <td className="py-3.5 px-2.5 text-right font-mono tabular-nums text-slate-900 dark:text-teal-50 whitespace-nowrap">
-                        {formatNumberId(r.tanah.luas_m2)} m²
-                      </td>
-                      <td className="py-3.5 px-2.5 text-right font-mono font-semibold tabular-nums text-slate-900 dark:text-teal-50 whitespace-nowrap">
-                        {formatRupiah(r.pajak.nilai_kesepakatan)}
-                      </td>
-                      <td className="py-3.5 px-2.5 text-right font-mono tabular-nums whitespace-nowrap">
-                        <div className="text-sky-700 dark:text-sky-300 font-semibold">
-                          {formatRupiah(r.pajak.bphtb)}
-                        </div>
-                        <div className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
-                          PPh {formatRupiah(r.pajak.pph)}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-2.5 text-slate-700 dark:text-teal-200 whitespace-nowrap font-medium">
+                            : 'Non-Akta (F4)'}{' '}
+                          · {tgl}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onEditRecord(r)}
+                        className="btn-3d btn-3d-light inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 rounded-lg text-xs font-bold shrink-0"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Buka</span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2 min-w-0">
+                      <PartyAvatar3D name={p1} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-[#0F172A] dark:text-slate-100 truncate">
+                          {p1}
+                          {p2 && p2 !== '-' ? (
+                            <span className="font-medium text-[#475569] dark:text-slate-300">
+                              {' '}
+                              → {p2}
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="text-[11px] text-[#475569] dark:text-slate-300 truncate tabular-nums">
+                          {r.tanah.desa}, {r.tanah.kecamatan} · {formatNumberId(r.tanah.luas_m2)} m²
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-[#C8D8EC]/70 dark:border-[#1E3A54] text-[11px] tabular-nums">
+                      <div>
+                        <span className="font-bold text-[#0B1F3A] dark:text-[#FDE68A]">
+                          {formatRupiah(r.pajak.nilai_kesepakatan)}
+                        </span>
+                        <span className="text-[#475569] dark:text-slate-300 ml-2">
+                          BPHTB {formatRupiah(r.pajak.bphtb)}
+                        </span>
+                      </div>
+                      <span className="font-semibold text-[#1E3A8A] dark:text-sky-300 truncate">
                         {r.status}
-                      </td>
-                      <td className="py-3.5 px-2.5 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => onEditRecord(r)}
-                          className="btn-3d btn-3d-light inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold"
-                        >
-                          <Pencil className="w-3 h-3" />
-                          <span>Buka</span>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </span>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table View (md+) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-teal-900/10 dark:border-teal-500/20 bg-teal-50/50 dark:bg-teal-950/60 font-semibold text-teal-950/80 dark:text-teal-100">
+                    <th className="py-3.5 px-2.5 whitespace-nowrap">No</th>
+                    <th className="py-3.5 px-2.5 whitespace-nowrap">No. &amp; Tgl Akta</th>
+                    <th className="py-3.5 px-2.5 whitespace-nowrap">Jenis</th>
+                    <th className="py-3.5 px-2.5">Pihak I</th>
+                    <th className="py-3.5 px-2.5">Pihak II</th>
+                    <th className="py-3.5 px-2.5">Hak &amp; NIB</th>
+                    <th className="py-3.5 px-2.5">Letak Tanah</th>
+                    <th className="py-3.5 px-2.5 text-right whitespace-nowrap">Luas</th>
+                    <th className="py-3.5 px-2.5 text-right whitespace-nowrap">Nilai Transaksi</th>
+                    <th className="py-3.5 px-2.5 text-right whitespace-nowrap">BPHTB &amp; PPh</th>
+                    <th className="py-3.5 px-2.5 whitespace-nowrap">Status</th>
+                    <th className="py-3.5 px-2.5 text-right whitespace-nowrap">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-teal-900/5 dark:divide-teal-500/10">
+                  {filtered.map((r) => {
+                    const p1 =
+                      r.para_pihak
+                        .filter((p) => p.peran === 'Pihak I')
+                        .map((p) => p.nama)
+                        .join(', ') || '-';
+                    const p2 =
+                      r.para_pihak
+                        .filter((p) => p.peran === 'Pihak II')
+                        .map((p) => p.nama)
+                        .join(', ') || '-';
+                    const tgl = r.akta.tanggal_akta
+                      ? formatTanggalDDMMYYYY(r.akta.tanggal_akta)
+                      : 'Belum bertanggal';
+
+                    return (
+                      <tr
+                        key={r.id}
+                        className="hover:bg-teal-50/50 dark:hover:bg-teal-900/25 transition-colors"
+                      >
+                        <td className="py-3.5 px-2.5 font-mono font-semibold text-teal-900 dark:text-teal-200 tabular-nums">
+                          {String(r.no_urut).padStart(3, '0')}
+                        </td>
+                        <td className="py-3.5 px-2.5 whitespace-nowrap">
+                          <div className="font-mono font-semibold text-slate-900 dark:text-teal-50">
+                            {isAktaService(r.layanan)
+                              ? r.akta.nomor_akta || '-'
+                              : 'Non-Akta (F4)'}
+                          </div>
+                          <div className="font-mono text-[11px] text-slate-500 dark:text-teal-300/70 mt-0.5 tabular-nums">
+                            {tgl}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-2.5 font-semibold text-slate-900 dark:text-teal-100 whitespace-nowrap">
+                          {r.layanan}
+                        </td>
+                        <td className="py-3.5 px-2.5 text-slate-800 dark:text-teal-100 max-w-[140px]" title={p1}>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <PartyAvatar3D name={p1} />
+                            <span className="truncate font-medium">{p1}</span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-2.5 text-slate-800 dark:text-teal-100/90 max-w-[115px] truncate" title={p2}>
+                          {p2}
+                        </td>
+                        <td className="py-3.5 px-2.5 max-w-[155px]">
+                          <div className="text-slate-900 dark:text-teal-50 font-medium truncate" title={`${r.tanah.jenis_hak} ${r.tanah.nomor_hak_lama}`}>
+                            {r.tanah.jenis_sertipikat === 'digital' || !r.tanah.nomor_hak_lama
+                              ? `${r.tanah.jenis_hak} (Digital)`
+                              : `${r.tanah.jenis_hak} No. ${r.tanah.nomor_hak_lama}`}
+                          </div>
+                          <div className="font-mono text-[11px] text-slate-500 dark:text-teal-300/70 mt-0.5 truncate">
+                            {r.tanah.jenis_sertipikat === 'digital' || !r.tanah.nomor_hak_lama ? 'NIBel' : 'NIB'}: {r.tanah.nib || '-'}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-2.5 text-slate-700 dark:text-teal-200/80 max-w-[110px] truncate" title={`${r.tanah.desa}, ${r.tanah.kecamatan}`}>
+                          {r.tanah.desa}, {r.tanah.kecamatan}
+                        </td>
+                        <td className="py-3.5 px-2.5 text-right font-mono tabular-nums text-slate-900 dark:text-teal-50 whitespace-nowrap">
+                          {formatNumberId(r.tanah.luas_m2)} m²
+                        </td>
+                        <td className="py-3.5 px-2.5 text-right font-mono font-semibold tabular-nums text-slate-900 dark:text-teal-50 whitespace-nowrap">
+                          {formatRupiah(r.pajak.nilai_kesepakatan)}
+                        </td>
+                        <td className="py-3.5 px-2.5 text-right font-mono tabular-nums whitespace-nowrap">
+                          <div className="text-sky-700 dark:text-sky-300 font-semibold">
+                            {formatRupiah(r.pajak.bphtb)}
+                          </div>
+                          <div className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
+                            PPh {formatRupiah(r.pajak.pph)}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-2.5 text-slate-700 dark:text-teal-200 whitespace-nowrap font-medium">
+                          {r.status}
+                        </td>
+                        <td className="py-3.5 px-2.5 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => onEditRecord(r)}
+                            className="btn-3d btn-3d-light inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold"
+                          >
+                            <Pencil className="w-3 h-3" />
+                            <span>Buka</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

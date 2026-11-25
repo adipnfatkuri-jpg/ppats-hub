@@ -31,6 +31,8 @@ export default defineConfig(() => {
           'luffy-chibi.png',
           'nami-chibi.png',
           'zoro-chibi.png',
+          'sanji-chibi.png',
+          'chopper-chibi.png',
         ],
         manifest: {
           id: '/',

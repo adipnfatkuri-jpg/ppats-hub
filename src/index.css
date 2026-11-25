@@ -11,6 +11,8 @@
 @layer base {
   html {
     color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior-y: contain;
   }
 
   html.dark {
@@ -22,11 +24,21 @@
     background-color: #0b1f3a;
     color: #1e293b;
     transition: background-color 150ms ease, color 150ms ease;
+    overscroll-behavior-y: contain;
   }
 
   html.dark body {
     background-color: #071529;
     color: #f8fafc;
+  }
+
+  button,
+  a,
+  select,
+  input,
+  textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -39,6 +51,15 @@
   }
 }
 
+/* Safe-Area Helpers for Notched iOS / Android Standalone PWA */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Classic Bounty / Grand Line Serif (Cinzel) */
 .font-cinzel {
   font-family: var(--font-cinzel);
@@ -49,8 +70,8 @@
   background-color: #1c5a8a;
   background-image: url('/bg-grandline.jpg');
   background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
+  background-position: center top;
+  background-attachment: scroll;
   background-repeat: no-repeat;
 }
 
@@ -60,9 +81,24 @@
     linear-gradient(180deg, rgba(7, 21, 41, 0.72) 0%, rgba(11, 31, 58, 0.78) 100%),
     url('/bg-grandline.jpg');
   background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
+  background-position: center top;
+  background-attachment: scroll;
   background-repeat: no-repeat;
+}
+
+@media (min-width: 1024px) {
+  .app-canvas,
+  .dark .app-canvas {
+    background-position: center;
+    background-attachment: fixed;
+  }
+}
+
+@media (max-width: 767px) {
+  .input-airy {
+    font-size: 16px;
+    min-height: 44px;
+  }
 }
 
 /* Semi-transparent Parchment Card (for secondary modules over Grand Line canvas) */

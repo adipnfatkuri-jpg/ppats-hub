@@ -67,8 +67,11 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-43e44e5a'], (function (workbox) { 'use strict';
+define(['./workbox-78763d80'], (function (workbox) { 'use strict';
 
+  workbox.setCacheNameDetails({
+    prefix: "sim-ppats-1795620120894"
+  });
   self.skipWaiting();
   workbox.clientsClaim();
   /**
@@ -81,8 +84,10 @@ define(['./workbox-43e44e5a'], (function (workbox) { 'use strict';
     "revision": "d41d8cd98f00b204e9800998ecf8427e"
   }, {
     "url": "/index.html",
-    "revision": "0.6mcrro8ccb8"
-  }], {});
+    "revision": "0.hdr8ojsr3p8"
+  }], {
+    "ignoreURLParametersMatching": [/^v$/, /^source$/, /^section$/, /^shortcut$/, /^utm_/]
+  });
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("/index.html"), {
     allowlist: [/^\/$/],
@@ -91,6 +96,37 @@ define(['./workbox-43e44e5a'], (function (workbox) { 'use strict';
   workbox.registerRoute(({
     url
   }) => url.pathname.startsWith("/api/"), new workbox.NetworkOnly(), 'GET');
+  workbox.registerRoute(({
+    url
+  }) => url.pathname === "/manifest.json" || url.pathname === "/manifest.webmanifest", new workbox.NetworkFirst({
+    "cacheName": "sim-ppats-manifest-1795620120894",
+    "networkTimeoutSeconds": 3,
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 4,
+      maxAgeSeconds: 300
+    })]
+  }), 'GET');
+  workbox.registerRoute(({
+    request
+  }) => request.mode === "navigate", new workbox.NetworkFirst({
+    "cacheName": "sim-ppats-pages-1795620120894",
+    "networkTimeoutSeconds": 3,
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 10,
+      maxAgeSeconds: 86400
+    })]
+  }), 'GET');
+  workbox.registerRoute(({
+    url,
+    request
+  }) => url.origin === self.location.origin && request.destination === "image" && !url.pathname.startsWith("/assets/"), new workbox.NetworkFirst({
+    "cacheName": "sim-ppats-public-images-1795620120894",
+    "networkTimeoutSeconds": 3,
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 30,
+      maxAgeSeconds: 604800
+    })]
+  }), 'GET');
   workbox.registerRoute(/^https:\/\/fonts\.googleapis\.com\/.*/i, new workbox.CacheFirst({
     "cacheName": "google-fonts-cache",
     plugins: [new workbox.ExpirationPlugin({
