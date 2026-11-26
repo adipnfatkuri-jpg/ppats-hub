@@ -507,50 +507,58 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
             </div>
           ) : (
             <>
-              {/* Mobile-First Compact Card List (< md) — Uniform Thin Border, No Thick Left Stripe, Ultra-Slim 29px Controls */}
-              <div className="md:hidden p-2.5 space-y-2.5 bg-[#0E1014]/45">
-                {filteredRecords.map((rec) => {
+              {/* Mobile-First Wanted Poster Card List (< md) — Monospaced Serial & Technical Details */}
+              <div className="md:hidden p-2.5 space-y-2.5 bg-[#0E1014]/55">
+                {filteredRecords.map((rec, idx) => {
                   const isAkta = isAktaService(rec.layanan);
                   const partySummary = extractDashboardParties(rec);
                   const currentStatus = normalizeBerkasStatus(rec.status);
                   const st = statusStyle(currentStatus);
                   const StIcon = st.Icon;
                   const isMenuOpen = openActionMenu?.record.id === rec.id;
+                  const serialNo = `#${String(idx + 1).padStart(2, '0')}`;
 
                   return (
                     <article
                       key={rec.id}
-                      className="px-[14px] py-[12px] space-y-2.5 rounded-xl bg-[#171A21] border border-white/[0.08] active:bg-[#1E222B] transition-colors"
+                      data-testid="wanted-poster-card-row"
+                      className="wanted-poster-mobile-card px-[13px] py-[11px] space-y-2.5"
                     >
-                      {/* Row 1: Kode, Layanan, and Nilai Transaksi */}
-                      <div className="flex items-start justify-between gap-2">
+                      {/* Top Wanted Dossier Strip: Serial #, Kode, Layanan & Bounty Valuation */}
+                      <div className="flex items-start justify-between gap-2 pb-2 border-b border-dashed border-[#FACC15]/20">
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono text-xs font-extrabold text-[#F8FAFC] tabular-nums">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] bg-[#FACC15]/15 border border-[#FACC15]/40 font-mono text-[10px] font-extrabold tracking-wider text-[#FACC15] tabular-nums">
+                              {serialNo}
+                            </span>
+                            <span className="font-mono text-xs font-extrabold tracking-tight text-[#F8FAFC] tabular-nums">
                               {rec.kode_berkas}
                             </span>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] bg-[#252A34] border border-white/[0.1] text-slate-200 text-[10px] font-semibold">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] bg-[#252A34] border border-white/[0.12] font-mono text-[9.5px] font-semibold uppercase tracking-wide text-slate-200">
                               {rec.layanan}
                             </span>
                           </div>
-                          <p className="font-mono text-[11px] text-[#94A3B8] mt-0.5 tabular-nums truncate">
+                          <p className="font-mono text-[10.5px] tracking-tight text-[#CBD5E1] mt-1 tabular-nums truncate">
                             {isAkta
                               ? rec.akta.nomor_akta || 'Belum bernomor'
                               : 'Non-Akta (F4)'}{' '}
-                            ·{' '}
+                            <span className="text-[#FACC15]/60">·</span>{' '}
                             {rec.akta.tanggal_akta
                               ? formatTanggalDDMMYYYY(rec.akta.tanggal_akta)
                               : 'Belum bertanggal'}
                           </p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-xs font-extrabold text-[#FACC15] tabular-nums whitespace-nowrap">
+                          <span className="block font-mono text-[8.5px] font-bold uppercase tracking-[0.14em] text-[#94A3B8]">
+                            NILAI
+                          </span>
+                          <p className="font-mono text-xs font-extrabold tracking-tight text-[#FACC15] tabular-nums whitespace-nowrap">
                             {formatRupiah(rec.pajak.nilai_kesepakatan)}
                           </p>
                         </div>
                       </div>
 
-                      {/* Row 2: Parties & Land Object (Compact 32px Avatar) */}
+                      {/* Row 2: Parties & Monospaced Technical Land Object */}
                       <div className="flex items-center gap-2.5">
                         <PartyAvatar3D name={partySummary.avatarName} />
                         <div className="min-w-0 flex-1 space-y-0.5">
@@ -564,9 +572,12 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
                               </span>
                             ) : null}
                           </p>
-                          <p className="text-[11px] text-[#94A3B8] truncate tabular-nums">
+                          <p className="font-mono text-[10.5px] text-[#CBD5E1] truncate tabular-nums">
                             {rec.tanah.jenis_hak} · {rec.tanah.desa} ·{' '}
-                            {formatNumberId(rec.tanah.luas_m2)} m²
+                            <span className="text-[#FACC15]/90">
+                              {rec.tanah.nib ? `NIB ${rec.tanah.nib} · ` : ''}
+                              {formatNumberId(rec.tanah.luas_m2)} m²
+                            </span>
                           </p>
                         </div>
                       </div>
@@ -627,116 +638,132 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
                 })}
               </div>
 
-              {/* Desktop & Tablet Table View (md+) — Warm Manga Yellow #FACC15 Header + Ultra-Slim Row Controls */}
-              <div className="hidden md:block overflow-x-auto px-4 sm:px-5 pt-3">
-                <table className="w-full text-left border-collapse text-sm">
+              {/* Desktop & Tablet Wanted Poster Table View (md+) — Separated Poster Rows + Monospaced Serial & Technical Details */}
+              <div className="hidden md:block overflow-x-auto px-3.5 sm:px-4 pt-2.5 pb-2">
+                <table className="wanted-poster-table w-full text-left text-sm">
                   <thead>
-                    <tr className="bg-[#FACC15] text-[11px] font-extrabold uppercase tracking-wider text-[#0E1014]">
-                      <th className="py-3 pl-4 pr-2 rounded-l-[8px] whitespace-nowrap">Kode &amp; No. Akta</th>
-                      <th className="py-3 px-2 whitespace-nowrap">Layanan &amp; Tgl</th>
-                      <th className="py-3 px-2 whitespace-nowrap">Pihak / Pemohon</th>
-                      <th className="py-3 px-2 whitespace-nowrap">Pihak Penerima</th>
-                      <th className="py-3 px-2 whitespace-nowrap">Objek Tanah</th>
-                      <th className="py-3 px-2 text-right whitespace-nowrap">Nilai Transaksi</th>
-                      <th className="py-3 px-2 whitespace-nowrap">Status Proses</th>
-                      <th className="py-3 pl-2 pr-4 rounded-r-[8px] text-right whitespace-nowrap">Aksi</th>
+                    <tr className="bg-[#FACC15] font-mono text-[10px] font-extrabold uppercase tracking-[0.06em] text-[#0E1014]">
+                      <th className="py-2.5 pl-3 pr-1.5 rounded-l-[8px] whitespace-nowrap">No · Kode &amp; Akta</th>
+                      <th className="py-2.5 px-1.5 whitespace-nowrap">Layanan &amp; Tgl</th>
+                      <th className="py-2.5 px-1.5 whitespace-nowrap">Pihak / Pemohon</th>
+                      <th className="py-2.5 px-1.5 whitespace-nowrap">Pihak Penerima</th>
+                      <th className="py-2.5 px-1.5 whitespace-nowrap">Objek Tanah</th>
+                      <th className="py-2.5 px-1.5 text-right whitespace-nowrap">Nilai Transaksi</th>
+                      <th className="py-2.5 px-1.5 whitespace-nowrap">Status Proses</th>
+                      <th className="py-2.5 pl-1.5 pr-3 rounded-r-[8px] text-right whitespace-nowrap">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/[0.07]">
-                    {filteredRecords.map((rec) => {
+                  <tbody>
+                    {filteredRecords.map((rec, idx) => {
                       const isAkta = isAktaService(rec.layanan);
                       const partySummary = extractDashboardParties(rec);
                       const currentStatus = normalizeBerkasStatus(rec.status);
                       const st = statusStyle(currentStatus);
                       const StIcon = st.Icon;
                       const isMenuOpen = openActionMenu?.record.id === rec.id;
+                      const serialNo = `#${String(idx + 1).padStart(2, '0')}`;
 
                       return (
                         <tr
                           key={rec.id}
-                          className="bg-transparent hover:bg-white/[0.03] transition-colors"
+                          data-testid="wanted-poster-row"
+                          className="wanted-poster-row"
                         >
-                          <td className="py-3.5 pl-4 pr-2 align-middle whitespace-nowrap">
-                            <div className="font-mono text-xs font-bold text-[#F8FAFC] tabular-nums">
-                              {rec.kode_berkas}
-                            </div>
-                            <div className="font-mono text-[11px] text-[#94A3B8] mt-0.5 tabular-nums">
-                              {isAkta
-                                ? rec.akta.nomor_akta || 'Belum bernomor'
-                                : 'Non-Akta (F4)'}
+                          <td className="py-2.5 pl-2.5 pr-1.5 align-middle whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center justify-center min-w-[28px] px-1 py-0.5 rounded-[4px] bg-[#FACC15]/14 border border-[#FACC15]/45 font-mono text-[10px] font-extrabold tracking-wider text-[#FACC15] tabular-nums">
+                                {serialNo}
+                              </span>
+                              <div>
+                                <div className="font-mono text-[11.5px] font-extrabold tracking-tight text-[#F8FAFC] tabular-nums">
+                                  {rec.kode_berkas}
+                                </div>
+                                <div className="font-mono text-[10.5px] tracking-tight text-[#CBD5E1] mt-0.5 tabular-nums">
+                                  {isAkta
+                                    ? rec.akta.nomor_akta || 'Belum bernomor'
+                                    : 'Non-Akta (F4)'}
+                                </div>
+                              </div>
                             </div>
                           </td>
-                          <td className="py-3.5 px-2 align-middle whitespace-nowrap">
-                            <div className="text-xs font-semibold text-[#F8FAFC]">
+                          <td className="py-2.5 px-1.5 align-middle whitespace-nowrap">
+                            <div className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] bg-[#252A34]/90 border border-white/[0.1] text-[10.5px] font-bold text-[#F8FAFC]">
                               {rec.layanan}
                             </div>
-                            <div className="text-[11px] text-[#94A3B8] mt-0.5 tabular-nums">
+                            <div className="font-mono text-[10.5px] tracking-tight text-[#CBD5E1] mt-1 tabular-nums">
                               {rec.akta.tanggal_akta
                                 ? formatTanggalDDMMYYYY(rec.akta.tanggal_akta)
                                 : 'Belum bertanggal'}
                             </div>
                             {!rec.akta.tanggal_akta && rec.tanggal_masuk && (
-                              <div className="text-[10.5px] text-slate-400 tabular-nums">
-                                Masuk: {formatTanggalDDMMYYYY(rec.tanggal_masuk)}
+                              <div className="font-mono text-[9.5px] text-[#94A3B8] tabular-nums">
+                                IN: {formatTanggalDDMMYYYY(rec.tanggal_masuk)}
                               </div>
                             )}
                           </td>
-                          <td className="py-3.5 px-2 align-middle max-w-[152px]">
-                            <div className="flex items-center gap-2 min-w-0">
+                          <td className="py-2.5 px-1.5 align-middle max-w-[138px]">
+                            <div className="flex items-center gap-1.5 min-w-0">
                               <PartyAvatar3D name={partySummary.avatarName} />
                               <div className="min-w-0 flex-1">
                                 <div
-                                  className="text-xs font-semibold text-[#F8FAFC] truncate"
+                                  className="text-xs font-bold text-[#F8FAFC] truncate"
                                   title={partySummary.pihakPertamaText}
                                 >
                                   {partySummary.pihakPertamaText}
                                 </div>
-                                <div className="text-[11px] text-[#94A3B8] truncate mt-0.5">
+                                <div className="font-mono text-[9.5px] uppercase tracking-wide text-[#94A3B8] truncate mt-0.5">
                                   {partySummary.pihakPertamaLabel}
                                 </div>
                               </div>
                             </div>
                           </td>
-                          <td className="py-3.5 px-2 align-middle max-w-[126px]">
+                          <td className="py-2.5 px-1.5 align-middle max-w-[116px]">
                             <div
-                              className="text-xs font-semibold text-[#F8FAFC] truncate"
+                              className="text-xs font-bold text-[#F8FAFC] truncate"
                               title={partySummary.pihakPenerimaText}
                             >
                               {partySummary.pihakPenerimaText}
                             </div>
-                            <div className="text-[11px] text-[#94A3B8] truncate mt-0.5">
+                            <div className="font-mono text-[9.5px] uppercase tracking-wide text-[#94A3B8] truncate mt-0.5">
                               {partySummary.pihakPenerimaLabel}
                             </div>
                           </td>
-                          <td className="py-3.5 px-2 align-middle max-w-[144px]">
+                          <td className="py-2.5 px-1.5 align-middle max-w-[134px]">
                             <div
-                              className="text-xs font-medium text-[#F8FAFC] truncate"
+                              className="text-xs font-semibold text-[#F8FAFC] truncate"
                               title={`${rec.tanah.jenis_hak} · ${rec.tanah.desa}`}
                             >
                               {rec.tanah.jenis_hak} · {rec.tanah.desa}
                             </div>
                             <div
-                              className="text-[11px] text-[#94A3B8] mt-0.5 tabular-nums truncate"
+                              className="font-mono text-[10.5px] tracking-tight text-[#CBD5E1] mt-0.5 tabular-nums truncate"
                               title={`${rec.tanah.nib || '-'} · ${formatNumberId(rec.tanah.luas_m2)} m²`}
                             >
-                              {rec.tanah.nib || '-'} · {formatNumberId(rec.tanah.luas_m2)} m²
+                              <span className="text-[#FACC15]/85">{rec.tanah.nib || '-'}</span>
+                              {' · '}
+                              {formatNumberId(rec.tanah.luas_m2)} m²
                             </div>
                           </td>
-                          <td className="py-3.5 px-2 align-middle text-right text-xs font-bold text-[#FACC15] tabular-nums whitespace-nowrap">
-                            {formatRupiah(rec.pajak.nilai_kesepakatan)}
+                          <td className="py-2.5 px-1.5 align-middle text-right whitespace-nowrap">
+                            <div className="font-mono text-[8.5px] font-bold uppercase tracking-[0.12em] text-[#94A3B8]">
+                              VALUASI
+                            </div>
+                            <div className="font-mono text-[11.5px] font-extrabold tracking-tight text-[#FACC15] tabular-nums">
+                              {formatRupiah(rec.pajak.nilai_kesepakatan)}
+                            </div>
                           </td>
-                          <td className="py-3.5 px-2 align-middle whitespace-nowrap">
+                          <td className="py-2.5 px-1.5 align-middle whitespace-nowrap">
                             <div
-                              className={`inline-flex items-center gap-1.5 h-[29px] rounded-[6px] px-[10px] py-[3px] ${st.bg} ${st.text}`}
+                              className={`inline-flex items-center gap-1 h-[29px] rounded-[6px] px-2 py-[3px] ${st.bg} ${st.text}`}
                             >
-                              <StIcon className="w-[13px] h-[13px] shrink-0 opacity-90" />
+                              <StIcon className="w-[12px] h-[12px] shrink-0 opacity-90" />
                               <select
                                 value={currentStatus}
                                 aria-label={`Ubah status berkas ${rec.kode_berkas}`}
                                 onChange={(e) =>
                                   onChangeStatus(rec.id, e.target.value as BerkasStatus)
                                 }
-                                className="bg-transparent text-[11.5px] font-semibold focus:outline-none cursor-pointer pr-0.5 max-w-[120px] leading-none"
+                                className="bg-transparent text-[11px] font-semibold focus:outline-none cursor-pointer pr-0.5 max-w-[112px] leading-none"
                               >
                                 {STATUS_OPTIONS.map((opt) => (
                                   <option
@@ -750,16 +777,16 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
                               </select>
                             </div>
                           </td>
-                          <td className="py-3.5 pl-2 pr-4 align-middle text-right whitespace-nowrap">
-                            <div className="inline-flex items-center gap-1.5">
+                          <td className="py-2.5 pl-1.5 pr-2.5 align-middle text-right whitespace-nowrap">
+                            <div className="inline-flex items-center gap-1">
                               <button
                                 type="button"
                                 onClick={() => onEditRecord(rec)}
                                 title="Edit / Buka Ulang Berkas"
                                 aria-label={`Edit berkas ${rec.kode_berkas}`}
-                                className="inline-flex items-center gap-1.5 h-[29px] px-[10px] py-[3px] rounded-[6px] bg-[#252A34] hover:bg-[#2F3643] text-[11.5px] font-semibold text-[#F8FAFC] border border-white/[0.12] hover:border-[#FACC15]/45 transition-all"
+                                className="inline-flex items-center gap-1 h-[29px] px-2.5 py-[3px] rounded-[6px] bg-[#252A34] hover:bg-[#2F3643] text-[11px] font-semibold text-[#F8FAFC] border border-white/[0.12] hover:border-[#FACC15]/45 transition-all"
                               >
-                                <Pencil className="w-[13px] h-[13px] text-[#F8FAFC]" />
+                                <Pencil className="w-[12px] h-[12px] text-[#F8FAFC]" />
                                 <span>Edit</span>
                               </button>
 

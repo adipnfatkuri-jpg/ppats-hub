@@ -70,7 +70,7 @@ if (!self.define) {
 define(['./workbox-04f2a698'], (function (workbox) { 'use strict';
 
   workbox.setCacheNameDetails({
-    prefix: "sim-ppats-1795669932222"
+    prefix: "sim-ppats-1795670365375"
   });
   self.skipWaiting();
   workbox.clientsClaim();
@@ -84,7 +84,7 @@ define(['./workbox-04f2a698'], (function (workbox) { 'use strict';
     "revision": "d41d8cd98f00b204e9800998ecf8427e"
   }, {
     "url": "/index.html",
-    "revision": "0.5f7udo1vbvo"
+    "revision": "0.6hqr4lnmhj"
   }], {
     "ignoreURLParametersMatching": [/^v$/, /^source$/, /^section$/, /^shortcut$/, /^utm_/]
   });
@@ -99,7 +99,7 @@ define(['./workbox-04f2a698'], (function (workbox) { 'use strict';
   workbox.registerRoute(({
     url
   }) => url.pathname === "/manifest.json" || url.pathname === "/manifest.webmanifest", new workbox.NetworkFirst({
-    "cacheName": "sim-ppats-manifest-1795669932222",
+    "cacheName": "sim-ppats-manifest-1795670365375",
     "networkTimeoutSeconds": 3,
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 4,
@@ -109,7 +109,7 @@ define(['./workbox-04f2a698'], (function (workbox) { 'use strict';
   workbox.registerRoute(({
     request
   }) => request.mode === "navigate", new workbox.NetworkFirst({
-    "cacheName": "sim-ppats-pages-1795669932222",
+    "cacheName": "sim-ppats-pages-1795670365375",
     "networkTimeoutSeconds": 3,
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 10,
@@ -119,7 +119,7 @@ define(['./workbox-04f2a698'], (function (workbox) { 'use strict';
   workbox.registerRoute(({
     url
   }) => url.origin === self.location.origin && url.pathname.startsWith("/assets/"), new workbox.CacheFirst({
-    "cacheName": "sim-ppats-bundles-1795669932222",
+    "cacheName": "sim-ppats-bundles-1795670365375",
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 60,
       maxAgeSeconds: 2592000
@@ -131,7 +131,7 @@ define(['./workbox-04f2a698'], (function (workbox) { 'use strict';
     url,
     request
   }) => url.origin === self.location.origin && request.destination === "image" && !url.pathname.startsWith("/assets/"), new workbox.StaleWhileRevalidate({
-    "cacheName": "sim-ppats-public-images-1795669932222",
+    "cacheName": "sim-ppats-public-images-1795670365375",
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 30,
       maxAgeSeconds: 1209600
