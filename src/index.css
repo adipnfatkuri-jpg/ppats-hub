@@ -432,30 +432,84 @@
   animation: sakamoto-float-kf 4s ease-in-out infinite;
 }
 
-/* Interactive 3D Chibi Sakamoto Stage & Touch Animations */
+/* Interactive 3D Chibi Sakamoto Stage & Spring-Physics Touch Animations */
 .sakamoto-3d-wrapper {
   transform: translate3d(var(--sakamoto-x, 16px), var(--sakamoto-y, 520px), 0);
   perspective: 750px;
+  will-change: transform;
+}
+
+.sakamoto-3d-wrapper.is-springing {
+  transition: transform 540ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sakamoto-3d-wrapper.is-springing-home {
+  transition: transform 680ms cubic-bezier(0.28, 1.48, 0.48, 1);
 }
 
 .sakamoto-3d-stage {
   transform-style: preserve-3d;
   transform: rotateX(var(--sakamoto-rx, 0deg)) rotateY(var(--sakamoto-ry, 0deg)) rotateZ(var(--sakamoto-rz, 0deg)) translateZ(var(--sakamoto-tz, 0px));
-  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1);
   will-change: transform;
 }
 
 .sakamoto-3d-stage.is-interacting {
-  transition: transform 70ms linear;
+  transition: transform 65ms linear;
 }
 
-@keyframes sakamoto-3d-idle-kf {
+/* Continuous Sweeping (Menyapu) 3D Rhythm */
+@keyframes sakamoto-3d-sweep-idle-kf {
   0%,
   100% {
-    transform: translateY(0px) rotateY(-6deg) rotateZ(-1.2deg);
+    transform: translateX(-5px) translateY(0px) rotateX(6deg) rotateY(-16deg) rotateZ(-7deg) scale(1.01, 0.99);
+  }
+  25% {
+    transform: translateX(0px) translateY(-3px) rotateX(2deg) rotateY(0deg) rotateZ(0deg) scale(0.99, 1.02);
   }
   50% {
-    transform: translateY(-6px) rotateY(7deg) rotateZ(1.5deg);
+    transform: translateX(6px) translateY(1px) rotateX(8deg) rotateY(18deg) rotateZ(8deg) scale(1.02, 0.98);
+  }
+  75% {
+    transform: translateX(0px) translateY(-2px) rotateX(3deg) rotateY(-2deg) rotateZ(-1deg) scale(0.99, 1.01);
+  }
+}
+
+/* Continuous Dancing (Menari) 3D Groove */
+@keyframes sakamoto-3d-dance-idle-kf {
+  0%,
+  100% {
+    transform: translateX(-6px) translateY(2px) rotateY(-18deg) rotateZ(-9deg) scale(1.05, 0.94);
+  }
+  18% {
+    transform: translateX(-3px) translateY(-10px) rotateY(-8deg) rotateZ(-4deg) scale(0.96, 1.06);
+  }
+  35% {
+    transform: translateX(0px) translateY(2px) rotateY(4deg) rotateZ(2deg) scale(1.06, 0.93);
+  }
+  52% {
+    transform: translateX(7px) translateY(-11px) rotateY(20deg) rotateZ(10deg) scale(0.96, 1.06);
+  }
+  70% {
+    transform: translateX(4px) translateY(2px) rotateY(10deg) rotateZ(5deg) scale(1.05, 0.94);
+  }
+  85% {
+    transform: translateX(-2px) translateY(-8px) rotateY(-10deg) rotateZ(-5deg) scale(0.97, 1.05);
+  }
+}
+
+@keyframes sakamoto-3d-settle-kf {
+  0% {
+    transform: scale(1.06, 0.94) rotateZ(-3deg);
+  }
+  38% {
+    transform: translateY(-7px) scale(0.95, 1.07) rotateZ(2.5deg);
+  }
+  70% {
+    transform: translateY(2px) scale(1.03, 0.97) rotateZ(-1deg);
+  }
+  100% {
+    transform: translateY(0px) scale(1, 1) rotateZ(0deg);
   }
 }
 
@@ -477,63 +531,189 @@
   }
 }
 
+/* Enthusiastic Power-Sweep Burst */
 @keyframes sakamoto-3d-mop-kf {
   0% {
     transform: rotateY(0deg) rotateZ(0deg) scale(1);
   }
-  20% {
-    transform: translateX(-6px) rotateY(-24deg) rotateZ(-12deg) scale(1.07);
+  18% {
+    transform: translateX(-10px) rotateX(10deg) rotateY(-28deg) rotateZ(-14deg) scale(1.08, 0.95);
   }
-  45% {
-    transform: translateX(7px) rotateY(24deg) rotateZ(12deg) scale(1.08);
+  42% {
+    transform: translateX(11px) rotateX(8deg) rotateY(28deg) rotateZ(14deg) scale(1.09, 0.95);
   }
-  70% {
-    transform: translateX(-5px) rotateY(-18deg) rotateZ(-8deg) scale(1.05);
+  66% {
+    transform: translateX(-8px) rotateX(6deg) rotateY(-22deg) rotateZ(-10deg) scale(1.06, 0.97);
   }
-  88% {
-    transform: translateX(3px) rotateY(10deg) rotateZ(4deg) scale(0.98);
+  86% {
+    transform: translateX(5px) rotateY(12deg) rotateZ(5deg) scale(0.98, 1.03);
   }
   100% {
     transform: translateX(0px) rotateY(0deg) rotateZ(0deg) scale(1);
   }
 }
 
+/* Energetic Dance Spin-Hop Burst */
 @keyframes sakamoto-3d-hop-kf {
   0% {
-    transform: translateY(0px) rotateX(0deg) scale(1, 1);
+    transform: translateY(0px) rotateY(0deg) rotateZ(0deg) scale(1, 1);
   }
-  18% {
-    transform: translateY(4px) rotateX(12deg) scale(1.1, 0.88);
+  16% {
+    transform: translateY(4px) rotateX(10deg) rotateZ(-8deg) scale(1.1, 0.88);
   }
-  48% {
-    transform: translateY(-20px) rotateX(-16deg) scale(0.95, 1.1);
+  44% {
+    transform: translateY(-22px) rotateY(180deg) rotateZ(8deg) scale(0.95, 1.1);
   }
-  74% {
-    transform: translateY(3px) rotateX(8deg) scale(1.06, 0.94);
+  72% {
+    transform: translateY(-6px) rotateY(350deg) rotateZ(-5deg) scale(1.04, 0.96);
+  }
+  88% {
+    transform: translateY(3px) rotateY(364deg) rotateZ(2deg) scale(1.05, 0.94);
   }
   100% {
-    transform: translateY(0px) rotateX(0deg) scale(1, 1);
+    transform: translateY(0px) rotateY(360deg) rotateZ(0deg) scale(1, 1);
   }
 }
 
-.sakamoto-3d-idle {
-  animation: sakamoto-3d-idle-kf 3.6s ease-in-out infinite;
+@keyframes sakamoto-sweep-sparkle-kf {
+  0%,
+  100% {
+    transform: translate(0px, 0px) scale(0.5);
+    opacity: 0;
+  }
+  30% {
+    transform: translate(-8px, -6px) scale(1.1);
+    opacity: 0.9;
+  }
+  65% {
+    transform: translate(8px, -10px) scale(0.85);
+    opacity: 0.5;
+  }
+}
+
+@keyframes sakamoto-dance-note-kf {
+  0% {
+    transform: translate(0px, 4px) rotate(-10deg) scale(0.75);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.95;
+  }
+  70% {
+    transform: translate(6px, -12px) rotate(12deg) scale(1.05);
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate(10px, -20px) rotate(18deg) scale(0.8);
+    opacity: 0;
+  }
+}
+
+.sakamoto-3d-sweep-idle {
+  transform-origin: 50% 88%;
+  animation: sakamoto-3d-sweep-idle-kf 1.95s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+.sakamoto-3d-dance-idle {
+  transform-origin: 50% 90%;
+  animation: sakamoto-3d-dance-idle-kf 1.45s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  transform-style: preserve-3d;
+}
+
+.sakamoto-3d-settle {
+  transform-origin: 50% 88%;
+  animation: sakamoto-3d-settle-kf 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
   transform-style: preserve-3d;
 }
 
 .sakamoto-3d-spin {
+  transform-origin: 50% 80%;
   animation: sakamoto-3d-spin-kf 720ms cubic-bezier(0.22, 1, 0.36, 1);
   transform-style: preserve-3d;
 }
 
 .sakamoto-3d-mop {
+  transform-origin: 50% 88%;
   animation: sakamoto-3d-mop-kf 680ms cubic-bezier(0.22, 1, 0.36, 1);
   transform-style: preserve-3d;
 }
 
 .sakamoto-3d-hop {
-  animation: sakamoto-3d-hop-kf 620ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: 50% 85%;
+  animation: sakamoto-3d-hop-kf 700ms cubic-bezier(0.22, 1, 0.36, 1);
   transform-style: preserve-3d;
+}
+
+.sakamoto-sweep-sparkle {
+  animation: sakamoto-sweep-sparkle-kf 1.95s ease-in-out infinite;
+}
+
+.sakamoto-dance-note {
+  animation: sakamoto-dance-note-kf 1.45s ease-out infinite;
+}
+
+/* Global Tactile Button Touch Indicator (Expanding Ring + Core Tap Flash) */
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+@keyframes touch-pulse-ring-kf {
+  0% {
+    transform: translate(-50%, -50%) scale(0.25);
+    opacity: 0.95;
+  }
+  55% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.45);
+    opacity: 0;
+  }
+}
+
+@keyframes touch-pulse-core-kf {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0;
+  }
+}
+
+.touch-pulse-ring {
+  position: fixed;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  pointer-events: none;
+  animation: touch-pulse-ring-kf 440ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.touch-pulse-yellow {
+  border: 2px solid rgba(250, 204, 21, 0.95);
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.32) 0%, rgba(250, 204, 21, 0) 70%);
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.45);
+}
+
+.touch-pulse-crimson {
+  border: 2px solid rgba(250, 204, 21, 0.95);
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.42) 0%, rgba(239, 68, 68, 0) 70%);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.55);
+}
+
+.touch-pulse-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #facc15;
+  animation: touch-pulse-core-kf 300ms ease-out forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -541,14 +721,23 @@
   .btn-gold-metallic,
   .btn-grandline-crimson,
   .bento-card-hover,
-  .wanted-poster-card {
+  .wanted-poster-card,
+  .sakamoto-3d-wrapper.is-springing,
+  .sakamoto-3d-wrapper.is-springing-home,
+  .sakamoto-3d-stage {
     transition: none;
   }
   .sakamoto-float,
-  .sakamoto-3d-idle,
+  .sakamoto-3d-sweep-idle,
+  .sakamoto-3d-dance-idle,
+  .sakamoto-3d-settle,
   .sakamoto-3d-spin,
   .sakamoto-3d-mop,
-  .sakamoto-3d-hop {
+  .sakamoto-3d-hop,
+  .sakamoto-sweep-sparkle,
+  .sakamoto-dance-note,
+  .touch-pulse-ring,
+  .touch-pulse-core {
     animation: none;
   }
 }

@@ -1,13 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  applyRubberBandEdge,
   clampSakamotoPosition,
   clampSakamotoScale,
   compute3DTilt,
   computePinchScale,
+  computeSpringReleaseTarget,
   getDefaultSakamotoPosition,
   getScaledDimensions,
+  isDoubleTap,
   isDragMovement,
+  MAX_RUBBER_BAND_PX,
   MAX_SAKAMOTO_SCALE,
   MIN_SAKAMOTO_SCALE,
   stepSakamotoScale,
@@ -69,8 +73,50 @@ test('clampSakamotoPosition keeps mascot within safe desktop and mobile viewport
   assert.equal(desktopDefault.y, 900 - 173 - 22);
 });
 
+test('applyRubberBandEdge allows capped elastic over-drag past edge', () => {
+  const bounds = { viewportWidth: 390, viewportHeight: 844, itemWidth: 86, itemHeight: 120 };
+  const stretchedLeft = applyRubberBandEdge({ x: -200, y: 200 }, bounds, 0.28);
+  assert.equal(stretchedLeft.x, 8 - MAX_RUBBER_BAND_PX);
+  assert.equal(stretchedLeft.y, 200);
+
+  const inside = applyRubberBandEdge({ x: 120, y: 200 }, bounds, 0.28);
+  assert.deepEqual(inside, { x: 120, y: 200 });
+});
+
+test('computeSpringReleaseTarget applies inertial momentum and springs back inside safe bounds', () => {
+  const bounds = { viewportWidth: 390, viewportHeight: 844, itemWidth: 86, itemHeight: 120 };
+
+  // Pulled past left edge -> snaps cleanly back into safe inset x = 8
+  const snappedBack = computeSpringReleaseTarget({ x: -18, y: 300 }, { vx: -5, vy: 0 }, bounds);
+  assert.equal(snappedBack.x, 8);
+  assert.equal(snappedBack.y, 300);
+
+  // Flicked right inside viewport -> glides forward proportionally
+  const flicked = computeSpringReleaseTarget({ x: 100, y: 300 }, { vx: 10, vy: -8 }, bounds, 4);
+  assert.equal(flicked.x, 140);
+  assert.equal(flicked.y, 268);
+});
+
 test('isDragMovement respects pixel threshold', () => {
   assert.equal(isDragMovement(2, 2), false);
   assert.equal(isDragMovement(6, 0), true);
   assert.equal(isDragMovement(5, 5), true);
+});
+
+test('isDoubleTap recognizes rapid nearby taps and rejects slow or distant taps', () => {
+  assert.equal(isDoubleTap(null, { time: 1000, x: 100, y: 100 }), false);
+  assert.equal(
+    isDoubleTap({ time: 1000, x: 100, y: 100 }, { time: 1220, x: 112, y: 108 }),
+    true
+  );
+  // Too slow
+  assert.equal(
+    isDoubleTap({ time: 1000, x: 100, y: 100 }, { time: 1450, x: 102, y: 102 }),
+    false
+  );
+  // Too far apart
+  assert.equal(
+    isDoubleTap({ time: 1000, x: 100, y: 100 }, { time: 1150, x: 180, y: 100 }),
+    false
+  );
 });

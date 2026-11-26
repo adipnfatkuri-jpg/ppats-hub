@@ -1,21 +1,27 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { EyeOff, Maximize2, Minus, Plus, RotateCcw } from 'lucide-react';
+import { EyeOff, Maximize2, Minus, Music, Plus, RotateCcw, Sparkles } from 'lucide-react';
 import {
+  applyRubberBandEdge,
   clampSakamotoPosition,
   clampSakamotoScale,
   compute3DTilt,
   computePinchScale,
+  computeSpringReleaseTarget,
   DEFAULT_SAKAMOTO_SCALE,
   DESKTOP_BREAKPOINT_PX,
+  DOUBLE_TAP_DELAY_MS,
   getDefaultSakamotoPosition,
   getScaledDimensions,
+  isDoubleTap,
   isDragMovement,
   MAX_SAKAMOTO_SCALE,
   MIN_SAKAMOTO_SCALE,
   SCALE_STEP,
   stepSakamotoScale,
   type SakamotoPoint,
+  type SakamotoTapSample,
 } from '../utils/sakamotoPosition';
+import { triggerHapticFeedback } from '../utils/haptics';
 
 const SAKAMOTO_CHIBI_SRC = '/assets/aistudio/SAVE_20261126_100944_19f07050.png';
 // Matches uploaded PNG aspect ratio (736 x 1027)
@@ -26,9 +32,12 @@ const STORAGE_KEY_DESKTOP = 'simppats_sakamoto_3d_pos_desktop_v2';
 const STORAGE_KEY_SCALE_MOBILE = 'simppats_sakamoto_3d_scale_mobile_v2';
 const STORAGE_KEY_SCALE_DESKTOP = 'simppats_sakamoto_3d_scale_desktop_v2';
 const STORAGE_KEY_HIDDEN = 'simppats_sakamoto_3d_hidden_v2';
+const STORAGE_KEY_MODE = 'simppats_sakamoto_3d_mode_v2';
 
-type TouchMotionKind = 'none' | 'spin' | 'mop' | 'hop';
-const TOUCH_MOTIONS: Exclude<TouchMotionKind, 'none'>[] = ['mop', 'spin', 'hop'];
+type IdleRoutine = 'sweep' | 'dance';
+type SpringKind = 'none' | 'release' | 'home';
+type TouchMotionKind = 'none' | 'settle' | 'spin' | 'mop' | 'hop';
+const TOUCH_MOTIONS: Exclude<TouchMotionKind, 'none' | 'settle'>[] = ['mop', 'hop', 'spin'];
 
 function getBaseWidth(viewportWidth: number): number {
   return viewportWidth >= DESKTOP_BREAKPOINT_PX ? 116 : 86;
@@ -109,6 +118,9 @@ export const DraggableSakamoto: React.FC = () => {
     startClientX: number;
     startClientY: number;
     lastClientX: number;
+    lastClientY: number;
+    vx: number;
+    vy: number;
     originX: number;
     originY: number;
     moved: boolean;
@@ -123,7 +135,10 @@ export const DraggableSakamoto: React.FC = () => {
 
   const motionIndexRef = useRef(0);
   const motionTimerRef = useRef<number | null>(null);
+  const springTimerRef = useRef<number | null>(null);
   const menuTimerRef = useRef<number | null>(null);
+  const lastTapRef = useRef<SakamotoTapSample | null>(null);
+  const singleTapTimerRef = useRef<number | null>(null);
 
   const [scale, setScale] = useState<number>(() => {
     if (typeof window === 'undefined') return DEFAULT_SAKAMOTO_SCALE;
@@ -135,9 +150,19 @@ export const DraggableSakamoto: React.FC = () => {
     typeof window === 'undefined' ? 86 : getBaseWidth(window.innerWidth)
   );
   const [isDragging, setIsDragging] = useState(false);
+  const [springKind, setSpringKind] = useState<SpringKind>('none');
   const [isResizing, setIsResizing] = useState(false);
   const [isTilting, setIsTilting] = useState(false);
   const [touchMotion, setTouchMotion] = useState<TouchMotionKind>('none');
+  const [idleMode, setIdleMode] = useState<IdleRoutine>(() => {
+    if (typeof window === 'undefined') return 'sweep';
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY_MODE);
+      return saved === 'dance' ? 'dance' : 'sweep';
+    } catch {
+      return 'sweep';
+    }
+  });
   const [showControls, setShowControls] = useState(false);
   const [toolbarAlign, setToolbarAlign] = useState<'left' | 'center' | 'right'>('right');
   const [isHidden, setIsHidden] = useState<boolean>(() => {
@@ -148,6 +173,8 @@ export const DraggableSakamoto: React.FC = () => {
       return false;
     }
   });
+
+  const isSpringing = springKind !== 'none';
 
   const applyPositionToDom = useCallback((next: SakamotoPoint) => {
     posRef.current = next;
@@ -160,15 +187,34 @@ export const DraggableSakamoto: React.FC = () => {
       const bw = getBaseWidth(window.innerWidth);
       const centerX = next.x + (bw * scaleRef.current) / 2;
       const vw = window.innerWidth;
-      if (centerX > vw - 115) {
+      if (centerX > vw - 135) {
         setToolbarAlign('right');
-      } else if (centerX < 115) {
+      } else if (centerX < 135) {
         setToolbarAlign('left');
       } else {
         setToolbarAlign('center');
       }
     }
   }, []);
+
+  const springToPosition = useCallback(
+    (target: SakamotoPoint, kind: Exclude<SpringKind, 'none'> = 'release') => {
+      if (springTimerRef.current) {
+        window.clearTimeout(springTimerRef.current);
+      }
+      setSpringKind(kind);
+      window.requestAnimationFrame(() => {
+        applyPositionToDom(target);
+      });
+      springTimerRef.current = window.setTimeout(
+        () => {
+          setSpringKind('none');
+        },
+        kind === 'home' ? 700 : 560
+      );
+    },
+    [applyPositionToDom]
+  );
 
   const applyTiltToDom = useCallback(
     (rx: number, ry: number, rz: number = 0, tz: number = 0) => {
@@ -206,7 +252,7 @@ export const DraggableSakamoto: React.FC = () => {
   }, []);
 
   const commitScaleAndClamp = useCallback(
-    (rawScale: number, shouldPersist: boolean = true) => {
+    (rawScale: number, shouldPersist: boolean = true, useSpring: boolean = false) => {
       const clampedScale = clampSakamotoScale(rawScale);
       scaleRef.current = clampedScale;
       setScale(clampedScale);
@@ -219,22 +265,29 @@ export const DraggableSakamoto: React.FC = () => {
         itemWidth: width,
         itemHeight: height,
       });
-      applyPositionToDom(clampedPos);
+      if (useSpring) {
+        springToPosition(clampedPos);
+      } else {
+        applyPositionToDom(clampedPos);
+      }
 
       if (shouldPersist) {
         persistScale(clampedScale);
         persistPosition(clampedPos);
       }
     },
-    [applyPositionToDom, persistPosition, persistScale]
+    [applyPositionToDom, persistPosition, persistScale, springToPosition]
   );
 
-  const triggerTouchMotion = useCallback(() => {
+  const triggerTouchMotion = useCallback((explicit?: TouchMotionKind) => {
     if (motionTimerRef.current) {
       window.clearTimeout(motionTimerRef.current);
     }
-    const nextMotion = TOUCH_MOTIONS[motionIndexRef.current % TOUCH_MOTIONS.length];
-    motionIndexRef.current += 1;
+    const nextMotion: TouchMotionKind =
+      explicit ?? TOUCH_MOTIONS[motionIndexRef.current % TOUCH_MOTIONS.length];
+    if (!explicit) {
+      motionIndexRef.current += 1;
+    }
 
     setTouchMotion('none');
     window.requestAnimationFrame(() => {
@@ -277,7 +330,9 @@ export const DraggableSakamoto: React.FC = () => {
   useEffect(() => {
     return () => {
       if (motionTimerRef.current) window.clearTimeout(motionTimerRef.current);
+      if (springTimerRef.current) window.clearTimeout(springTimerRef.current);
       if (menuTimerRef.current) window.clearTimeout(menuTimerRef.current);
+      if (singleTapTimerRef.current) window.clearTimeout(singleTapTimerRef.current);
     };
   }, []);
 
@@ -300,6 +355,13 @@ export const DraggableSakamoto: React.FC = () => {
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // Cancel any ongoing spring glide so dragging feels immediately glued to the finger
+    if (springTimerRef.current) {
+      window.clearTimeout(springTimerRef.current);
+      springTimerRef.current = null;
+    }
+    setSpringKind('none');
 
     // Start 2-finger pinch-to-zoom when two touch pointers are active
     if (activePointersRef.current.size === 2) {
@@ -333,6 +395,9 @@ export const DraggableSakamoto: React.FC = () => {
       startClientX: e.clientX,
       startClientY: e.clientY,
       lastClientX: e.clientX,
+      lastClientY: e.clientY,
+      vx: 0,
+      vy: 0,
       originX: posRef.current.x,
       originY: posRef.current.y,
       moved: false,
@@ -368,7 +433,7 @@ export const DraggableSakamoto: React.FC = () => {
         pinchStateRef.current.startDist,
         dist
       );
-      commitScaleAndClamp(nextScale, false);
+      commitScaleAndClamp(nextScale, false, false);
       return;
     }
 
@@ -385,18 +450,26 @@ export const DraggableSakamoto: React.FC = () => {
     }
 
     if (state.moved) {
-      const vx = e.clientX - state.lastClientX;
+      const stepVx = e.clientX - state.lastClientX;
+      const stepVy = e.clientY - state.lastClientY;
       state.lastClientX = e.clientX;
-      const bankZ = Math.max(-16, Math.min(16, vx * 1.1));
-      const bankY = Math.max(-22, Math.min(22, vx * 1.6));
-      applyTiltToDom(6, bankY, bankZ, 20);
+      state.lastClientY = e.clientY;
+      // Exponential moving average for smooth velocity-driven spring release
+      state.vx = state.vx * 0.55 + stepVx * 0.45;
+      state.vy = state.vy * 0.55 + stepVy * 0.45;
+
+      const bankZ = Math.max(-18, Math.min(18, state.vx * 1.15));
+      const bankY = Math.max(-24, Math.min(24, state.vx * 1.7));
+      const pitchX = Math.max(-14, Math.min(14, -state.vy * 0.9));
+      applyTiltToDom(pitchX, bankY, bankZ, 22);
 
       const { width, height } = getScaledDimensions(
         getBaseWidth(window.innerWidth),
         scaleRef.current,
         ASPECT_RATIO
       );
-      const clamped = clampSakamotoPosition(
+      // Elastic rubber-band allowance near edges so release visibly springs back!
+      const elasticPos = applyRubberBandEdge(
         { x: state.originX + dx, y: state.originY + dy },
         {
           viewportWidth: window.innerWidth,
@@ -405,7 +478,7 @@ export const DraggableSakamoto: React.FC = () => {
           itemHeight: height,
         }
       );
-      applyPositionToDom(clamped);
+      applyPositionToDom(elasticPos);
     }
   };
 
@@ -436,16 +509,80 @@ export const DraggableSakamoto: React.FC = () => {
 
     if (state.moved) {
       setIsDragging(false);
-      triggerTouchMotion();
-      persistPosition(posRef.current);
+      lastTapRef.current = null;
+      if (singleTapTimerRef.current) {
+        window.clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
+      const { width, height } = getScaledDimensions(
+        getBaseWidth(window.innerWidth),
+        scaleRef.current,
+        ASPECT_RATIO
+      );
+      // Spring-physics inertial glide + elastic snap-back inside safe viewport bounds
+      const springTarget = computeSpringReleaseTarget(
+        posRef.current,
+        { vx: state.vx, vy: state.vy },
+        {
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          itemWidth: width,
+          itemHeight: height,
+        }
+      );
+      springToPosition(springTarget, 'release');
+      triggerTouchMotion('settle');
+      persistPosition(springTarget);
     } else {
-      // Quick touch/tap -> playful 3D animation + toggle resize/reset toolbar
-      triggerTouchMotion();
-      setShowControls((prev) => {
-        const next = !prev;
-        if (next) scheduleHideControls();
-        return next;
-      });
+      // Distinguish double-tap (spring back to home position) from single tap (burst + toolbar)
+      const now = Date.now();
+      const currentTap: SakamotoTapSample = {
+        time: now,
+        x: e.clientX,
+        y: e.clientY,
+      };
+
+      if (isDoubleTap(lastTapRef.current, currentTap)) {
+        lastTapRef.current = null;
+        if (singleTapTimerRef.current) {
+          window.clearTimeout(singleTapTimerRef.current);
+          singleTapTimerRef.current = null;
+        }
+        const { width, height } = getScaledDimensions(
+          getBaseWidth(window.innerWidth),
+          scaleRef.current,
+          ASPECT_RATIO
+        );
+        const homePos = getDefaultSakamotoPosition({
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          itemWidth: width,
+          itemHeight: height,
+        });
+        setShowControls(false);
+        springToPosition(homePos, 'home');
+        triggerTouchMotion(idleMode === 'dance' ? 'hop' : 'mop');
+        triggerHapticFeedback('doubleTap', { pointerType: e.pointerType });
+        try {
+          window.localStorage.removeItem(getPosStorageKey(window.innerWidth));
+        } catch {
+          // Ignore storage errors
+        }
+      } else {
+        lastTapRef.current = currentTap;
+        triggerTouchMotion(idleMode === 'dance' ? 'hop' : 'mop');
+        if (singleTapTimerRef.current) {
+          window.clearTimeout(singleTapTimerRef.current);
+        }
+        singleTapTimerRef.current = window.setTimeout(() => {
+          singleTapTimerRef.current = null;
+          setShowControls((prev) => {
+            const next = !prev;
+            if (next) scheduleHideControls();
+            return next;
+          });
+        }, DOUBLE_TAP_DELAY_MS - 40);
+      }
     }
   };
 
@@ -477,7 +614,7 @@ export const DraggableSakamoto: React.FC = () => {
     e.stopPropagation();
     const deltaPx = (e.clientX - rs.startClientX + (e.clientY - rs.startClientY)) / 2;
     const nextScale = rs.startScale + deltaPx / 110;
-    commitScaleAndClamp(nextScale, false);
+    commitScaleAndClamp(nextScale, false, false);
   };
 
   const handleResizePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -495,15 +632,27 @@ export const DraggableSakamoto: React.FC = () => {
   };
 
   const handleZoomIn = () => {
-    commitScaleAndClamp(stepSakamotoScale(scaleRef.current, SCALE_STEP), true);
+    commitScaleAndClamp(stepSakamotoScale(scaleRef.current, SCALE_STEP), true, true);
     triggerTouchMotion();
     scheduleHideControls();
   };
 
   const handleZoomOut = () => {
-    commitScaleAndClamp(stepSakamotoScale(scaleRef.current, -SCALE_STEP), true);
+    commitScaleAndClamp(stepSakamotoScale(scaleRef.current, -SCALE_STEP), true, true);
     triggerTouchMotion();
     scheduleHideControls();
+  };
+
+  const handleToggleIdleMode = () => {
+    const nextMode: IdleRoutine = idleMode === 'sweep' ? 'dance' : 'sweep';
+    setIdleMode(nextMode);
+    triggerTouchMotion(nextMode === 'dance' ? 'hop' : 'mop');
+    scheduleHideControls();
+    try {
+      window.localStorage.setItem(STORAGE_KEY_MODE, nextMode);
+    } catch {
+      // Ignore storage errors
+    }
   };
 
   const handleResetAll = () => {
@@ -520,8 +669,8 @@ export const DraggableSakamoto: React.FC = () => {
       itemWidth: width,
       itemHeight: height,
     });
-    applyPositionToDom(defPos);
-    triggerTouchMotion();
+    springToPosition(defPos, 'home');
+    triggerTouchMotion('settle');
     setShowControls(false);
     try {
       window.localStorage.removeItem(getPosStorageKey(window.innerWidth));
@@ -556,7 +705,7 @@ export const DraggableSakamoto: React.FC = () => {
       setScale(savedScale);
       const next = loadSavedOrDefaultPosition(vw, vh, savedScale);
       applyPositionToDom(next);
-      triggerTouchMotion();
+      triggerTouchMotion('hop');
     });
   };
 
@@ -584,16 +733,27 @@ export const DraggableSakamoto: React.FC = () => {
 
   const currentWidth = Math.round(baseWidth * scale);
   const scalePercent = Math.round(scale * 100);
+  const idleMotionClass =
+    idleMode === 'dance' ? 'sakamoto-3d-dance-idle' : 'sakamoto-3d-sweep-idle';
   const motionClass =
     isDragging || isResizing
       ? ''
-      : touchMotion === 'spin'
-        ? 'sakamoto-3d-spin'
-        : touchMotion === 'mop'
-          ? 'sakamoto-3d-mop'
-          : touchMotion === 'hop'
-            ? 'sakamoto-3d-hop'
-            : 'sakamoto-3d-idle';
+      : touchMotion === 'settle'
+        ? 'sakamoto-3d-settle'
+        : touchMotion === 'spin'
+          ? 'sakamoto-3d-spin'
+          : touchMotion === 'mop'
+            ? 'sakamoto-3d-mop'
+            : touchMotion === 'hop'
+              ? 'sakamoto-3d-hop'
+              : idleMotionClass;
+
+  const springClass =
+    springKind === 'home'
+      ? 'is-springing-home'
+      : springKind === 'release'
+        ? 'is-springing'
+        : '';
 
   return (
     <div
@@ -601,22 +761,25 @@ export const DraggableSakamoto: React.FC = () => {
       data-testid="draggable-sakamoto"
       data-scale={scale}
       data-motion={touchMotion}
+      data-idle-mode={idleMode}
+      data-springing={isSpringing ? 'true' : 'false'}
+      data-spring-kind={springKind}
       role="region"
-      aria-label="Karakter 3D Sakamoto yang dapat disentuh, dibesarkan, dikecilkan, dan dipindahkan"
+      aria-label="Karakter 3D Sakamoto yang sedang menyapu atau menari; ketuk dua kali untuk kembali ke titik awal, geser untuk pindah"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={finishPointer}
       onPointerCancel={finishPointer}
       onPointerLeave={handlePointerLeave}
-      className={`no-print sakamoto-3d-wrapper fixed top-0 left-0 z-[35] select-none touch-none ${
+      className={`no-print sakamoto-3d-wrapper fixed top-0 left-0 z-[35] select-none touch-none ${springClass} ${
         isDragging ? 'cursor-grabbing' : 'cursor-grab'
       }`}
     >
-      {/* Slim Dark Mode Control Pill (Zoom -, %, Zoom +, Reset, Hide) when tapped */}
+      {/* Slim Dark Mode Control Pill (Sapu/Tari, Zoom -, %, Zoom +, Reset, Hide) when tapped */}
       {showControls && !isDragging && (
         <div
           role="toolbar"
-          aria-label="Kontrol ukuran dan posisi Sakamoto 3D"
+          aria-label="Kontrol animasi, ukuran, dan posisi Sakamoto 3D"
           className={`absolute -top-10 flex items-center gap-1 px-1.5 py-1 rounded-full bg-[#171A21]/96 backdrop-blur-md border border-[#FACC15]/45 shadow-[0_8px_22px_rgba(0,0,0,0.65)] whitespace-nowrap z-20 ${
             toolbarAlign === 'right'
               ? 'right-0'
@@ -625,6 +788,32 @@ export const DraggableSakamoto: React.FC = () => {
                 : 'left-1/2 -translate-x-1/2'
           }`}
         >
+          <button
+            type="button"
+            onClick={handleToggleIdleMode}
+            aria-label={
+              idleMode === 'sweep'
+                ? 'Ubah animasi Sakamoto ke Menari'
+                : 'Ubah animasi Sakamoto ke Menyapu'
+            }
+            title={idleMode === 'sweep' ? 'Mode Menyapu (Klik untuk Menari)' : 'Mode Menari (Klik untuk Menyapu)'}
+            className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[#FACC15] text-[#0E1014] text-[10px] font-bold transition-transform active:scale-95"
+          >
+            {idleMode === 'sweep' ? (
+              <>
+                <Sparkles className="w-3 h-3" />
+                <span>Sapu</span>
+              </>
+            ) : (
+              <>
+                <Music className="w-3 h-3" />
+                <span>Tari</span>
+              </>
+            )}
+          </button>
+
+          <div className="w-px h-3.5 bg-white/[0.12] mx-0.5" />
+
           <button
             type="button"
             onClick={handleZoomOut}
@@ -636,7 +825,7 @@ export const DraggableSakamoto: React.FC = () => {
             <Minus className="w-3 h-3" />
           </button>
 
-          <span className="px-1 text-[10px] font-bold text-[#FACC15] tabular-nums select-none">
+          <span className="px-0.5 text-[10px] font-bold text-[#FACC15] tabular-nums select-none">
             {scalePercent}%
           </span>
 
@@ -657,7 +846,7 @@ export const DraggableSakamoto: React.FC = () => {
             type="button"
             onClick={handleResetAll}
             aria-label="Reset ukuran dan posisi Sakamoto"
-            title="Reset Posisi & Ukuran"
+            title="Reset Posisi & Ukuran (atau Double-Tap)"
             className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#252A34] hover:bg-[#FACC15] text-[#F8FAFC] hover:text-[#0E1014] border border-white/[0.1] transition-colors"
           >
             <RotateCcw className="w-3 h-3" />
@@ -683,14 +872,42 @@ export const DraggableSakamoto: React.FC = () => {
           isDragging || isTilting || isResizing ? 'is-interacting' : ''
         }`}
       >
+        {/* Subtle Animated Accents for Sweeping (Sparkles) & Dancing (Music Notes) */}
+        {!isDragging && !isResizing && idleMode === 'sweep' && (
+          <div aria-hidden="true" className="pointer-events-none absolute -bottom-0.5 left-1 right-3 h-5 z-10">
+            <span className="sakamoto-sweep-sparkle absolute bottom-0 left-1 text-[10px] font-black text-[#FACC15] drop-shadow-[0_0_6px_rgba(250,204,21,0.75)]">
+              ✦
+            </span>
+            <span
+              style={{ animationDelay: '0.95s' }}
+              className="sakamoto-sweep-sparkle absolute bottom-0.5 left-6 text-[8px] font-black text-white/90 drop-shadow-[0_0_5px_rgba(250,204,21,0.6)]"
+            >
+              ✦
+            </span>
+          </div>
+        )}
+        {!isDragging && !isResizing && idleMode === 'dance' && (
+          <div aria-hidden="true" className="pointer-events-none absolute -top-2 -right-1 w-8 h-8 z-10">
+            <span className="sakamoto-dance-note absolute top-2 right-1 text-[12px] font-black text-[#FACC15] drop-shadow-[0_0_6px_rgba(250,204,21,0.85)]">
+              ♪
+            </span>
+            <span
+              style={{ animationDelay: '0.7s' }}
+              className="sakamoto-dance-note absolute top-4 right-4 text-[10px] font-black text-[#EF4444] drop-shadow-[0_0_6px_rgba(239,68,68,0.8)]"
+            >
+              ♫
+            </span>
+          </div>
+        )}
+
         {/* Reactive 3D Ground Contact Shadow */}
         <div
           aria-hidden="true"
           className={`pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-black/55 blur-[5px] transition-all duration-200 ${
             isDragging
-              ? 'w-[54%] h-2.5 opacity-45'
-              : touchMotion !== 'none'
-                ? 'w-[58%] h-2.5 opacity-50'
+              ? 'w-[52%] h-2.5 opacity-40'
+              : isSpringing || touchMotion !== 'none'
+                ? 'w-[60%] h-2.5 opacity-55'
                 : 'w-[72%] h-3 opacity-70'
           }`}
         />
@@ -699,7 +916,7 @@ export const DraggableSakamoto: React.FC = () => {
         <div className={`relative ${motionClass}`}>
           <img
             src={SAKAMOTO_CHIBI_SRC}
-            alt="Taro Sakamoto 3D — Sentuh untuk bergerak, geser untuk pindah, cubit atau klik + / - untuk ubah ukuran"
+            alt="Taro Sakamoto 3D — Sedang menyapu atau menari; ketuk 2x untuk kembali ke posisi awal"
             draggable={false}
             referrerPolicy="no-referrer"
             className={`w-full h-auto block pointer-events-none select-none transition-[filter] duration-150 ${

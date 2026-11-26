@@ -55,6 +55,7 @@ import { DashboardModule } from './components/DashboardModule';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { PWAInstallBanner } from './components/PWAInstallButton';
 import { DraggableSakamoto } from './components/DraggableSakamoto';
+import { TouchFeedbackOverlay } from './components/TouchFeedbackOverlay';
 import { useTheme } from './hooks/useTheme';
 
 const WizardModule = lazy(() =>
@@ -953,6 +954,7 @@ export default function App() {
       <OfflineIndicator />
       <PWAInstallBanner />
       <DraggableSakamoto />
+      <TouchFeedbackOverlay />
     </div>
   );
 }

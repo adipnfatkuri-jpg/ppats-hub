@@ -286,7 +286,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Navigation Links — Warm Manga Yellow Active + Clean White Inactive */}
         <nav
-          className={`relative z-10 flex-1 px-3 py-3 pb-52 lg:pb-64 space-y-1 overflow-y-auto no-scrollbar transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+          className={`relative z-10 flex-1 px-3 py-3 pb-64 lg:pb-72 space-y-1 overflow-y-auto no-scrollbar transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
             isMobileOpen ? 'translate-x-0' : '-translate-x-3 lg:translate-x-0'
           }`}
         >
@@ -334,7 +334,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           alt=""
           aria-hidden="true"
           referrerPolicy="no-referrer"
-          className="pointer-events-none select-none absolute left-2 bottom-[52px] z-[5] w-[158px] sm:w-[172px] lg:w-[190px] h-auto sakamoto-float drop-shadow-[0_10px_22px_rgba(0,0,0,0.75)]"
+          className="pointer-events-none select-none absolute inset-x-0 mx-auto bottom-[46px] z-[5] w-[256px] max-w-[96%] lg:w-[246px] h-auto max-h-[48vh] object-contain object-bottom sakamoto-float drop-shadow-[0_12px_26px_rgba(0,0,0,0.8)]"
         />
 
         {/* Minimal High-Contrast Office Identity Footer */}
