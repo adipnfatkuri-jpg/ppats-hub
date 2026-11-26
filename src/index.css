@@ -3,14 +3,14 @@
 
 @theme {
   --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-cinzel: "Cinzel", Georgia, "Times New Roman", serif;
+  --font-cinzel: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 @layer base {
   html {
-    color-scheme: light;
+    color-scheme: dark;
     -webkit-text-size-adjust: 100%;
     overscroll-behavior-y: contain;
   }
@@ -21,14 +21,14 @@
 
   body {
     font-family: var(--font-sans);
-    background-color: #0b1f3a;
-    color: #1e293b;
+    background-color: #0e1014;
+    color: #f8fafc;
     transition: background-color 150ms ease, color 150ms ease;
     overscroll-behavior-y: contain;
   }
 
   html.dark body {
-    background-color: #071529;
+    background-color: #0e1014;
     color: #f8fafc;
   }
 
@@ -51,6 +51,61 @@
   }
 }
 
+/* 4. SCROLLBAR ULTRA-TIPIS (DESKTOP) & TERSEMBUNYI PENUH (MOBILE & HORIZONTAL FILTER) */
+@media (min-width: 769px) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 999px;
+    transition: background 150ms ease;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(250, 204, 21, 0.45);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@media (max-width: 768px) {
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+}
+
+.no-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 /* Safe-Area Helpers for Notched iOS / Android Standalone PWA */
 .pt-safe {
   padding-top: env(safe-area-inset-top, 0px);
@@ -60,392 +115,441 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Classic Bounty / Grand Line Serif (Cinzel) */
 .font-cinzel {
-  font-family: var(--font-cinzel);
+  font-family: var(--font-display);
 }
 
-/* 1. BACKGROUND UTAMA (GRAND LINE OCEAN & SKY) */
+/* 1. BACKGROUND UTAMA (SAKAMOTO DAYS DARK MODE — MATTE BLACK #0E1014 + HALFTONE HALUS) */
 .app-canvas {
-  background-color: #1c5a8a;
-  background-image: url('/bg-grandline.jpg');
-  background-size: cover;
-  background-position: center top;
-  background-attachment: scroll;
-  background-repeat: no-repeat;
+  background-color: #0e1014;
+  background-image:
+    radial-gradient(rgba(250, 204, 21, 0.055) 1px, transparent 1px),
+    linear-gradient(rgba(14, 16, 20, 0.84), rgba(14, 16, 20, 0.88)),
+    url('/bg-sakamoto.jpg');
+  background-size: 16px 16px, cover, cover;
+  background-position: 0 0, center, center;
+  background-attachment: scroll, scroll, scroll;
+  background-repeat: repeat, no-repeat, no-repeat;
 }
 
 .dark .app-canvas {
-  background-color: #071529;
+  background-color: #0e1014;
   background-image:
-    linear-gradient(180deg, rgba(7, 21, 41, 0.72) 0%, rgba(11, 31, 58, 0.78) 100%),
-    url('/bg-grandline.jpg');
-  background-size: cover;
-  background-position: center top;
-  background-attachment: scroll;
-  background-repeat: no-repeat;
+    radial-gradient(rgba(250, 204, 21, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(14, 16, 20, 0.88), rgba(14, 16, 20, 0.92)),
+    url('/bg-sakamoto.jpg');
+  background-size: 16px 16px, cover, cover;
+  background-position: 0 0, center, center;
+  background-attachment: scroll, scroll, scroll;
+  background-repeat: repeat, no-repeat, no-repeat;
 }
 
 @media (min-width: 1024px) {
   .app-canvas,
   .dark .app-canvas {
-    background-position: center;
-    background-attachment: fixed;
+    background-position: 0 0, center, center;
+    background-attachment: fixed, fixed, fixed;
   }
 }
 
 @media (max-width: 767px) {
   .input-airy {
     font-size: 16px;
-    min-height: 44px;
+    min-height: 40px;
   }
 }
 
-/* Semi-transparent Parchment Card (for secondary modules over Grand Line canvas) */
+/* 2. HAZARD STRIPE ACCENT (WARM MANGA YELLOW #FACC15 + MATTE BLACK) */
+.manga-hazard-stripe {
+  height: 6px;
+  width: 100%;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #facc15,
+    #facc15 10px,
+    #0e1014 10px,
+    #0e1014 20px
+  );
+}
+
+/* Secondary Module Card (high-contrast legible in both light & dark modes) */
 .bento-card {
-  background-color: rgba(255, 250, 240, 0.93);
-  backdrop-filter: blur(6px);
-  border-radius: 12px;
-  border: 2px solid #8c6239;
-  box-shadow: 0 6px 18px rgba(11, 31, 58, 0.16);
+  background-color: rgba(255, 255, 255, 0.96);
+  color: #111827;
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
+  border: 1px solid rgba(250, 204, 21, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
 }
 
 .dark .bento-card {
-  background-color: rgba(11, 31, 58, 0.92);
-  backdrop-filter: blur(6px);
-  border: 2px solid #c89b3c;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+  background-color: rgba(23, 26, 33, 0.94);
+  color: #f8fafc;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
 }
 
 .bento-card-hover {
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
 
 .bento-card-hover:hover {
-  box-shadow: 0 10px 24px rgba(11, 31, 58, 0.24);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45);
 }
 
-.dark .bento-card-hover:hover {
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.48);
-}
-
-/* 3. KARTU KPI BERGAYA "WANTED POSTER / PERKAMEN KAYU" + 4 PAKU SUDUT */
+/* KARTU KPI (DARK CHARCOAL #171A21 + THIN UNIFORM BORDER) */
 .wanted-poster-card {
   position: relative;
-  background: linear-gradient(180deg, #fdf7e8 0%, #fbf3e0 68%, #f3e4c3 100%);
-  border: 4px solid #6b4423;
-  outline: 1px solid #3e2712;
-  border-radius: 10px;
-  box-shadow:
-    0 8px 20px rgba(11, 31, 58, 0.26),
-    inset 0 0 0 1px rgba(200, 155, 60, 0.45);
-  transition: transform 160ms ease, box-shadow 160ms ease;
+  background-color: rgba(23, 26, 33, 0.92);
+  backdrop-filter: blur(8px);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.42);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
 
 .wanted-poster-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 12px 24px rgba(11, 31, 58, 0.32),
-    inset 0 0 0 1px rgba(200, 155, 60, 0.65);
+  transform: translateY(-1px);
+  border-color: rgba(250, 204, 21, 0.3);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.52);
 }
 
-/* 4 Dark Brown Corner Rivets / Nails via single non-interactive overlay */
-.wanted-poster-card::before {
-  content: "";
-  position: absolute;
-  inset: 7px;
-  pointer-events: none;
-  z-index: 1;
-  background-repeat: no-repeat;
-  background-image:
-    radial-gradient(circle at 4px 4px, #8b5e34 0, #3e2712 2.4px, #241508 3.6px, transparent 4px),
-    radial-gradient(circle at calc(100% - 4px) 4px, #8b5e34 0, #3e2712 2.4px, #241508 3.6px, transparent 4px),
-    radial-gradient(circle at 4px calc(100% - 4px), #8b5e34 0, #3e2712 2.4px, #241508 3.6px, transparent 4px),
-    radial-gradient(circle at calc(100% - 4px) calc(100% - 4px), #8b5e34 0, #3e2712 2.4px, #241508 3.6px, transparent 4px);
-}
-
-/* Subtle inner parchment border line */
-.wanted-poster-card::after {
-  content: "";
-  position: absolute;
-  inset: 4px;
-  border: 1px dashed rgba(107, 68, 35, 0.24);
-  border-radius: 5px;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.dark .wanted-poster-card {
-  background: linear-gradient(180deg, #162b46 0%, #10233b 70%, #0b1b30 100%);
-  border: 4px solid #8c6239;
-  outline: 1px solid #c89b3c;
-  box-shadow:
-    0 8px 22px rgba(0, 0, 0, 0.45),
-    inset 0 0 0 1px rgba(244, 196, 48, 0.22);
-}
-
-.dark .wanted-poster-card::before {
-  background-image:
-    radial-gradient(circle at 4px 4px, #f4c430 0, #b48324 2.4px, #5c3d11 3.6px, transparent 4px),
-    radial-gradient(circle at calc(100% - 4px) 4px, #f4c430 0, #b48324 2.4px, #5c3d11 3.6px, transparent 4px),
-    radial-gradient(circle at 4px calc(100% - 4px), #f4c430 0, #b48324 2.4px, #5c3d11 3.6px, transparent 4px),
-    radial-gradient(circle at calc(100% - 4px) calc(100% - 4px), #f4c430 0, #b48324 2.4px, #5c3d11 3.6px, transparent 4px);
-}
-
-.dark .wanted-poster-card::after {
-  border-color: rgba(200, 155, 60, 0.25);
-}
-
-/* Gold-accented Bounty / Valuation KPI Card */
 .bounty-kpi-card {
-  border-color: #7c4d1e;
-  box-shadow:
-    0 8px 20px rgba(11, 31, 58, 0.28),
-    inset 0 3px 0 #d97706,
-    inset 0 0 0 1px rgba(217, 119, 6, 0.5);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
-.dark .bounty-kpi-card {
-  border-color: #c89b3c;
-  box-shadow:
-    0 8px 22px rgba(0, 0, 0, 0.48),
-    inset 0 3px 0 #f4c430,
-    inset 0 0 0 1px rgba(244, 196, 48, 0.35);
-}
-
-/* 5. KONTAINER TABEL & FILTER STATUS (TALI COKELAT + KREM SEMI-TRANSPARAN) */
+/* KONTAINER TABEL ("Daftar & Tracking Berkas" — DARK CHARCOAL #171A21 + BORDER TIPIS) */
 .wanted-table-container {
   position: relative;
-  background-color: rgba(255, 250, 240, 0.92);
-  backdrop-filter: blur(6px);
-  border: 3px solid #6b4423;
-  outline: 1px solid #3e2712;
-  border-radius: 12px;
-  box-shadow:
-    0 10px 28px rgba(11, 31, 58, 0.26),
-    inset 0 0 0 2px rgba(200, 155, 60, 0.3);
+  background-color: rgba(23, 26, 33, 0.94);
+  backdrop-filter: blur(8px);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
 }
 
-.dark .wanted-table-container {
-  background-color: rgba(11, 31, 58, 0.92);
-  border: 3px solid #c89b3c;
-  outline: 1px solid #5c3d11;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.48);
-}
-
-/* 4. TOMBOL AKSI KHAS ONE PIECE */
+/* TOMBOL AKSI HARMONIS (WARM MANGA YELLOW #FACC15 & CRIMSON RED #EF4444) */
 .btn-3d {
-  border-radius: 8px;
-  transition: transform 150ms ease, background 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+  border-radius: 999px;
+  transition: transform 150ms ease, filter 150ms ease, background 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.btn-3d:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
 }
 
 .btn-3d:active:not(:disabled) {
-  transform: translateY(1.5px);
+  transform: translateY(0px);
 }
 
-/* Tombol Login Google — Emas Metalik Kapsul */
+/* Tombol Login Google / Profil — Warm Manga Yellow (#FACC15) + Teks Hitam Tebal */
 .btn-gold-metallic {
-  background: linear-gradient(180deg, #fde047 0%, #eab308 52%, #ca8a04 100%);
-  color: #111827;
+  background: #facc15;
+  color: #0e1014;
   font-weight: 800;
   border-radius: 999px;
-  border: 2px solid #854d0e;
-  box-shadow:
-    0 3px 0 #713f12,
-    0 6px 14px rgba(11, 31, 58, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.75);
-  transition: transform 140ms ease, filter 140ms ease, box-shadow 140ms ease;
+  border: 1px solid rgba(250, 204, 21, 0.9);
+  box-shadow: 0 2px 12px rgba(250, 204, 21, 0.25);
+  transition: transform 150ms ease, filter 150ms ease, box-shadow 150ms ease;
 }
 
 .btn-gold-metallic:hover:not(:disabled) {
-  filter: brightness(1.06);
   transform: translateY(-1px);
-  box-shadow:
-    0 4px 0 #713f12,
-    0 8px 18px rgba(11, 31, 58, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  filter: brightness(1.05);
+  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.38);
 }
 
 .btn-gold-metallic:active:not(:disabled) {
-  transform: translateY(1.5px);
-  box-shadow:
-    0 1.5px 0 #713f12,
-    0 3px 8px rgba(11, 31, 58, 0.25);
+  transform: translateY(0px);
 }
 
-/* Tombol "+ Buat Berkas Baru" — Merah Crimson Luffy */
+/* Tombol "+ Buat Berkas Baru" — Crimson Red (#EF4444) dengan aksen halus */
 .btn-grandline-crimson {
-  background: linear-gradient(180deg, #dc2626 0%, #991b1b 100%);
+  background: #ef4444;
   color: #ffffff;
-  font-weight: 700;
-  border: 2px solid #7f1d1d;
-  box-shadow:
-    0 4px 0 #5c1111,
-    0 8px 18px rgba(11, 31, 58, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  font-weight: 800;
+  border-radius: 999px;
+  border: 1.5px solid rgba(250, 204, 21, 0.78);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.36);
+  transition: transform 150ms ease, filter 150ms ease, box-shadow 150ms ease;
 }
 
 .btn-grandline-crimson:hover:not(:disabled) {
-  background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
-  border-color: #7f1d1d;
   transform: translateY(-1px);
-  box-shadow:
-    0 5px 0 #5c1111,
-    0 10px 20px rgba(11, 31, 58, 0.38),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  filter: brightness(1.07);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
 }
 
 .btn-grandline-crimson:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow:
-    0 2px 0 #5c1111,
-    0 4px 10px rgba(11, 31, 58, 0.28);
+  transform: translateY(0px);
 }
 
-/* Primary Marine Navy Action (#0B1F3A) */
+/* Secondary & Utility Action Pills (Harmonis Dark Mode) */
 .btn-3d-teal {
-  background-color: #0b1f3a;
-  color: #f8fafc;
-  border: 1px solid #0b1f3a;
+  background: #ef4444;
+  color: #ffffff;
+  font-weight: 700;
+  border: 1px solid rgba(250, 204, 21, 0.55);
+  box-shadow: 0 3px 12px rgba(239, 68, 68, 0.3);
 }
 .btn-3d-teal:hover:not(:disabled) {
-  background-color: #163a5c;
-  border-color: #163a5c;
-}
-.dark .btn-3d-teal {
-  background-color: #1d4a73;
-  border-color: #c89b3c;
-}
-.dark .btn-3d-teal:hover:not(:disabled) {
-  background-color: #255a8a;
-  border-color: #f4c430;
+  box-shadow: 0 5px 16px rgba(239, 68, 68, 0.44);
 }
 
 .btn-3d-emerald {
-  background-color: #1e4d45;
-  color: #ffffff;
-  border: 1px solid #163b34;
+  background: #252a34;
+  color: #f8fafc;
+  font-weight: 700;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 .btn-3d-emerald:hover:not(:disabled) {
-  background-color: #163b34;
+  background: #2d3441;
+  border-color: rgba(52, 211, 153, 0.65);
+  color: #6ee7b7;
 }
 
 .btn-3d-sky {
-  background-color: #1e3a8a;
-  color: #ffffff;
-  border: 1px solid #172e6e;
+  background: #252a34;
+  color: #f8fafc;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 .btn-3d-sky:hover:not(:disabled) {
-  background-color: #172e6e;
+  background: #2f3643;
+  border-color: rgba(250, 204, 21, 0.45);
+}
+
+.btn-3d-indigo {
+  background: #facc15;
+  color: #0e1014;
+  font-weight: 800;
+  border: none;
+  box-shadow: 0 2px 12px rgba(250, 204, 21, 0.28);
+}
+.btn-3d-indigo:hover:not(:disabled) {
+  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.4);
 }
 
 .btn-3d-amber {
-  background-color: #ca8a04;
-  color: #ffffff;
-  border: 1px solid #a16207;
+  background: #facc15;
+  color: #0e1014;
+  font-weight: 800;
+  border: none;
+  box-shadow: 0 2px 12px rgba(250, 204, 21, 0.28);
 }
 .btn-3d-amber:hover:not(:disabled) {
-  background-color: #a16207;
+  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.4);
+}
+
+.btn-3d-danger {
+  background: #ef4444;
+  color: #ffffff;
+  font-weight: 700;
+  border: 1px solid rgba(239, 68, 68, 0.7);
+  box-shadow: 0 3px 12px rgba(239, 68, 68, 0.32);
+}
+.btn-3d-danger:hover:not(:disabled) {
+  box-shadow: 0 5px 16px rgba(239, 68, 68, 0.45);
 }
 
 .btn-3d-light {
-  background-color: #fffdf9;
-  color: #0b1f3a;
-  border: 1px solid #c89b3c;
+  background: #252a34;
+  color: #f8fafc;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 .btn-3d-light:hover:not(:disabled) {
-  background-color: #fbf3e0;
-  border-color: #8c6239;
-}
-.dark .btn-3d-light {
-  background-color: #132c44;
-  color: #f1f5f9;
-  border: 1px solid #264869;
-}
-.dark .btn-3d-light:hover:not(:disabled) {
-  background-color: #1a3a58;
-  border-color: #c89b3c;
+  background: #2f3643;
+  border-color: rgba(250, 204, 21, 0.45);
+  color: #facc15;
 }
 
-.btn-3d-sidebar {
-  background-color: rgba(255, 255, 255, 0.08);
+.btn-3d-ghost {
+  background: rgba(255, 255, 255, 0.05);
   color: #f8fafc;
-  border: 1px solid rgba(200, 155, 60, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
-.btn-3d-sidebar:hover:not(:disabled) {
-  background-color: rgba(255, 255, 255, 0.15);
-}
-
-/* Flat Clean Dropzone */
-.dropzone-3d-inset {
-  box-shadow: none;
+.btn-3d-ghost:hover:not(:disabled) {
+  background: rgba(250, 204, 21, 0.1);
+  border-color: rgba(250, 204, 21, 0.4);
+  color: #facc15;
 }
 
-.dark .dropzone-3d-inset {
-  box-shadow: none;
-}
-
-/* Warm Parchment Input */
+/* Crisp Rounded Inputs */
 .input-airy {
-  border-radius: 8px;
-  border: 1.5px solid #bfa47c;
-  background-color: #fffdf9;
-  color: #1e293b;
-  box-shadow: none;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #111827;
   transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
-}
-
-.input-airy::placeholder {
-  color: #85745d;
 }
 
 .input-airy:focus {
   outline: none;
-  border-color: #6b4423;
-  box-shadow: 0 0 0 3px rgba(200, 155, 60, 0.25);
+  border-color: #facc15;
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.2);
 }
 
-.dark .input-airy {
-  border-color: #2c4e70;
-  background-color: #0a1b2c;
+.dark .input-airy,
+.wanted-table-container .input-airy {
+  border-color: rgba(255, 255, 255, 0.1);
+  background-color: #0e1014;
   color: #f8fafc;
-  box-shadow: none;
 }
 
+.wanted-table-container .input-airy::placeholder,
 .dark .input-airy::placeholder {
-  color: #7c95b0;
+  color: #64748b;
 }
 
-.dark .input-airy option {
-  background-color: #0e2236;
-  color: #f8fafc;
+.dark .input-airy:focus,
+.wanted-table-container .input-airy:focus {
+  border-color: rgba(250, 204, 21, 0.6);
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.16);
 }
 
-.dark .input-airy:focus {
-  border-color: #f4c430;
-  box-shadow: 0 0 0 3px rgba(244, 196, 48, 0.22);
+/* Subtle idle float for decorative Sakamoto inside Sidebar / Mobile Drawer */
+@keyframes sakamoto-float-kf {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
-/* Completely hidden scrollbar for horizontal filter strip */
-.no-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+.sakamoto-float {
+  animation: sakamoto-float-kf 4s ease-in-out infinite;
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+/* Interactive 3D Chibi Sakamoto Stage & Touch Animations */
+.sakamoto-3d-wrapper {
+  transform: translate3d(var(--sakamoto-x, 16px), var(--sakamoto-y, 520px), 0);
+  perspective: 750px;
 }
 
-.animate-float-slow {
-  animation: none;
+.sakamoto-3d-stage {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--sakamoto-rx, 0deg)) rotateY(var(--sakamoto-ry, 0deg)) rotateZ(var(--sakamoto-rz, 0deg)) translateZ(var(--sakamoto-tz, 0px));
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.sakamoto-3d-stage.is-interacting {
+  transition: transform 70ms linear;
+}
+
+@keyframes sakamoto-3d-idle-kf {
+  0%,
+  100% {
+    transform: translateY(0px) rotateY(-6deg) rotateZ(-1.2deg);
+  }
+  50% {
+    transform: translateY(-6px) rotateY(7deg) rotateZ(1.5deg);
+  }
+}
+
+@keyframes sakamoto-3d-spin-kf {
+  0% {
+    transform: translateY(0px) rotateY(0deg) scale(1);
+  }
+  25% {
+    transform: translateY(-18px) rotateY(150deg) scale(1.12);
+  }
+  60% {
+    transform: translateY(-12px) rotateY(320deg) scale(1.08);
+  }
+  82% {
+    transform: translateY(3px) rotateY(372deg) scale(0.95, 1.04);
+  }
+  100% {
+    transform: translateY(0px) rotateY(360deg) scale(1);
+  }
+}
+
+@keyframes sakamoto-3d-mop-kf {
+  0% {
+    transform: rotateY(0deg) rotateZ(0deg) scale(1);
+  }
+  20% {
+    transform: translateX(-6px) rotateY(-24deg) rotateZ(-12deg) scale(1.07);
+  }
+  45% {
+    transform: translateX(7px) rotateY(24deg) rotateZ(12deg) scale(1.08);
+  }
+  70% {
+    transform: translateX(-5px) rotateY(-18deg) rotateZ(-8deg) scale(1.05);
+  }
+  88% {
+    transform: translateX(3px) rotateY(10deg) rotateZ(4deg) scale(0.98);
+  }
+  100% {
+    transform: translateX(0px) rotateY(0deg) rotateZ(0deg) scale(1);
+  }
+}
+
+@keyframes sakamoto-3d-hop-kf {
+  0% {
+    transform: translateY(0px) rotateX(0deg) scale(1, 1);
+  }
+  18% {
+    transform: translateY(4px) rotateX(12deg) scale(1.1, 0.88);
+  }
+  48% {
+    transform: translateY(-20px) rotateX(-16deg) scale(0.95, 1.1);
+  }
+  74% {
+    transform: translateY(3px) rotateX(8deg) scale(1.06, 0.94);
+  }
+  100% {
+    transform: translateY(0px) rotateX(0deg) scale(1, 1);
+  }
+}
+
+.sakamoto-3d-idle {
+  animation: sakamoto-3d-idle-kf 3.6s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+.sakamoto-3d-spin {
+  animation: sakamoto-3d-spin-kf 720ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-style: preserve-3d;
+}
+
+.sakamoto-3d-mop {
+  animation: sakamoto-3d-mop-kf 680ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-style: preserve-3d;
+}
+
+.sakamoto-3d-hop {
+  animation: sakamoto-3d-hop-kf 620ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-style: preserve-3d;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .btn-3d,
   .btn-gold-metallic,
+  .btn-grandline-crimson,
   .bento-card-hover,
   .wanted-poster-card {
     transition: none;
+  }
+  .sakamoto-float,
+  .sakamoto-3d-idle,
+  .sakamoto-3d-spin,
+  .sakamoto-3d-mop,
+  .sakamoto-3d-hop {
+    animation: none;
   }
 }
 
@@ -472,9 +576,5 @@
     border: 1px solid #cbd5e1 !important;
     background: #ffffff !important;
     color: #000000 !important;
-  }
-  .wanted-poster-card::before,
-  .wanted-poster-card::after {
-    display: none !important;
   }
 }

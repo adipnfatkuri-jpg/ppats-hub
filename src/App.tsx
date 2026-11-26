@@ -54,6 +54,7 @@ import { MobileBottomNav, NavSection, Sidebar, TopHeader } from './components/Si
 import { DashboardModule } from './components/DashboardModule';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { PWAInstallBanner } from './components/PWAInstallButton';
+import { DraggableSakamoto } from './components/DraggableSakamoto';
 import { useTheme } from './hooks/useTheme';
 
 const WizardModule = lazy(() =>
@@ -951,6 +952,7 @@ export default function App() {
       )}
       <OfflineIndicator />
       <PWAInstallBanner />
+      <DraggableSakamoto />
     </div>
   );
 }

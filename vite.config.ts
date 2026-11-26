@@ -29,8 +29,8 @@ export default defineConfig(() => {
           description:
             'Sistem operasional kantor PPATS & layanan pertanahan terpadu: ekstraksi dokumen cerdas, generator bundel akta Word, buku register repertorium, dan pelaporan BPN & Bapenda.',
           lang: 'id',
-          theme_color: '#0B1F3A',
-          background_color: '#0B1F3A',
+          theme_color: '#0A0A0A',
+          background_color: '#0A0A0A',
           display: 'standalone',
           display_override: ['window-controls-overlay', 'standalone'],
           orientation: 'any',

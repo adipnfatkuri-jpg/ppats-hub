@@ -414,28 +414,20 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
     <div className="space-y-6">
       {/* Screen Header & Controls */}
       <div className="no-print flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
-        <div className="relative rounded-xl bg-[#FFFBF0]/85 dark:bg-[#0B1F3A]/85 backdrop-blur-sm border border-[#C89B3C]/70 px-4 py-3 pr-16 sm:pr-24 shadow-[0_4px_16px_rgba(11,31,58,0.18)] max-w-2xl">
-          <h1 className="font-cinzel text-lg sm:text-[24px] font-extrabold tracking-tight text-[#0B1F3A] dark:text-[#F4C430] leading-snug">
+        <div className="rounded-[14px] bg-[#171A21]/92 backdrop-blur-md border border-white/[0.08] border-l-[3px] border-l-[#FACC15] px-4 py-3 sm:px-5 sm:py-3.5 shadow-[0_8px_22px_rgba(0,0,0,0.42)] max-w-2xl">
+          <h1 className="text-lg sm:text-[24px] font-extrabold tracking-tight text-[#FACC15] leading-snug">
             Perhitungan Pajak (BPHTB &amp; PPh Final)
           </h1>
-          <p className="text-xs sm:text-sm text-[#4A3520] dark:text-slate-200 mt-0.5 font-medium">
+          <p className="text-xs sm:text-sm text-[#CBD5E1] mt-0.5 font-medium">
             Jalur khusus perhitungan BPHTB (5%) dan PPh Final (2,5%), terpisah dari alur pembuatan berkas akta.
           </p>
-          {/* Decorative Sanji Chibi Sticker (non-blocking) */}
-          <img
-            src="/sanji-chibi.png"
-            alt=""
-            aria-hidden="true"
-            referrerPolicy="no-referrer"
-            className="pointer-events-none select-none absolute -bottom-2 right-1.5 sm:right-2.5 z-10 w-[56px] sm:w-[76px] h-auto drop-shadow-[0_4px_8px_rgba(11,31,58,0.38)]"
-          />
         </div>
 
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
           <button
             type="button"
             onClick={handleResetStandalone}
-            className="btn-3d btn-3d-light min-h-[42px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
+            className="btn-3d btn-3d-light min-h-[40px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
           >
             <RotateCcw className="w-3.5 h-3.5 shrink-0" />
             <span>Reset Simulasi</span>
@@ -443,7 +435,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
           <button
             type="button"
             onClick={() => window.print()}
-            className="btn-3d btn-3d-light min-h-[42px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
+            className="btn-3d btn-3d-light min-h-[40px] sm:min-h-0 inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap"
           >
             <Printer className="w-3.5 h-3.5 shrink-0" />
             <span>Cetak Rincian Pajak</span>
@@ -456,17 +448,17 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
         <div
           role="tablist"
           aria-label="Mode jalur perhitungan pajak"
-          className="grid grid-cols-1 sm:inline-flex items-stretch sm:items-center gap-1.5 sm:gap-1 p-1 bg-[#F3ECE0] dark:bg-[#132C44] rounded-xl sm:rounded-lg border border-[#E2D5C1] dark:border-[#244564] w-full sm:w-fit"
+          className="grid grid-cols-1 sm:inline-flex items-stretch sm:items-center gap-1.5 sm:gap-1 p-1 bg-slate-100/90 dark:bg-[#0E1014]/90 rounded-2xl sm:rounded-full w-full sm:w-fit"
         >
           <button
             type="button"
             role="tab"
             aria-selected={mode === 'standalone'}
             onClick={() => handleModeChange('standalone')}
-            className={`min-h-[42px] sm:min-h-0 px-3.5 py-2 sm:py-1.5 rounded-lg sm:rounded-md text-xs font-semibold transition-colors text-center ${
+            className={`min-h-[40px] sm:min-h-0 px-4 py-2 sm:py-1.5 rounded-xl sm:rounded-full text-xs font-bold transition-colors text-center ${
               mode === 'standalone'
-                ? 'bg-[#0B1F3A] dark:bg-[#1D4A73] text-[#F4C430] sm:text-[#F8FAFC] shadow-xs'
-                : 'text-[#6B5E4C] dark:text-slate-300 hover:text-[#0F2942] dark:hover:text-white'
+                ? 'bg-[#0E1014] text-[#FACC15] shadow-xs'
+                : 'text-[#475569] dark:text-slate-300 hover:text-[#0E1014] dark:hover:text-white'
             }`}
           >
             Simulasi Mandiri (Baru)
@@ -477,10 +469,10 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
             aria-selected={mode === 'linked'}
             onClick={() => handleModeChange('linked')}
             disabled={records.length === 0}
-            className={`min-h-[42px] sm:min-h-0 px-3.5 py-2 sm:py-1.5 rounded-lg sm:rounded-md text-xs font-semibold transition-colors text-center disabled:opacity-50 ${
+            className={`min-h-[40px] sm:min-h-0 px-4 py-2 sm:py-1.5 rounded-xl sm:rounded-full text-xs font-bold transition-colors text-center disabled:opacity-50 ${
               mode === 'linked'
-                ? 'bg-[#0B1F3A] dark:bg-[#1D4A73] text-[#F4C430] sm:text-[#F8FAFC] shadow-xs'
-                : 'text-[#6B5E4C] dark:text-slate-300 hover:text-[#0F2942] dark:hover:text-white'
+                ? 'bg-[#0E1014] text-[#FACC15] shadow-xs'
+                : 'text-[#475569] dark:text-slate-300 hover:text-[#0E1014] dark:hover:text-white'
             }`}
           >
             Kaitkan ke Berkas Terdaftar ({records.length})
@@ -1189,7 +1181,7 @@ export const TaxCalculatorModule: React.FC<TaxCalculatorModuleProps> = ({
                   </div>
                 </div>
                 <div className="sm:text-right">
-                  <span className="font-cinzel text-2xl font-bold text-[#F8FAFC] tracking-tight tabular-nums">
+                  <span className="text-2xl font-extrabold text-[#F8FAFC] tracking-tight tabular-nums">
                     {formatRupiah(taxSummary.total_pajak)}
                   </span>
                 </div>

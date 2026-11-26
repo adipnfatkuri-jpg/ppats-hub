@@ -67,15 +67,15 @@ export const RegisterModule: React.FC<RegisterModuleProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl bg-[#FFFBF0]/85 dark:bg-[#0B1F3A]/85 backdrop-blur-sm border border-[#C89B3C]/70 px-4 py-3 shadow-[0_4px_16px_rgba(11,31,58,0.18)] flex items-start gap-3.5">
+      <div className="rounded-[14px] bg-[#171A21]/92 backdrop-blur-md border border-white/[0.08] border-l-[3px] border-l-[#FACC15] px-5 py-4 shadow-[0_8px_22px_rgba(0,0,0,0.42)] flex items-start gap-3.5">
         <GlossyIcon3D tone="teal" size="md">
           <BookOpen className="w-5 h-5" />
         </GlossyIcon3D>
         <div>
-          <h1 className="font-cinzel text-xl sm:text-2xl font-extrabold tracking-tight text-[#0B1F3A] dark:text-[#F4C430]">
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#FACC15]">
             Buku Register Akta &amp; Berkas (Repertorium)
           </h1>
-          <p className="text-xs sm:text-sm text-[#4A3520] dark:text-slate-200 mt-0.5 font-medium">
+          <p className="text-xs sm:text-sm text-[#CBD5E1] mt-0.5 font-medium">
             Catatan kronologis seluruh Akta PPATS dan Berkas Non-Akta (Turun Waris, Waris C, Pemecahan, Ukur Ulang, Ralat Data, Pengecekan, Validasi, Analisis Bidang, PKKPR) beserta NIB, luas bidang, nilai transaksi, serta BPHTB &amp; PPh.
           </p>
         </div>
@@ -84,7 +84,7 @@ export const RegisterModule: React.FC<RegisterModuleProps> = ({
       {/* Filter Bar */}
       <div className="bento-card p-4 flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3 flex-1">
-          <div className="inline-flex items-center gap-1 p-1 bg-[#F3E5C8]/80 dark:bg-[#08192F]/80 border border-[#C8B294] dark:border-[#C89B3C]/40 rounded-xl shrink-0">
+          <div className="inline-flex items-center gap-1 p-1 bg-slate-100/90 dark:bg-[#0E1014]/90 rounded-full shrink-0">
             {[
               { id: 'SEMUA' as const, label: 'Semua Berkas' },
               { id: 'AKTA' as const, label: 'Akta PPATS' },
@@ -96,10 +96,10 @@ export const RegisterModule: React.FC<RegisterModuleProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => setFilterKategori(tab.id)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 whitespace-nowrap ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-150 whitespace-nowrap ${
                     active
-                      ? 'bg-[#0B1F3A] text-[#F4C430] border border-[#C89B3C] shadow-xs'
-                      : 'text-[#4A3520] dark:text-slate-300 hover:text-[#0B1F3A] dark:hover:text-white hover:bg-white/70 dark:hover:bg-[#132E52]'
+                      ? 'bg-[#0E1014] text-[#FACC15] shadow-xs'
+                      : 'text-[#475569] dark:text-slate-300 hover:text-[#0E1014] dark:hover:text-white hover:bg-white/80 dark:hover:bg-[#252A34]'
                   }`}
                 >
                   {tab.label}
@@ -188,14 +188,14 @@ export const RegisterModule: React.FC<RegisterModuleProps> = ({
                   : 'Belum bertanggal';
 
                 return (
-                  <article key={r.id} className="p-3.5 space-y-2.5 bg-[#EFF6FF]/80 dark:bg-[#0E2644]/80">
+                  <article key={r.id} className="p-3.5 space-y-2.5 bg-white/95 dark:bg-[#102E21]/90">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-mono text-xs font-extrabold text-[#0B1F3A] dark:text-[#F4C430] tabular-nums">
+                          <span className="font-mono text-xs font-extrabold text-[#143D2B] dark:text-[#FACC15] tabular-nums">
                             #{String(r.no_urut).padStart(3, '0')}
                           </span>
-                          <span className="text-xs font-bold text-[#0F172A] dark:text-white">
+                          <span className="text-xs font-bold text-[#111827] dark:text-white">
                             {r.layanan}
                           </span>
                         </div>
@@ -209,7 +209,7 @@ export const RegisterModule: React.FC<RegisterModuleProps> = ({
                       <button
                         type="button"
                         onClick={() => onEditRecord(r)}
-                        className="btn-3d btn-3d-light inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 rounded-lg text-xs font-bold shrink-0"
+                        className="inline-flex items-center justify-center gap-1.5 min-h-[38px] px-3.5 rounded-full bg-[#DBEAFE] hover:bg-[#BFDBFE] text-[#1E40AF] dark:bg-[#1E3A5F] dark:text-[#93C5FD] text-xs font-bold shrink-0 transition-colors"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                         <span>Buka</span>
@@ -219,7 +219,7 @@ export const RegisterModule: React.FC<RegisterModuleProps> = ({
                     <div className="flex items-center gap-2 min-w-0">
                       <PartyAvatar3D name={p1} />
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-[#0F172A] dark:text-slate-100 truncate">
+                        <p className="text-xs font-bold text-[#111827] dark:text-slate-100 truncate">
                           {p1}
                           {p2 && p2 !== '-' ? (
                             <span className="font-medium text-[#475569] dark:text-slate-300">
@@ -234,9 +234,9 @@ export const RegisterModule: React.FC<RegisterModuleProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-[#C8D8EC]/70 dark:border-[#1E3A54] text-[11px] tabular-nums">
+                    <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-200/80 dark:border-emerald-900/50 text-[11px] tabular-nums">
                       <div>
-                        <span className="font-bold text-[#0B1F3A] dark:text-[#FDE68A]">
+                        <span className="font-bold text-[#111827] dark:text-[#FACC15]">
                           {formatRupiah(r.pajak.nilai_kesepakatan)}
                         </span>
                         <span className="text-[#475569] dark:text-slate-300 ml-2">

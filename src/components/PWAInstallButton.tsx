@@ -138,14 +138,14 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           role="menuitem"
           onClick={() => void handlePrimaryClick()}
           disabled={isInstalling}
-          className="w-full flex items-center gap-2.5 px-3 py-2.5 sm:py-2 min-h-[42px] sm:min-h-0 text-left text-xs font-medium text-[#1E293B] dark:text-slate-200 hover:bg-[#F3E5C8] dark:hover:bg-[#163450] rounded-md transition-colors disabled:opacity-60"
+          className="w-full flex items-center gap-2.5 px-3 py-2.5 sm:py-2 min-h-[40px] sm:min-h-0 text-left text-xs font-semibold text-[#F8FAFC] hover:bg-white/[0.08] hover:text-[#FACC15] rounded-lg transition-colors disabled:opacity-60"
         >
           {isIOS ? (
-            <Smartphone className="w-3.5 h-3.5 text-[#6B4423] dark:text-[#F4C430] shrink-0" />
+            <Smartphone className="w-3.5 h-3.5 text-[#FACC15] shrink-0" />
           ) : isInstallable ? (
-            <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <Download className="w-3.5 h-3.5 text-[#FACC15] shrink-0" />
           ) : (
-            <MonitorDown className="w-3.5 h-3.5 text-[#6B4423] dark:text-[#F4C430] shrink-0" />
+            <MonitorDown className="w-3.5 h-3.5 text-[#FACC15] shrink-0" />
           )}
           <span className="flex-1">
             {isInstalling
@@ -157,7 +157,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   : 'Download PWA & Shortcut'}
           </span>
           {isInstallable && (
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-[#FACC15] animate-pulse shrink-0" />
           )}
         </button>
       );
@@ -202,20 +202,14 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               ? 'Install aplikasi SIM-PPATS langsung ke perangkat'
               : 'Download dan Install aplikasi PWA SIM-PPATS'
           }
-          className={`relative inline-flex items-center justify-center gap-1 sm:gap-1.5 h-9 px-2.5 sm:px-3.5 rounded-full border text-[11px] sm:text-xs font-bold shadow-[0_2px_10px_rgba(11,31,58,0.22)] whitespace-nowrap transition-colors shrink-0 disabled:opacity-60 ${
-            isInstallable
-              ? 'border-emerald-400/90 bg-emerald-700 hover:bg-emerald-600 text-white'
-              : 'border-[#C89B3C]/90 bg-[#0B1F3A]/92 dark:bg-[#143054]/92 hover:bg-[#142F52] dark:hover:bg-[#1B3E6B] text-[#F4C430]'
-          }`}
+          className="relative inline-flex items-center justify-center gap-1 sm:gap-1.5 h-[30px] sm:h-8 px-2.5 sm:px-3 rounded-[7px] sm:rounded-full bg-[#252A34] hover:bg-[#2F3643] text-[#F8FAFC] hover:text-[#FACC15] border border-white/[0.12] hover:border-[#FACC15]/45 text-[11.5px] sm:text-xs font-semibold whitespace-nowrap transition-all active:scale-95 shrink-0 disabled:opacity-60"
           title={
             isInstallable
               ? 'Klik untuk langsung menginstal aplikasi SIM-PPATS ke HP / Desktop'
               : 'Download / Install Aplikasi PWA & Shortcut Desktop'
           }
         >
-          <Download
-            className={`w-3.5 h-3.5 shrink-0 ${isInstallable ? 'text-white' : 'text-[#F4C430]'}`}
-          />
+          <Download className="w-[13px] h-[13px] shrink-0 text-[#FACC15] stroke-[2.2]" />
           <span className="hidden sm:inline">
             {isInstalling ? 'Menginstal...' : isInstallable ? 'Install Aplikasi' : 'Download PWA'}
           </span>
@@ -225,7 +219,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           {isInstallable && (
             <span
               aria-hidden="true"
-              className="hidden sm:inline-block w-1.5 h-1.5 rounded-full bg-emerald-200 animate-ping shrink-0"
+              className="hidden sm:inline-block w-1.5 h-1.5 rounded-full bg-[#FACC15] animate-ping shrink-0"
             />
           )}
         </button>
@@ -280,7 +274,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                     className="w-10 h-10 rounded-lg border border-[#C89B3C]/60"
                   />
                   <div>
-                    <h3 className="font-cinzel text-base font-extrabold text-[#0B1F3A] dark:text-[#F4C430]">
+                    <h3 className="text-base font-extrabold text-[#111827] dark:text-[#FACC15]">
                       Install SIM-PPATS
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -374,7 +368,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   <div>
                     <h3
                       id="desktop-shortcut-title"
-                      className="font-cinzel text-base font-extrabold text-[#0B1F3A] dark:text-[#F4C430]"
+                      className="text-base font-extrabold text-[#111827] dark:text-[#FACC15]"
                     >
                       Download &amp; Install Aplikasi
                     </h3>
@@ -453,8 +447,8 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
 
               {/* Opsi 1: Install PWA di Android Chrome / Desktop */}
               {!isInstallable && !isInIframe && (
-                <div className="rounded-xl border border-[#C89B3C]/50 dark:border-[#C89B3C]/40 bg-[#FFFDF9] dark:bg-[#0D213B]/80 p-3.5 space-y-2">
-                  <p className="text-xs font-bold text-[#0B1F3A] dark:text-[#F4C430]">
+                <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.04] p-3.5 space-y-2">
+                  <p className="text-xs font-bold text-[#0E1014] dark:text-[#FACC15]">
                     {isAndroid
                       ? 'Cara Install di HP Android (Chrome)'
                       : 'Cara Install Aplikasi PWA (Chrome / Edge)'}
@@ -495,8 +489,8 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               )}
 
               {/* Opsi 2: Unduh File Shortcut Desktop (.url) */}
-              <div className="rounded-xl border border-[#C89B3C]/50 dark:border-[#C89B3C]/40 bg-[#FFFDF9] dark:bg-[#0D213B]/80 p-3.5 space-y-2.5">
-                <p className="text-xs font-bold text-[#0B1F3A] dark:text-[#F4C430]">
+              <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.04] p-3.5 space-y-2.5">
+                <p className="text-xs font-bold text-[#0E1014] dark:text-[#FACC15]">
                   Shortcut Desktop Windows (.url) &amp; Link
                 </p>
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -588,18 +582,18 @@ export const PWAInstallBanner: React.FC = () => {
     <div
       role="region"
       aria-label="Pasang Aplikasi SIM-PPATS"
-      className="no-print fixed left-3 right-3 sm:left-auto sm:right-5 bottom-[76px] lg:bottom-5 z-40 sm:max-w-sm rounded-2xl border-2 border-[#C89B3C] bg-[#0B1F3A]/96 backdrop-blur-md text-white shadow-[0_12px_32px_rgba(0,0,0,0.45)] p-3 flex items-center gap-3"
+      className="no-print fixed left-3 right-3 sm:left-auto sm:right-5 bottom-[70px] lg:bottom-5 z-40 sm:max-w-sm rounded-2xl border border-[#FACC15]/45 bg-[#171A21]/96 backdrop-blur-md text-white shadow-[0_12px_32px_rgba(0,0,0,0.65)] p-3 flex items-center gap-3"
     >
       <img
         src="/pwa-192x192.png"
         alt="SIM-PPATS"
-        className="w-10 h-10 rounded-xl border border-[#C89B3C]/70 shrink-0"
+        className="w-10 h-10 rounded-xl border border-white/10 shrink-0"
       />
       <div className="min-w-0 flex-1">
-        <p className="font-cinzel text-xs font-extrabold text-[#F4C430] truncate">
+        <p className="text-xs font-extrabold text-[#FACC15] truncate">
           Install SIM-PPATS
         </p>
-        <p className="text-[11px] text-slate-200 leading-tight mt-0.5">
+        <p className="text-[11px] text-slate-300 leading-tight mt-0.5">
           Pasang langsung ke HP / Desktop untuk akses cepat &amp; offline.
         </p>
       </div>
@@ -607,7 +601,7 @@ export const PWAInstallBanner: React.FC = () => {
         type="button"
         disabled={isInstalling}
         onClick={() => void install()}
-        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-[#062216] text-xs font-extrabold whitespace-nowrap shadow-sm transition-all shrink-0 disabled:opacity-60"
+        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#FACC15] hover:brightness-105 active:scale-95 text-[#0E1014] text-xs font-extrabold whitespace-nowrap shadow-[0_2px_12px_rgba(250,204,21,0.3)] transition-all shrink-0 disabled:opacity-60"
       >
         <Download className="w-3.5 h-3.5 stroke-[2.5]" />
         <span>{isInstalling ? '...' : 'Install'}</span>

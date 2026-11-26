@@ -217,15 +217,15 @@ export const NonAktaRekapModule: React.FC<NonAktaRekapModuleProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="no-print flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="rounded-xl bg-[#FFFBF0]/85 dark:bg-[#0B1F3A]/85 backdrop-blur-sm border border-[#C89B3C]/70 px-4 py-3 shadow-[0_4px_16px_rgba(11,31,58,0.18)] flex items-start gap-3.5 max-w-2xl">
+        <div className="rounded-[14px] bg-[#171A21]/92 backdrop-blur-md border border-white/[0.08] border-l-[3px] border-l-[#FACC15] px-5 py-4 shadow-[0_8px_22px_rgba(0,0,0,0.42)] flex items-start gap-3.5 max-w-2xl">
           <GlossyIcon3D tone="sky" size="md">
             <ClipboardList className="w-5 h-5" />
           </GlossyIcon3D>
           <div>
-            <h1 className="font-cinzel text-xl sm:text-2xl font-extrabold tracking-tight text-[#0B1F3A] dark:text-[#F4C430]">
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#FACC15]">
               Rekap Berkas &amp; Tracking Non-Akta
             </h1>
-            <p className="text-xs sm:text-sm text-[#4A3520] dark:text-slate-200 mt-0.5 font-medium">
+            <p className="text-xs sm:text-sm text-[#CBD5E1] mt-0.5 font-medium">
               Buku rekapitulasi dan pelacakan tahapan khusus berkas Non-Akta (Turun Waris, Waris C, Pemecahan, Ukur Ulang, Ralat Data, Pengecekan, Validasi, Analisis Bidang, PKKPR) di luar Laporan Bulanan PPATS.
             </p>
           </div>

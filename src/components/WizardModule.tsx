@@ -1623,23 +1623,15 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="relative rounded-xl bg-[#FFFBF0]/85 dark:bg-[#0B1F3A]/85 backdrop-blur-sm border border-[#C89B3C]/70 px-4 py-3 pr-16 sm:pr-24 shadow-[0_4px_16px_rgba(11,31,58,0.18)] max-w-3xl">
-          <h1 className="font-cinzel text-lg sm:text-[24px] font-extrabold tracking-tight text-[#0B1F3A] dark:text-[#F4C430] leading-snug">
+        <div className="rounded-[14px] bg-[#171A21]/92 backdrop-blur-md border border-white/[0.08] border-l-[3px] border-l-[#FACC15] px-4 py-3 sm:px-5 sm:py-3.5 shadow-[0_8px_22px_rgba(0,0,0,0.42)] max-w-3xl">
+          <h1 className="text-lg sm:text-[24px] font-extrabold tracking-tight text-[#FACC15] leading-snug">
             {editingRecord
               ? `Edit / Revisi Berkas — ${editingRecord.kode_berkas}`
               : 'Buat Berkas Baru (Wizard 4 Langkah)'}
           </h1>
-          <p className="text-xs sm:text-sm text-[#4A3520] dark:text-slate-200 mt-0.5 font-medium">
+          <p className="text-xs sm:text-sm text-[#CBD5E1] mt-0.5 font-medium">
             Alur terpandu dari unggah berkas &amp; ekstraksi AI, verifikasi audit, parameter akta &amp; saksi, hingga dokumen Word (.DOCX · Akta A4 &amp; 1 File Lampiran F4). Perhitungan pajak dilakukan di menu terpisah.
           </p>
-          {/* Decorative Chopper Chibi Sticker (non-blocking) */}
-          <img
-            src="/chopper-chibi.png"
-            alt=""
-            aria-hidden="true"
-            referrerPolicy="no-referrer"
-            className="pointer-events-none select-none absolute -bottom-2 right-1.5 sm:right-2.5 z-10 w-[56px] sm:w-[76px] h-auto drop-shadow-[0_4px_8px_rgba(11,31,58,0.38)]"
-          />
         </div>
 
         {editingRecord && (
