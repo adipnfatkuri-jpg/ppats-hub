@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ThinkingLevel } from '@google/genai';
+import { MediaResolution, ThinkingLevel } from '@google/genai';
 import {
   mergePewarisScanIntoNonAkta,
   mergeWarisCScanIntoState,
@@ -147,7 +147,7 @@ test('mergeWarisCScanIntoState populates Letter C fields, riwayat 1-3, pewaris, 
   assert.ok(result.summaryParts.includes('C-723 Persil 73-109 Kelas IIa'));
 });
 
-test('resolveGeminiExtractionAttempts uses gemini-4-hydrogen as primary with valid ThinkingLevels', () => {
+test('resolveGeminiExtractionAttempts uses fast Gemini Vision flash-lite primary with gemini-4-hydrogen fallback and valid ThinkingLevels', () => {
   const kinds = ['full', 'object_only', 'person', 'waris_pewaris', 'waris_c'] as const;
 
   for (const kind of kinds) {
@@ -155,10 +155,13 @@ test('resolveGeminiExtractionAttempts uses gemini-4-hydrogen as primary with val
     assert.ok(fastAttempts.length >= 2, `${kind} fast should have primary + fallback`);
     assert.equal(
       fastAttempts[0].model,
-      'gemini-4-hydrogen',
-      `${kind} primary must be gemini-4-hydrogen (not flash-lite)`
+      'gemini-3.1-flash-lite',
+      `${kind} fast primary must be gemini-3.1-flash-lite for minimal latency`
     );
-    assert.equal(fastAttempts[0].level, ThinkingLevel.LOW);
+    assert.equal(fastAttempts[0].level, ThinkingLevel.MINIMAL);
+    assert.equal(fastAttempts[0].mediaResolution, MediaResolution.MEDIA_RESOLUTION_MEDIUM);
+    assert.equal(fastAttempts[1].model, 'gemini-4-hydrogen');
+    assert.equal(fastAttempts[1].level, ThinkingLevel.LOW);
 
     for (const attempt of fastAttempts) {
       if (attempt.model === 'gemini-4-hydrogen') {
@@ -168,13 +171,14 @@ test('resolveGeminiExtractionAttempts uses gemini-4-hydrogen as primary with val
           'gemini-4-hydrogen does not support ThinkingLevel.MINIMAL'
         );
       }
-      assert.ok(attempt.timeoutMs >= 20000);
+      assert.ok(attempt.timeoutMs >= 16000);
     }
   }
 
   const accurateAttempts = resolveGeminiExtractionAttempts('full', 'accurate');
   assert.equal(accurateAttempts[0].model, 'gemini-4-hydrogen');
   assert.equal(accurateAttempts[0].level, ThinkingLevel.MEDIUM);
+  assert.equal(accurateAttempts[0].mediaResolution, MediaResolution.MEDIA_RESOLUTION_HIGH);
   assert.equal(accurateAttempts[1].model, 'gemini-3.1-flash-lite');
   assert.equal(accurateAttempts[1].level, ThinkingLevel.MINIMAL);
   assert.equal(accurateAttempts[2].model, 'gemini-4-hydrogen');
@@ -190,11 +194,11 @@ test('mapGeminiError maps malformed JSON SyntaxError to clean Indonesian 502 mes
 });
 
 test('computeGeminiRetryBackoffMs scales progressively for 503 spikes and fast-fails 404', () => {
-  assert.equal(computeGeminiRetryBackoffMs(0, true, 200), 150);
-  assert.equal(computeGeminiRetryBackoffMs(0, false, 0), 1400);
-  assert.equal(computeGeminiRetryBackoffMs(1, false, 100), 2900);
-  assert.equal(computeGeminiRetryBackoffMs(2, false, 0), 4500);
-  assert.equal(computeGeminiRetryBackoffMs(5, false, 0), 4500);
+  assert.equal(computeGeminiRetryBackoffMs(0, true, 200), 100);
+  assert.equal(computeGeminiRetryBackoffMs(0, false, 0), 350);
+  assert.equal(computeGeminiRetryBackoffMs(1, false, 100), 1000);
+  assert.equal(computeGeminiRetryBackoffMs(2, false, 0), 1800);
+  assert.equal(computeGeminiRetryBackoffMs(5, false, 0), 1800);
 
   const err503 = Object.assign(
     new Error('This model is currently experiencing high demand. Spikes in demand are usually temporary.'),

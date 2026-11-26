@@ -321,9 +321,9 @@ export const BphtbSubmissionSection: React.FC<BphtbSubmissionSectionProps> = ({
       const optimized = await Promise.all(
         files.map(async (f) => {
           const payload = await optimizeDocumentFile(f, {
-            maxEdge: 1120,
-            quality: 0.75,
-            skipBelowBytes: 90 * 1024,
+            maxEdge: 896,
+            quality: 0.70,
+            skipBelowBytes: 60 * 1024,
           });
           return {
             name: f.name,

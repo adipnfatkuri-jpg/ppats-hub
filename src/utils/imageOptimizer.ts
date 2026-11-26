@@ -267,7 +267,7 @@ async function canvasToJpegPayload(
 
 /**
  * Mengompresi dan memperkecil gambar beresolusi besar (misal foto kamera HP 3-12 MB atau screenshot PNG lebar)
- * ke max sisi 1080px JPEG q=0.74 agar payload upload & jumlah token visi Gemini jauh lebih cepat
+ * ke max sisi 896px JPEG q=0.70 agar payload upload & jumlah token visi Gemini jauh lebih cepat
  * sambil menjaga keterbacaan angka NIK, NOP, dan NJOP tetap tajam.
  */
 export async function optimizeDocumentFile(
@@ -275,9 +275,9 @@ export async function optimizeDocumentFile(
   options?: { maxEdge?: number; quality?: number; skipBelowBytes?: number }
 ): Promise<OptimizedFilePayload> {
   const originalSize = file.size;
-  const maxEdge = options?.maxEdge ?? 1080;
-  const quality = options?.quality ?? 0.74;
-  const skipBelowBytes = options?.skipBelowBytes ?? 90 * 1024;
+  const maxEdge = options?.maxEdge ?? 896;
+  const quality = options?.quality ?? 0.70;
+  const skipBelowBytes = options?.skipBelowBytes ?? 60 * 1024;
 
   const rawBuf = await file.arrayBuffer();
   const headerBytes = new Uint8Array(rawBuf, 0, Math.min(16, rawBuf.byteLength));

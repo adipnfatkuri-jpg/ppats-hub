@@ -61,15 +61,9 @@ if (typeof window !== 'undefined') {
     }
 
     if (!isInCrossOriginIframe) {
-      const hadExistingController = Boolean(navigator.serviceWorker.controller);
-      let hasReloadedForUpdate = false;
-
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!hadExistingController || hasReloadedForUpdate) return;
-        hasReloadedForUpdate = true;
-        window.location.reload();
-      });
-
+      // Jangan pernah memanggil window.location.reload() otomatis saat controllerchange/focus/visibilitychange:
+      // membuka File Picker atau Kamera di HP/Desktop memicu blur -> focus & visibilitychange yang
+      // dapat menyebabkan halaman ter-reload paksa dan melempar pengguna keluar dari formulir Buat Berkas Baru.
       registerSW({
         immediate: true,
         onRegisteredSW(swUrl, registration) {
@@ -94,19 +88,10 @@ if (typeof window !== 'undefined') {
 
           void checkForSwUpdate();
 
-          window.addEventListener('focus', () => {
-            void checkForSwUpdate();
-          });
-
-          document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-              void checkForSwUpdate();
-            }
-          });
-
+          // Cek pembaruan secara pasif setiap 30 menit di latar belakang tanpa reload paksa
           window.setInterval(() => {
             void checkForSwUpdate();
-          }, 5 * 60 * 1000);
+          }, 30 * 60 * 1000);
         },
         onRegisterError() {
           // Abaikan error registrasi SW pada lingkungan browser terbatas

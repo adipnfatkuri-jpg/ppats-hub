@@ -57,6 +57,12 @@ import { PWAInstallBanner } from './components/PWAInstallButton';
 import { DraggableSakamoto } from './components/DraggableSakamoto';
 import { TouchFeedbackOverlay } from './components/TouchFeedbackOverlay';
 import { useTheme } from './hooks/useTheme';
+import {
+  clearWizardSessionDraft,
+  loadSavedNavSection,
+  persistNavSection,
+  resolveInitialNavSection,
+} from './utils/navigationState';
 
 const WizardModule = lazy(() =>
   import('./components/WizardModule').then((m) => ({ default: m.WizardModule }))
@@ -133,20 +139,12 @@ export default function App() {
   const { theme, setTheme } = useTheme();
   const [activeSection, setActiveSection] = useState<NavSection>(() => {
     if (typeof window === 'undefined') return 'dashboard';
-    const requested = new URLSearchParams(window.location.search).get('section');
-    const validSections: NavSection[] = [
-      'dashboard',
-      'wizard',
-      'tax',
-      'register',
-      'report',
-      'non_akta_rekap',
-      'settings',
-    ];
-    return requested && validSections.includes(requested as NavSection)
-      ? (requested as NavSection)
-      : 'dashboard';
+    return resolveInitialNavSection(window.location.search, loadSavedNavSection());
   });
+
+  useEffect(() => {
+    persistNavSection(activeSection);
+  }, [activeSection]);
   const [records, setRecords] = useState<BerkasRecord[]>([]);
   const [settings, setSettings] = useState<OfficeSettings>(DEFAULT_OFFICE_SETTINGS);
   const [customTemplates, setCustomTemplates] = useState<
@@ -449,6 +447,7 @@ export default function App() {
   };
 
   const handleCreateNew = () => {
+    clearWizardSessionDraft();
     setEditingRecord(null);
     setTaxPrefill(null);
     setWizardDefaultLayanan(undefined);
@@ -457,6 +456,7 @@ export default function App() {
   };
 
   const handleCreateNewNonAkta = () => {
+    clearWizardSessionDraft();
     setEditingRecord(null);
     setTaxPrefill(null);
     setWizardDefaultLayanan('Turun Waris');
@@ -465,6 +465,7 @@ export default function App() {
   };
 
   const handleEditRecord = (rec: BerkasRecord) => {
+    clearWizardSessionDraft();
     setEditingRecord(rec);
     setTaxPrefill(null);
     setWizardDefaultLayanan(undefined);
@@ -544,6 +545,7 @@ export default function App() {
   };
 
   const handleFinishWizardToDashboard = (savedCode: string) => {
+    clearWizardSessionDraft();
     setEditingRecord(null);
     setTaxPrefill(null);
     setWizardDefaultLayanan(undefined);
@@ -554,6 +556,7 @@ export default function App() {
   };
 
   const handleFinishWizardAndCreateNew = (savedCode: string) => {
+    clearWizardSessionDraft();
     setEditingRecord(null);
     setTaxPrefill(null);
     setWizardDefaultLayanan(undefined);
@@ -848,6 +851,7 @@ export default function App() {
                 onSaveRecord={handleSaveRecord}
                 onSaveSettings={handleSaveSettings}
                 onCancelEdit={() => {
+                  clearWizardSessionDraft();
                   setEditingRecord(null);
                   setTaxPrefill(null);
                   setWizardDefaultLayanan(undefined);

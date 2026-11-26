@@ -6,7 +6,7 @@ import {
   formatCompactFileSize,
   inferDocumentMimeType,
 } from './imageOptimizer.ts';
-import { parseScanResponseText, postScanJson } from './scanApi.ts';
+import { clearScanCache, parseScanResponseText, postScanJson } from './scanApi.ts';
 import {
   mapGeminiError,
   parseGeminiJsonObject,
@@ -206,6 +206,7 @@ test('parseGeminiJsonObject accepts fenced JSON objects and rejects null, arrays
 });
 
 test('postScanJson retries once on transient empty HTTP 200 and returns valid JSON on retry', async () => {
+  clearScanCache();
   const originalFetch = globalThis.fetch;
   let calls = 0;
   globalThis.fetch = (async () => {
@@ -226,11 +227,52 @@ test('postScanJson retries once on transient empty HTTP 200 and returns valid JS
     const res = await postScanJson<{ ok: boolean; recovered: boolean }>(
       '/api/extract-documents',
       { files: [] },
-      { maxTransientRetries: 1 }
+      { maxTransientRetries: 1, bypassCache: true }
     );
     assert.equal(calls, 2);
     assert.deepEqual(res, { ok: true, recovered: true });
   } finally {
     globalThis.fetch = originalFetch;
+    clearScanCache();
+  }
+});
+
+test('postScanJson serves identical document scans instantly from cache and supports bypassCache', async () => {
+  clearScanCache();
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ ok: true, hit: calls }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+
+  try {
+    const payload = { layanan: 'AJB', scanMode: 'fast', files: [{ name: 'ktp.jpg', mimeType: 'image/jpeg', dataBase64: 'AAAA' }] };
+    const first = await postScanJson<{ ok: boolean; hit: number }>('/api/extract-documents', payload);
+    const second = await postScanJson<{ ok: boolean; hit: number }>('/api/extract-documents', payload);
+    assert.equal(calls, 1);
+    assert.deepEqual(first, { ok: true, hit: 1 });
+    assert.deepEqual(second, { ok: true, hit: 1 });
+
+    // Mutating returned object must not pollute cached copy
+    second.hit = 999;
+    const third = await postScanJson<{ ok: boolean; hit: number }>('/api/extract-documents', payload);
+    assert.equal(third.hit, 1);
+    assert.equal(calls, 1);
+
+    // bypassCache forces fresh network call
+    const fresh = await postScanJson<{ ok: boolean; hit: number }>(
+      '/api/extract-documents',
+      payload,
+      { bypassCache: true }
+    );
+    assert.equal(calls, 2);
+    assert.equal(fresh.hit, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+    clearScanCache();
   }
 });

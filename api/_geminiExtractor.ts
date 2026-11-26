@@ -1,5 +1,6 @@
 import {
   GoogleGenAI,
+  MediaResolution,
   ThinkingLevel,
   Type,
 } from '@google/genai';
@@ -638,6 +639,7 @@ export interface GeminiModelAttempt {
   model: string;
   level: ThinkingLevel;
   timeoutMs: number;
+  mediaResolution?: MediaResolution;
 }
 
 export type GeminiExtractionKind =
@@ -648,11 +650,12 @@ export type GeminiExtractionKind =
   | 'waris_c';
 
 /**
- * Menentukan urutan model Gemini yang paling andal & cepat:
- * - Menggunakan `gemini-4-hydrogen` sebagai model utama (bebas error transient berulang dari flash-lite,
- *   mendukung ThinkingLevel.LOW untuk kecepatan tinggi & ThinkingLevel.MEDIUM untuk dokumen rumit/buram).
- * - Menyediakan fallback otomatis ke `gemini-3.1-flash-lite` (ThinkingLevel.MINIMAL) serta retry dengan
- *   backoff bila terjadi gangguan sementara (503/429/timeout).
+ * Menentukan urutan model Gemini Vision yang paling cepat & andal:
+ * - Mode Cepat (`fast`, default): memakai `gemini-3.1-flash-lite` dengan `ThinkingLevel.MINIMAL`
+ *   dan `MEDIA_RESOLUTION_MEDIUM` sebagai model utama (tanpa jeda token penalaran, respons ~2–5 detik),
+ *   dengan fallback otomatis ke `gemini-4-hydrogen` (`ThinkingLevel.LOW`) bila terjadi 503/429/timeout.
+ * - Mode Detail (`accurate`): memakai `gemini-4-hydrogen` (`ThinkingLevel.MEDIUM` + `MEDIA_RESOLUTION_HIGH`)
+ *   untuk dokumen buram, tulisan tangan, atau multi-halaman rumit, dengan fallback otomatis ke flash-lite.
  */
 export function resolveGeminiExtractionAttempts(
   kind: GeminiExtractionKind,
@@ -660,25 +663,86 @@ export function resolveGeminiExtractionAttempts(
 ): GeminiModelAttempt[] {
   if (kind === 'full' && scanMode === 'accurate') {
     return [
-      { model: 'gemini-4-hydrogen', level: ThinkingLevel.MEDIUM, timeoutMs: 42000 },
-      { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 24000 },
-      { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 28000 },
-      { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 22000 },
+      {
+        model: 'gemini-4-hydrogen',
+        level: ThinkingLevel.MEDIUM,
+        timeoutMs: 38000,
+        mediaResolution: MediaResolution.MEDIA_RESOLUTION_HIGH,
+      },
+      {
+        model: 'gemini-3.1-flash-lite',
+        level: ThinkingLevel.MINIMAL,
+        timeoutMs: 22000,
+        mediaResolution: MediaResolution.MEDIA_RESOLUTION_HIGH,
+      },
+      {
+        model: 'gemini-4-hydrogen',
+        level: ThinkingLevel.LOW,
+        timeoutMs: 26000,
+        mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+      },
+      {
+        model: 'gemini-3.1-flash-lite',
+        level: ThinkingLevel.MINIMAL,
+        timeoutMs: 20000,
+        mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+      },
     ];
   }
   if (kind === 'person') {
     return [
-      { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 26000 },
-      { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 20000 },
-      { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 24000 },
-      { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 20000 },
+      {
+        model: 'gemini-3.1-flash-lite',
+        level: ThinkingLevel.MINIMAL,
+        timeoutMs: 16000,
+        mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+      },
+      {
+        model: 'gemini-4-hydrogen',
+        level: ThinkingLevel.LOW,
+        timeoutMs: 22000,
+        mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+      },
+      {
+        model: 'gemini-3.1-flash-lite',
+        level: ThinkingLevel.MINIMAL,
+        timeoutMs: 16000,
+        mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+      },
+      {
+        model: 'gemini-4-hydrogen',
+        level: ThinkingLevel.LOW,
+        timeoutMs: 22000,
+        mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+      },
     ];
   }
+  const primaryTimeout = kind === 'full' ? 24000 : 20000;
   return [
-    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 32000 },
-    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 24000 },
-    { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 26000 },
-    { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 22000 },
+    {
+      model: 'gemini-3.1-flash-lite',
+      level: ThinkingLevel.MINIMAL,
+      timeoutMs: primaryTimeout,
+      mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+    },
+    {
+      model: 'gemini-4-hydrogen',
+      level: ThinkingLevel.LOW,
+      timeoutMs: 26000,
+      mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+    },
+    {
+      model: 'gemini-3.1-flash-lite',
+      level: ThinkingLevel.MINIMAL,
+      timeoutMs: 20000,
+      mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+    },
+    {
+      model: 'gemini-4-hydrogen',
+      level: ThinkingLevel.LOW,
+      timeoutMs: 24000,
+      mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+    },
   ];
 }
 
@@ -758,8 +822,8 @@ export function computeGeminiRetryBackoffMs(
   isFastSkip: boolean,
   jitterMs = 0
 ): number {
-  if (isFastSkip) return 150;
-  const backoffSchedule = [1400, 2800, 4500];
+  if (isFastSkip) return 100;
+  const backoffSchedule = [350, 900, 1800];
   const base = backoffSchedule[Math.min(Math.max(0, attemptIndex), backoffSchedule.length - 1)];
   return base + Math.max(0, jitterMs);
 }
@@ -818,6 +882,7 @@ async function generateJsonWithFallback(
         config: {
           abortSignal: controller.signal,
           thinkingConfig: { thinkingLevel: attempt.level },
+          ...(attempt.mediaResolution ? { mediaResolution: attempt.mediaResolution } : {}),
           responseMimeType: 'application/json',
           responseSchema,
         },
@@ -1099,7 +1164,7 @@ Aturan:
 
   const attempts = resolveGeminiExtractionAttempts(scope, scanMode);
 
-  const { parsed } = await generateJsonWithFallback(
+  const { parsed, model, elapsedMs } = await generateJsonWithFallback(
     ai,
     parts,
     responseSchema,
@@ -1113,7 +1178,15 @@ Aturan:
     obj.audit_warnings = [];
   }
 
-  return normalizeExtractionOutput(parsed);
+  const normalized = normalizeExtractionOutput(parsed);
+  if (normalized && typeof normalized === 'object' && !Array.isArray(normalized)) {
+    (normalized as Record<string, unknown>)._scan_meta = {
+      model,
+      elapsed_ms: elapsedMs,
+      scan_mode: scanMode,
+    };
+  }
+  return normalized;
 }
 
 const SERVER_UPPERCASE_ACRONYMS = new Set([

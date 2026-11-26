@@ -187,18 +187,87 @@ function delayWithSignal(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+const SCAN_CACHE_TTL_MS = 10 * 60 * 1000;
+const SCAN_CACHE_MAX_ENTRIES = 16;
+
+interface ScanCacheEntry {
+  expiresAt: number;
+  data: unknown;
+}
+
+const scanResponseCache = new Map<string, ScanCacheEntry>();
+
+function fastHashPayload(input: string): string {
+  let h1 = 0x811c9dc5;
+  let h2 = 0x811c9dc5;
+  for (let i = 0; i < input.length; i += 1) {
+    const ch = input.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 0x01000193);
+    h2 = Math.imul(h2 ^ ((ch + i) & 0xff), 0x01000193);
+  }
+  return `${input.length.toString(36)}-${(h1 >>> 0).toString(36)}-${(h2 >>> 0).toString(36)}`;
+}
+
+function cloneCachedValue<T>(value: T): T {
+  try {
+    return typeof structuredClone === 'function'
+      ? structuredClone(value)
+      : (JSON.parse(JSON.stringify(value)) as T);
+  } catch {
+    return value;
+  }
+}
+
+export function clearScanCache(): void {
+  scanResponseCache.clear();
+}
+
+function readScanCache<T>(key: string): T | null {
+  const entry = scanResponseCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    scanResponseCache.delete(key);
+    return null;
+  }
+  // Refresh LRU order
+  scanResponseCache.delete(key);
+  scanResponseCache.set(key, entry);
+  return cloneCachedValue(entry.data as T);
+}
+
+function writeScanCache(key: string, data: unknown): void {
+  if (scanResponseCache.size >= SCAN_CACHE_MAX_ENTRIES) {
+    const oldestKey = scanResponseCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      scanResponseCache.delete(oldestKey);
+    }
+  }
+  scanResponseCache.set(key, {
+    expiresAt: Date.now() + SCAN_CACHE_TTL_MS,
+    data: cloneCachedValue(data),
+  });
+}
+
 /**
  * Mengirim permintaan POST JSON ke endpoint scan dengan penanganan error lintas perangkat
  * (termasuk cookie terpartisi pada pratinjau iframe/PWA, jaringan seluler terputus, 404 deployment statis,
- * 413 payload besar, timeout, dan retry otomatis 1x bila respons HTTP 200 kosong/terpotong atau SW lama dilepas).
+ * 413 payload besar, timeout, cache hasil scan identik, dan retry otomatis 1x bila respons HTTP 200 kosong/terpotong).
  */
 export async function postScanJson<T>(
   endpoint: string,
   payload: unknown,
-  options?: { signal?: AbortSignal; maxTransientRetries?: number }
+  options?: { signal?: AbortSignal; maxTransientRetries?: number; bypassCache?: boolean }
 ): Promise<T> {
   const maxRetries = options?.maxTransientRetries ?? 1;
   const serializedBody = JSON.stringify(payload);
+  const cacheKey = `${endpoint}::${fastHashPayload(serializedBody)}`;
+
+  if (!options?.bypassCache) {
+    const cached = readScanCache<T>(cacheKey);
+    if (cached !== null) {
+      return cached;
+    }
+  }
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     let res: Response;
@@ -237,7 +306,7 @@ export async function postScanJson<T>(
     if (attempt < maxRetries && isHtml) {
       const clearedSw = await tryClearStaleServiceWorkers();
       if (clearedSw) {
-        await delayWithSignal(400, options?.signal);
+        await delayWithSignal(250, options?.signal);
         continue;
       }
     }
@@ -246,11 +315,13 @@ export async function postScanJson<T>(
       attempt < maxRetries &&
       isTransientEmptyOkResponse(rawText, res.status, res.ok, meta)
     ) {
-      await delayWithSignal(700, options?.signal);
+      await delayWithSignal(350, options?.signal);
       continue;
     }
 
-    return parseScanResponseText<T>(rawText, res.status, res.ok, endpoint, meta);
+    const parsed = parseScanResponseText<T>(rawText, res.status, res.ok, endpoint, meta);
+    writeScanCache(cacheKey, parsed);
+    return parsed;
   }
 
   throw new Error(

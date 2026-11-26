@@ -77,9 +77,9 @@ export async function scanPersonFromFiles(
   const optimized = await Promise.all(
     files.map(async (f) => {
       const payload = await optimizeDocumentFile(f, {
-        maxEdge: 960,
-        quality: 0.72,
-        skipBelowBytes: 75 * 1024,
+        maxEdge: 860,
+        quality: 0.70,
+        skipBelowBytes: 60 * 1024,
       });
       return {
         name: f.name,

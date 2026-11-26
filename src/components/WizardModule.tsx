@@ -89,6 +89,10 @@ import {
   formatCompactFileSize,
   optimizeDocumentFile,
 } from '../utils/imageOptimizer';
+import {
+  loadWizardSessionDraft,
+  saveWizardSessionDraft,
+} from '../utils/navigationState';
 import { scanPersonFromFiles } from '../utils/personScan';
 import { postScanJson } from '../utils/scanApi';
 import {
@@ -394,13 +398,30 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     [existingRecords, today]
   );
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(editingRecord ? 2 : 1);
+  const initialWizardSession = useMemo(
+    () => (!editingRecord && !taxPrefill && !initialLayanan ? loadWizardSessionDraft() : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(
+    editingRecord ? 2 : initialWizardSession?.step ?? 1
+  );
   const [layanan, setLayanan] = useState<ServiceType>(
-    editingRecord?.layanan ?? taxPrefill?.layanan ?? initialLayanan ?? 'AJB'
+    editingRecord?.layanan ??
+      taxPrefill?.layanan ??
+      initialLayanan ??
+      initialWizardSession?.layanan ??
+      'AJB'
   );
   const [status, setStatus] = useState<BerkasStatus>(
     editingRecord?.status ?? '1. Pemberkasan'
   );
+
+  useEffect(() => {
+    if (editingRecord) return;
+    saveWizardSessionDraft({ layanan, step });
+  }, [editingRecord, layanan, step]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedDocFile[]>([]);
   const [preparingFiles, setPreparingFiles] = useState(false);
   const [scanMode, setScanModeState] = useState<'fast' | 'accurate'>(() => {
@@ -638,9 +659,9 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       const optimized = await Promise.all(
         files.map(async (file) => {
           const payload = await optimizeDocumentFile(file, {
-            maxEdge: 1120,
-            quality: 0.75,
-            skipBelowBytes: 90 * 1024,
+            maxEdge: scanMode === 'accurate' ? 1120 : 896,
+            quality: scanMode === 'accurate' ? 0.75 : 0.70,
+            skipBelowBytes: 60 * 1024,
           });
           return {
             name: file.name || `dokumen-${Date.now()}.jpg`,
@@ -712,9 +733,9 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       const optimized = await Promise.all(
         files.map(async (file) => {
           const payload = await optimizeDocumentFile(file, {
-            maxEdge: 1120,
-            quality: 0.75,
-            skipBelowBytes: 90 * 1024,
+            maxEdge: scanMode === 'accurate' ? 1120 : 896,
+            quality: scanMode === 'accurate' ? 0.75 : 0.70,
+            skipBelowBytes: 60 * 1024,
           });
           return {
             name: file.name || `dokumen-${Date.now()}.jpg`,
@@ -1070,16 +1091,18 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
     }
   };
 
-  const handleFilesSelected = async (filesList: FileList | null) => {
+  const handleFilesSelected = async (filesList: FileList | File[] | null) => {
     if (!filesList || filesList.length === 0) return;
-    const incoming = Array.from(filesList);
+    const incoming = Array.isArray(filesList) ? filesList : Array.from(filesList);
     setPreparingFiles(true);
     try {
       const projectedCount = uploadedFiles.length + incoming.length;
       const optimizeOpts =
-        projectedCount >= 3
-          ? { maxEdge: 960, quality: 0.72, skipBelowBytes: 75 * 1024 }
-          : { maxEdge: 1120, quality: 0.76, skipBelowBytes: 90 * 1024 };
+        scanMode === 'accurate'
+          ? { maxEdge: 1120, quality: 0.76, skipBelowBytes: 90 * 1024 }
+          : projectedCount >= 3
+            ? { maxEdge: 800, quality: 0.68, skipBelowBytes: 60 * 1024 }
+            : { maxEdge: 896, quality: 0.70, skipBelowBytes: 60 * 1024 };
 
       const added = await Promise.all(
         incoming.map(async (file) => {
@@ -1131,6 +1154,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
       controller.abort();
     }, 60000);
 
+    const startedAt = Date.now();
     setExtracting(true);
     setExtractError(null);
 
@@ -1266,10 +1290,11 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
         summaryBits.push('SPPT PBB');
       }
 
+      const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
       onNotify(
         summaryBits.length > 0
-          ? `Ekstraksi AI selesai (${summaryBits.join(' · ')} terbaca). Silakan verifikasi hasil pada Langkah 2.`
-          : 'Ekstraksi dokumen selesai. Silakan verifikasi hasil pada Langkah 2.',
+          ? `Ekstraksi Gemini Vision selesai (${elapsedSec} dtk · ${summaryBits.join(' · ')} terbaca). Silakan verifikasi hasil pada Langkah 2.`
+          : `Ekstraksi Gemini Vision selesai (${elapsedSec} dtk). Silakan verifikasi hasil pada Langkah 2.`,
         'success'
       );
       setStep(2);
@@ -1979,7 +2004,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                       : 'text-[#6B5E4C] dark:text-slate-300 hover:text-[#0F2942] dark:hover:text-white'
                   }`}
                 >
-                  Mode Cepat
+                  Mode Cepat (Vision)
                 </button>
                 <button
                   type="button"
@@ -2032,36 +2057,44 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
               </p>
               <p className="text-xs text-slate-600 dark:text-teal-200/75 mt-1 max-w-xl mx-auto">
                 {scanMode === 'fast'
-                  ? 'Mode Cepat: ekstraksi AI berkecepatan tinggi dengan kompresi foto & pembacaan Word (.docx/.doc) otomatis untuk KTP, KK, Sertipikat, Letter C, dan SPPT.'
-                  : 'Mode Detail: pembacaan AI mendalam untuk dokumen buram, tulisan tangan, atau multi-halaman dengan penyesuaian otomatis jika antrean sibuk.'}
+                  ? 'Mode Cepat (Gemini Vision): ekstraksi gambar instan tanpa jeda penalaran + kompresi otomatis & cache pintar untuk KTP, KK, Sertipikat, Letter C, dan SPPT.'
+                  : 'Mode Detail: pembacaan Gemini Vision resolusi tinggi untuk dokumen buram, tulisan tangan, atau multi-halaman rumit.'}
               </p>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-                <label className="btn-3d btn-3d-light inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer">
+                <label className="relative btn-3d btn-3d-light inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer">
                   <FileText className="w-3.5 h-3.5 text-teal-600 dark:text-teal-300" />
                   <span>{preparingFiles ? 'Mengoptimalkan file...' : 'Pilih File Dokumen'}</span>
                   <input
                     type="file"
                     multiple
                     accept={SCAN_DOC_FILE_ACCEPT}
+                    onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
-                      void handleFilesSelected(e.target.files);
+                      const selected = e.target.files ? Array.from(e.target.files) : [];
                       e.target.value = '';
+                      if (selected.length > 0) {
+                        void handleFilesSelected(selected);
+                      }
                     }}
-                    className="hidden"
+                    className="sr-only"
                   />
                 </label>
-                <label className="btn-3d btn-3d-sky inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer">
+                <label className="relative btn-3d btn-3d-sky inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer">
                   <Camera className="w-3.5 h-3.5" />
                   <span>Foto Kamera</span>
                   <input
                     type="file"
                     accept="image/*"
                     capture="environment"
+                    onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
-                      void handleFilesSelected(e.target.files);
+                      const selected = e.target.files ? Array.from(e.target.files) : [];
                       e.target.value = '';
+                      if (selected.length > 0) {
+                        void handleFilesSelected(selected);
+                      }
                     }}
-                    className="hidden"
+                    className="sr-only"
                   />
                 </label>
               </div>
@@ -5048,15 +5081,16 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                               Hapus Sket
                             </button>
                           )}
-                          <label className="btn-3d btn-3d-light inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer">
+                          <label className="relative btn-3d btn-3d-light inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer">
                             <ImagePlus className="w-3.5 h-3.5 text-teal-600 dark:text-teal-300" />
                             <span>{nonAkta.foto_sket_pecah ? 'Ganti Gambar Sket' : 'Unggah Gambar Sket'}</span>
                             <input
                               type="file"
                               accept="image/*"
                               aria-label="Unggah gambar sket rencana pemecahan"
+                              onClick={(e) => e.stopPropagation()}
                               onChange={(e) => void handleGeotagPhotoUpload('foto_sket_pecah', e)}
-                              className="hidden"
+                              className="sr-only"
                             />
                           </label>
                         </div>
@@ -5186,15 +5220,16 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                                     className="w-full h-20 object-cover rounded-lg border border-teal-900/10"
                                   />
                                 ) : (
-                                  <label className="flex flex-col items-center justify-center h-20 rounded-lg border border-dashed border-teal-500/40 bg-teal-50/40 dark:bg-teal-950/30 cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors text-[11px] text-teal-700 dark:text-teal-200">
+                                  <label className="relative flex flex-col items-center justify-center h-20 rounded-lg border border-dashed border-teal-500/40 bg-teal-50/40 dark:bg-teal-950/30 cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors text-[11px] text-teal-700 dark:text-teal-200">
                                     <ImagePlus className="w-4 h-4 mb-1" />
                                     <span>Pilih Foto</span>
                                     <input
                                       type="file"
                                       accept="image/*"
                                       aria-label={`Unggah foto ${slot.label}`}
+                                      onClick={(e) => e.stopPropagation()}
                                       onChange={(e) => void handleGeotagPhotoUpload(slot.key, e)}
-                                      className="hidden"
+                                      className="sr-only"
                                     />
                                   </label>
                                 )}
@@ -5744,7 +5779,7 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <label
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors whitespace-nowrap ${
+                      className={`relative inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors whitespace-nowrap ${
                         scanningPersonKey === 'kuasa'
                           ? 'bg-amber-600 text-white'
                           : 'bg-sky-600 hover:bg-sky-700 text-white shadow-sm'
@@ -5765,8 +5800,9 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                         accept={SCAN_DOC_FILE_ACCEPT}
                         aria-label="Scan KTP Kuasa BPN"
                         disabled={scanningPersonKey !== null}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => void handleScanAktaPerson('kuasa', e)}
-                        className="hidden"
+                        className="sr-only"
                       />
                     </label>
                     <select
@@ -6021,13 +6057,14 @@ export const WizardModule: React.FC<WizardModuleProps> = ({
                             accept={SCAN_DOC_FILE_ACCEPT}
                             aria-label={`Scan KTP Saksi ${sCfg.num}`}
                             disabled={scanningPersonKey !== null}
+                            onClick={(e) => e.stopPropagation()}
                             onChange={(e) =>
                               void handleScanAktaPerson(
                                 sCfg.num === 1 ? 'saksi1' : 'saksi2',
                                 e
                               )
                             }
-                            className="hidden"
+                            className="sr-only"
                           />
                         </label>
                         <select
